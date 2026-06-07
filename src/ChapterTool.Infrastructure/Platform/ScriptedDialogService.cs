@@ -1,0 +1,23 @@
+using ChapterTool.Core.Services;
+
+namespace ChapterTool.Infrastructure.Platform;
+
+public sealed class ScriptedDialogService : IDialogService
+{
+    private readonly Queue<DialogResult> results;
+
+    public ScriptedDialogService(params DialogResult[] results)
+    {
+        this.results = new Queue<DialogResult>(results);
+    }
+
+    public IReadOnlyList<DialogRequest> Requests => requests;
+
+    private readonly List<DialogRequest> requests = [];
+
+    public ValueTask<DialogResult> ShowMessageAsync(DialogRequest request, CancellationToken cancellationToken)
+    {
+        requests.Add(request);
+        return ValueTask.FromResult(results.Count > 0 ? results.Dequeue() : new DialogResult(false));
+    }
+}

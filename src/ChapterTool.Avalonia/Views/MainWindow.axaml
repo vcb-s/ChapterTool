@@ -1,0 +1,353 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="ChapterTool.Avalonia.Views.MainWindow"
+        Title="[VCB-Studio] ChapterTool"
+        Width="920"
+        Height="720"
+        MinWidth="760"
+        MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        Background="#f3f4f6"
+        x:CompileBindings="False">
+  <Window.Styles>
+    <Style Selector="Button">
+      <Setter Property="CornerRadius" Value="2" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="12,7" />
+      <Setter Property="MinHeight" Value="34" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.primaryAction">
+      <Setter Property="Background" Value="#ffffff" />
+      <Setter Property="BorderBrush" Value="#0a84ff" />
+      <Setter Property="FontSize" Value="17" />
+      <Setter Property="MinWidth" Value="118" />
+      <Setter Property="MinHeight" Value="54" />
+    </Style>
+    <Style Selector="Button.iconAction">
+      <Setter Property="Background" Value="#ffffff" />
+      <Setter Property="BorderBrush" Value="#0a84ff" />
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="Width" Value="44" />
+      <Setter Property="Height" Value="44" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="ComboBox, TextBox, NumericUpDown">
+      <Setter Property="Background" Value="#ffffff" />
+      <Setter Property="BorderBrush" Value="#c7ccd1" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="2" />
+      <Setter Property="MinHeight" Value="32" />
+      <Setter Property="FontSize" Value="14" />
+    </Style>
+    <Style Selector="CheckBox">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.optionLabel">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="DataGrid">
+      <Setter Property="Background" Value="#e8e9eb" />
+      <Setter Property="BorderBrush" Value="#0a84ff" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="GridLinesVisibility" Value="All" />
+      <Setter Property="HeadersVisibility" Value="Column" />
+      <Setter Property="RowHeight" Value="30" />
+      <Setter Property="FontSize" Value="14" />
+    </Style>
+    <Style Selector="DataGridColumnHeader">
+      <Setter Property="Background" Value="#ffffff" />
+      <Setter Property="BorderBrush" Value="#0a84ff" />
+      <Setter Property="BorderThickness" Value="0,0,1,1" />
+      <Setter Property="Padding" Value="8,4" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="DataGridCell">
+      <Setter Property="BorderBrush" Value="#d0d7de" />
+      <Setter Property="BorderThickness" Value="0,0,1,1" />
+      <Setter Property="Padding" Value="8,2" />
+    </Style>
+  </Window.Styles>
+
+  <DockPanel x:Name="RootPanel" LastChildFill="True">
+    <Border DockPanel.Dock="Bottom"
+            Background="#f3f4f6"
+            BorderBrush="#d8dee4"
+            BorderThickness="0,1,0,0">
+      <Grid ColumnDefinitions="*,Auto" Height="34">
+        <TextBlock x:Name="StatusBlock"
+                   Grid.Column="0"
+                   Margin="10,0"
+                   VerticalAlignment="Center"
+                   FontSize="13"
+                   Text="Ready" />
+        <ProgressBar x:Name="ProgressBar"
+                     Grid.Column="1"
+                     Width="180"
+                     Height="10"
+                     Margin="12,0,16,0"
+                     VerticalAlignment="Center"
+                     Minimum="0"
+                     Maximum="1"
+                     AutomationProperties.AutomationId="ProgressBar" />
+      </Grid>
+    </Border>
+
+    <Grid Margin="18"
+          RowDefinitions="Auto,*,Auto"
+          RowSpacing="14">
+      <Grid Grid.Row="0" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="16">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="14">
+          <Button x:Name="LoadButton"
+                  Classes="primaryAction"
+                  AutomationProperties.AutomationId="LoadButton"
+                  Content="载入">
+            <Button.ContextMenu>
+              <ContextMenu>
+                <MenuItem x:Name="ReloadMenuItem" Header="重新载入" />
+                <MenuItem x:Name="AppendLoadMenuItem" Header="追加合并 MPLS" />
+              </ContextMenu>
+            </Button.ContextMenu>
+          </Button>
+          <Button x:Name="SaveButton"
+                  Classes="primaryAction"
+                  AutomationProperties.AutomationId="SaveButton"
+                  Content="保存">
+            <Button.ContextMenu>
+              <ContextMenu>
+                <MenuItem x:Name="SaveToMenuItem" Header="选择保存目录" />
+              </ContextMenu>
+            </Button.ContextMenu>
+          </Button>
+        </StackPanel>
+
+        <Grid Grid.Column="2"
+              RowDefinitions="Auto,Auto"
+              RowSpacing="8"
+              HorizontalAlignment="Right"
+              MinWidth="260">
+          <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+            <CheckBox x:Name="RoundFramesBox"
+                      IsChecked="True"
+                      Content="帧数取整" />
+            <Button x:Name="PreviewButton"
+                    Classes="iconAction"
+                    AutomationProperties.AutomationId="PreviewWindow"
+                    Content="P" />
+            <Button x:Name="RefreshButton"
+                    Classes="iconAction"
+                    AutomationProperties.AutomationId="RefreshRows"
+                    Content="↻" />
+          </StackPanel>
+          <ComboBox x:Name="FrameRateBox"
+                    Grid.Row="1"
+                    Width="190"
+                    HorizontalAlignment="Right"
+                    SelectedIndex="-1">
+            <ComboBoxItem Content="24000 / 1001" />
+            <ComboBoxItem Content="24000 / 1000" />
+            <ComboBoxItem Content="25000 / 1000" />
+            <ComboBoxItem Content="30000 / 1001" />
+            <ComboBoxItem Content="RESER / VED" />
+            <ComboBoxItem Content="50000 / 1000" />
+            <ComboBoxItem Content="60000 / 1001" />
+          </ComboBox>
+        </Grid>
+      </Grid>
+
+      <Grid Grid.Row="1" RowDefinitions="Auto,*" MinHeight="0">
+        <TextBox x:Name="PathBox"
+                 Grid.Row="0"
+                 IsVisible="False"
+                 AutomationProperties.AutomationId="SourcePath" />
+        <DataGrid x:Name="ChapterGrid"
+                  Grid.Row="1"
+                  MinHeight="260"
+                  AutoGenerateColumns="False"
+                  CanUserReorderColumns="False"
+                  CanUserResizeColumns="True"
+                  IsReadOnly="False"
+                  SelectionMode="Extended"
+                  AutomationProperties.AutomationId="ChapterGrid">
+          <DataGrid.ContextMenu>
+            <ContextMenu>
+              <MenuItem x:Name="InsertMenuItem" Header="Insert" />
+              <MenuItem x:Name="DeleteMenuItem" Header="Delete" />
+              <MenuItem x:Name="CombineMenuItem" Header="Combine" />
+              <MenuItem x:Name="OpenMediaMenuItem" Header="Open Related Media" />
+              <MenuItem x:Name="ZonesMenuItem" Header="Create Zones" />
+              <MenuItem x:Name="ForwardShiftMenuItem" Header="Forward Translation" />
+              <MenuItem x:Name="PreviewMenuItem" Header="Preview" />
+            </ContextMenu>
+          </DataGrid.ContextMenu>
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="#" Binding="{Binding Number}" IsReadOnly="True" Width="64" MinWidth="56" />
+            <DataGridTextColumn Header="时间点" Binding="{Binding TimeText}" Width="170" MinWidth="132" />
+            <DataGridTextColumn Header="章节名" Binding="{Binding Name}" Width="*" MinWidth="180" />
+            <DataGridTextColumn Header="帧数" Binding="{Binding FramesInfo}" Width="150" MinWidth="96" />
+          </DataGrid.Columns>
+        </DataGrid>
+      </Grid>
+
+      <Grid x:Name="AdvancedOptionsGrid"
+            Grid.Row="2"
+            ColumnDefinitions="*,*"
+            RowDefinitions="Auto,Auto,Auto"
+            ColumnSpacing="18"
+            RowSpacing="10"
+            AutomationProperties.AutomationId="AdvancedOptions">
+        <Grid x:Name="FormatOptionsGroup"
+              Grid.Row="0"
+              Grid.Column="0"
+              ColumnDefinitions="84,*"
+              ColumnSpacing="10"
+              MinWidth="240"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Center">
+          <TextBlock Grid.Column="0" Classes="optionLabel" HorizontalAlignment="Right" Text="保存格式" />
+          <ComboBox x:Name="FormatBox"
+                    Grid.Column="1"
+                    HorizontalAlignment="Stretch"
+                    SelectedIndex="0"
+                    AutomationProperties.AutomationId="ExportFormat">
+            <ComboBoxItem Content="TXT" />
+            <ComboBoxItem Content="XML" />
+            <ComboBoxItem Content="QPF" />
+            <ComboBoxItem Content="TimeCodes" />
+            <ComboBoxItem Content="TsmuxerMeta" />
+            <ComboBoxItem Content="CUE" />
+            <ComboBoxItem Content="JSON" />
+          </ComboBox>
+        </Grid>
+
+        <StackPanel x:Name="NamingOptionsGroup"
+                    Grid.Row="0"
+                    Grid.Column="1"
+                    Orientation="Horizontal"
+                    Spacing="12"
+                    MinWidth="280"
+                    HorizontalAlignment="Stretch"
+                    VerticalAlignment="Center">
+          <CheckBox x:Name="TemplateNamesBox"
+                    AutomationProperties.AutomationId="TemplateNames"
+                    Content="使用章节名模板" />
+          <CheckBox x:Name="AutoNamesBox"
+                    AutomationProperties.AutomationId="AutoNames"
+                    Content="不使用章节名" />
+        </StackPanel>
+
+        <Grid x:Name="OrderShiftOptionsGroup"
+              Grid.Row="1"
+              Grid.Column="1"
+              ColumnDefinitions="84,124"
+              ColumnSpacing="10"
+              MinWidth="230"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Center">
+          <TextBlock Grid.Column="0" Classes="optionLabel" HorizontalAlignment="Right" Text="平移章节号" />
+          <NumericUpDown x:Name="OrderShiftBox"
+                         Grid.Column="1"
+                         Width="124"
+                         MinWidth="124"
+                         Minimum="-1000"
+                         Maximum="1000"
+                         AutomationProperties.AutomationId="OrderShift" />
+        </Grid>
+
+        <Grid x:Name="XmlLanguageOptionsGroup"
+              Grid.Row="1"
+              Grid.Column="0"
+              ColumnDefinitions="84,*"
+              ColumnSpacing="10"
+              MinWidth="240"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Center">
+          <TextBlock Grid.Column="0" Classes="optionLabel" HorizontalAlignment="Right" Text="XML语言" />
+          <ComboBox x:Name="XmlLanguageBox"
+                    Grid.Column="1"
+                    HorizontalAlignment="Stretch"
+                    AutomationProperties.AutomationId="XmlLanguage">
+            <ComboBoxItem Content="und" />
+            <ComboBoxItem Content="zh" />
+            <ComboBoxItem Content="ja" />
+            <ComboBoxItem Content="en" />
+          </ComboBox>
+        </Grid>
+
+        <Grid x:Name="ExpressionOptionsGroup"
+              Grid.Row="2"
+              Grid.Column="0"
+              ColumnDefinitions="Auto,Auto,*"
+              ColumnSpacing="10"
+              MinWidth="300"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Center">
+          <CheckBox x:Name="ApplyExpressionBox"
+                    Grid.Column="0"
+                    AutomationProperties.AutomationId="ApplyExpression"
+                    Content="应用表达式 (t)" />
+          <CheckBox x:Name="ExpressionEnableBox"
+                    Grid.Column="1" />
+          <TextBox x:Name="ExpressionBox"
+                   Grid.Column="2"
+                   MinWidth="120"
+                   HorizontalAlignment="Stretch"
+                   Text="t"
+                   AutomationProperties.AutomationId="ExpressionText" />
+        </Grid>
+
+        <Button x:Name="LogButton"
+                Grid.Row="2"
+                Grid.Column="1"
+                MinWidth="78"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Right"
+                AutomationProperties.AutomationId="LogWindow"
+                Content="LOG" />
+
+        <Button x:Name="SaveToButton"
+                IsVisible="False"
+                AutomationProperties.AutomationId="SaveToButton"
+                Content="Save To" />
+        <Button x:Name="AppendMplsButton"
+                IsVisible="False"
+                AutomationProperties.AutomationId="AppendMplsButton"
+                Content="Append" />
+        <ComboBox x:Name="ClipBox"
+                  IsVisible="False"
+                  AutomationProperties.AutomationId="ClipSelector" />
+        <Button x:Name="CombineButton"
+                IsVisible="False"
+                AutomationProperties.AutomationId="CombineButton"
+                Content="Merge" />
+        <Button x:Name="OpenMediaButton"
+                IsVisible="False"
+                AutomationProperties.AutomationId="OpenRelatedMediaButton"
+                Content="Open" />
+        <Button x:Name="ColorButton"
+                IsVisible="False"
+                AutomationProperties.AutomationId="ColorSettingsWindow"
+                Content="Color" />
+        <Button x:Name="ExpressionButton"
+                IsVisible="False"
+                AutomationProperties.AutomationId="ExpressionWindow"
+                Content="Expr" />
+        <Button x:Name="TemplateButton"
+                IsVisible="False"
+                AutomationProperties.AutomationId="TemplateNamesWindow"
+                Content="Templates" />
+        <Button x:Name="ZonesButton"
+                IsVisible="False"
+                AutomationProperties.AutomationId="ZonesWindow"
+                Content="Zones" />
+        <Button x:Name="ForwardShiftButton"
+                IsVisible="False"
+                AutomationProperties.AutomationId="ForwardShiftWindow"
+                Content="Shift" />
+      </Grid>
+    </Grid>
+  </DockPanel>
+</Window>

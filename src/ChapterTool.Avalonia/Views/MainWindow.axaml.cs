@@ -1,0 +1,539 @@
+using Avalonia.Controls;
+using Avalonia.Input;
+using ChapterTool.Avalonia.Services;
+using ChapterTool.Avalonia.ViewModels;
+using ChapterTool.Core.Editing;
+using ChapterTool.Core.Exporting;
+using ChapterTool.Infrastructure.Configuration;
+using ChapterTool.Infrastructure.Platform;
+using ChapterTool.Core.Transform;
+
+namespace ChapterTool.Avalonia.Views;
+
+public sealed partial class MainWindow : Window
+{
+    private readonly MainWindowViewModel viewModel;
+    private readonly ShortcutRouter shortcutRouter;
+    private readonly IFilePickerService filePickerService;
+    private bool isRefreshing;
+
+    public MainWindow()
+        : this(null)
+    {
+    }
+
+    public MainWindow(string? startupPath)
+    {
+        InitializeComponent();
+        var formatter = new ChapterTimeFormatter();
+        var settingsDirectory = SettingsDirectory();
+        var appSettingsStore = new AppSettingsStore(settingsDirectory);
+        var themeSettingsStore = new ThemeSettingsStore(settingsDirectory);
+        viewModel = new MainWindowViewModel(
+            new RuntimeChapterLoadService(formatter),
+            new RuntimeChapterSaveService(new ChapterExportService(formatter, new ExpressionService())),
+            new ChapterEditingService(formatter),
+            new ChapterSegmentService(),
+            new AvaloniaWindowService(themeSettingsStore),
+            formatter,
+            new InMemoryApplicationLogService(),
+            new ShellService(),
+            appSettingsStore);
+        filePickerService = new AvaloniaFilePickerService(this);
+
+        DataContext = viewModel;
+        shortcutRouter = new ShortcutRouter(viewModel);
+        DragDrop.SetAllowDrop(this, true);
+        AddHandler(DragDrop.DropEvent, OnDrop);
+        KeyDown += OnKeyDown;
+        SizeChanged += (_, _) => ApplyAdvancedOptionsLayout();
+
+        LoadButton.Click += async (_, _) => await LoadOrBrowseAsync();
+        ReloadMenuItem.Click += async (_, _) => await LoadAsync();
+        AppendLoadMenuItem.Click += async (_, _) => await AppendMplsAsync();
+        SaveButton.Click += async (_, _) => await SaveAsync(null);
+        SaveToButton.Click += async (_, _) => await SaveToAsync();
+        SaveToMenuItem.Click += async (_, _) => await SaveToAsync();
+        RefreshButton.Click += (_, _) =>
+        {
+            ReadAdvancedOptions();
+            _ = viewModel.RefreshCommand.ExecuteAsync();
+            Refresh();
+        };
+        ClipBox.SelectionChanged += (_, _) =>
+        {
+            if (isRefreshing)
+            {
+                return;
+            }
+
+            if (ClipBox.SelectedIndex >= 0)
+            {
+                _ = viewModel.SelectClipCommand.ExecuteAsync(ClipBox.SelectedIndex);
+                Refresh();
+            }
+        };
+        CombineButton.Click += (_, _) =>
+        {
+            _ = viewModel.CombineCommand.ExecuteAsync();
+            Refresh();
+        };
+        AppendMplsButton.Click += async (_, _) => await AppendMplsAsync();
+        OpenMediaButton.Click += async (_, _) => await OpenRelatedMediaAsync();
+        InsertMenuItem.Click += (_, _) => InsertSelected();
+        DeleteMenuItem.Click += (_, _) => DeleteSelected();
+        CombineMenuItem.Click += (_, _) =>
+        {
+            _ = viewModel.CombineCommand.ExecuteAsync();
+            Refresh();
+        };
+        OpenMediaMenuItem.Click += async (_, _) => await OpenRelatedMediaAsync();
+        ZonesMenuItem.Click += async (_, _) => await OpenZonesAsync();
+        ForwardShiftMenuItem.Click += async (_, _) => await OpenForwardShiftAsync();
+        PreviewMenuItem.Click += async (_, _) => await viewModel.PreviewCommand.ExecuteAsync();
+        ChapterGrid.CellEditEnded += (_, args) => CommitCellEdit(args);
+
+        PreviewButton.Click += async (_, _) => await viewModel.PreviewCommand.ExecuteAsync();
+        LogButton.Click += async (_, _) => await viewModel.LogCommand.ExecuteAsync();
+        ColorButton.Click += async (_, _) => await viewModel.ColorSettingsCommand.ExecuteAsync();
+        ExpressionButton.Click += async (_, _) => await viewModel.ExpressionCommand.ExecuteAsync();
+        TemplateButton.Click += async (_, _) => await viewModel.TemplateNamesCommand.ExecuteAsync();
+        ZonesButton.Click += async (_, _) => await OpenZonesAsync();
+        ForwardShiftButton.Click += async (_, _) => await OpenForwardShiftAsync();
+
+        Opened += async (_, _) =>
+        {
+            await viewModel.LoadSettingsAsync(CancellationToken.None);
+            Refresh();
+            if (!string.IsNullOrWhiteSpace(startupPath))
+            {
+                PathBox.Text = startupPath;
+                await LoadAsync();
+            }
+        };
+        ApplyAdvancedOptionsLayout();
+        Refresh();
+    }
+
+    private async Task LoadAsync()
+    {
+        await viewModel.LoadCommand.ExecuteAsync(PathBox.Text ?? string.Empty);
+        Refresh();
+    }
+
+    private async Task LoadOrBrowseAsync()
+    {
+        if (string.IsNullOrWhiteSpace(PathBox.Text))
+        {
+            await BrowseAndLoadAsync();
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task BrowseAndLoadAsync()
+    {
+        var path = await filePickerService.PickSourceAsync(CancellationToken.None);
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        PathBox.Text = path;
+        await viewModel.LoadCommand.ExecuteAsync(path);
+        Refresh();
+    }
+
+    private async Task SaveAsync(string? directory)
+    {
+        ReadAdvancedOptions();
+        viewModel.SaveFormat = (ChapterExportFormat)Math.Max(0, FormatBox.SelectedIndex);
+        directory ??= string.IsNullOrWhiteSpace(viewModel.CurrentPath) ? null : Path.GetDirectoryName(viewModel.CurrentPath);
+        await viewModel.SaveDirectoryCommand.ExecuteAsync(directory);
+        Refresh();
+    }
+
+    private async Task SaveToAsync()
+    {
+        var directory = await filePickerService.PickSaveDirectoryAsync(CancellationToken.None);
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            return;
+        }
+
+        viewModel.SaveDirectory = directory;
+        await SaveAsync(directory);
+    }
+
+    private async Task AppendMplsAsync()
+    {
+        var path = await filePickerService.PickMplsAsync(CancellationToken.None);
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        await viewModel.AppendMplsCommand.ExecuteAsync(path);
+        Refresh();
+    }
+
+    private async Task OpenRelatedMediaAsync()
+    {
+        await viewModel.OpenRelatedMediaCommand.ExecuteAsync();
+        Refresh();
+    }
+
+    private async Task OpenZonesAsync()
+    {
+        viewModel.UpdateSelectedRows(SelectedIndexes());
+        await viewModel.ZonesCommand.ExecuteAsync();
+        Refresh();
+    }
+
+    private async Task OpenForwardShiftAsync()
+    {
+        viewModel.UpdateSelectedRows(SelectedIndexes());
+        await viewModel.ForwardShiftCommand.ExecuteAsync();
+        Refresh();
+    }
+
+    private async void OnDrop(object? sender, DragEventArgs args)
+    {
+        try
+        {
+            var files = args.DataTransfer.TryGetFiles()?.ToArray();
+            var path = files?.FirstOrDefault()?.Path.LocalPath;
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                return;
+            }
+
+            PathBox.Text = path;
+            await viewModel.DropPathLoadCommand.ExecuteAsync(path);
+            Refresh();
+        }
+        catch (Exception exception)
+        {
+            StatusBlock.Text = exception.Message;
+        }
+    }
+
+    private async void OnKeyDown(object? sender, KeyEventArgs args)
+    {
+        var gesture = Gesture(args);
+        if (args.Key == Key.Insert)
+        {
+            args.Handled = true;
+            _ = viewModel.InsertCommand.ExecuteAsync(SelectedRowIndex());
+            Refresh();
+            return;
+        }
+
+        if (args.Key == Key.Delete)
+        {
+            args.Handled = true;
+            _ = viewModel.DeleteCommand.ExecuteAsync(SelectedIndexes());
+            Refresh();
+            return;
+        }
+
+        if (gesture is null)
+        {
+            return;
+        }
+
+        args.Handled = true;
+        if (gesture is "Ctrl+S" or "Alt+S")
+        {
+            await SaveAsync(gesture == "Alt+S" ? viewModel.SaveDirectory : null);
+            return;
+        }
+
+        if (gesture == "Ctrl+O")
+        {
+            await BrowseAndLoadAsync();
+            return;
+        }
+
+        if (gesture is "PageUp" or "PageDown")
+        {
+            var next = gesture == "PageUp" ? viewModel.SelectedClipIndex - 1 : viewModel.SelectedClipIndex + 1;
+            if (viewModel.SelectClipCommand.CanExecute(next))
+            {
+                await viewModel.SelectClipCommand.ExecuteAsync(next);
+                Refresh();
+            }
+
+            return;
+        }
+
+        if (gesture.StartsWith("Alt+", StringComparison.Ordinal) && int.TryParse(gesture["Alt+".Length..], out var saveIndex))
+        {
+            var mapped = saveIndex == 0 ? 9 : saveIndex - 1;
+            if (mapped >= 0 && mapped < FormatBox.ItemCount)
+            {
+                FormatBox.SelectedIndex = mapped;
+                viewModel.SaveFormat = (ChapterExportFormat)mapped;
+                Refresh();
+            }
+
+            return;
+        }
+
+        await shortcutRouter.RouteAsync(gesture);
+        Refresh();
+    }
+
+    private string? Gesture(KeyEventArgs args)
+    {
+        var control = args.KeyModifiers.HasFlag(KeyModifiers.Control);
+        var alt = args.KeyModifiers.HasFlag(KeyModifiers.Alt);
+
+        if (control && args.Key == Key.S)
+        {
+            return "Ctrl+S";
+        }
+
+        if (control && args.Key == Key.O)
+        {
+            return "Ctrl+O";
+        }
+
+        if (alt && args.Key == Key.S)
+        {
+            return "Alt+S";
+        }
+
+        if (control && args.Key == Key.R)
+        {
+            return "Ctrl+R";
+        }
+
+        if (control && args.Key == Key.L)
+        {
+            return "Ctrl+L";
+        }
+
+        if (args.Key == Key.F5)
+        {
+            return "F5";
+        }
+
+        if (args.Key == Key.F11)
+        {
+            return "F11";
+        }
+
+        if (args.Key == Key.PageUp)
+        {
+            return "PageUp";
+        }
+
+        if (args.Key == Key.PageDown)
+        {
+            return "PageDown";
+        }
+
+        if (alt)
+        {
+            return args.Key switch
+            {
+                Key.D0 or Key.NumPad0 => "Alt+0",
+                Key.D1 or Key.NumPad1 => "Alt+1",
+                Key.D2 or Key.NumPad2 => "Alt+2",
+                Key.D3 or Key.NumPad3 => "Alt+3",
+                Key.D4 or Key.NumPad4 => "Alt+4",
+                Key.D5 or Key.NumPad5 => "Alt+5",
+                Key.D6 or Key.NumPad6 => "Alt+6",
+                Key.D7 or Key.NumPad7 => "Alt+7",
+                Key.D8 or Key.NumPad8 => "Alt+8",
+                Key.D9 or Key.NumPad9 => "Alt+9",
+                _ => null
+            };
+        }
+
+        if (!control)
+        {
+            return null;
+        }
+
+        return args.Key switch
+        {
+            Key.D0 or Key.NumPad0 => "Ctrl+0",
+            Key.D1 or Key.NumPad1 => "Ctrl+1",
+            Key.D2 or Key.NumPad2 => "Ctrl+2",
+            Key.D3 or Key.NumPad3 => "Ctrl+3",
+            Key.D4 or Key.NumPad4 => "Ctrl+4",
+            Key.D5 or Key.NumPad5 => "Ctrl+5",
+            Key.D6 or Key.NumPad6 => "Ctrl+6",
+            Key.D7 or Key.NumPad7 => "Ctrl+7",
+            Key.D8 or Key.NumPad8 => "Ctrl+8",
+            Key.D9 or Key.NumPad9 => "Ctrl+9",
+            _ => null
+        };
+    }
+
+    private void CommitCellEdit(DataGridCellEditEndedEventArgs args)
+    {
+        if (args.EditAction != DataGridEditAction.Commit || args.Row.DataContext is not ChapterRowViewModel row)
+        {
+            return;
+        }
+
+        var index = viewModel.Rows.IndexOf(row);
+        if (index < 0)
+        {
+            return;
+        }
+
+        var columnIndex = ChapterGrid.Columns.IndexOf(args.Column);
+        var header = args.Column.Header?.ToString();
+        if (columnIndex == 1 || string.Equals(header, "Time", StringComparison.Ordinal) || header == "时间点")
+        {
+            _ = viewModel.EditTimeCommand.ExecuteAsync(new ChapterCellEdit(index, row.TimeText));
+        }
+        else if (columnIndex == 2 || string.Equals(header, "Name", StringComparison.Ordinal) || header == "章节名")
+        {
+            _ = viewModel.EditNameCommand.ExecuteAsync(new ChapterCellEdit(index, row.Name));
+        }
+        else if (columnIndex == 3 || string.Equals(header, "Frames", StringComparison.Ordinal) || header == "帧数")
+        {
+            _ = viewModel.EditFrameCommand.ExecuteAsync(new ChapterCellEdit(index, row.FramesInfo));
+        }
+
+        Refresh();
+    }
+
+    private void InsertSelected()
+    {
+        _ = viewModel.InsertCommand.ExecuteAsync(SelectedRowIndex());
+        Refresh();
+    }
+
+    private void DeleteSelected()
+    {
+        _ = viewModel.DeleteCommand.ExecuteAsync(SelectedIndexes());
+        Refresh();
+    }
+
+    private int SelectedRowIndex() =>
+        ChapterGrid.SelectedItem is ChapterRowViewModel row ? viewModel.Rows.IndexOf(row) : viewModel.Rows.Count;
+
+    private IReadOnlySet<int> SelectedIndexes() =>
+        ChapterGrid.SelectedItems
+            .OfType<ChapterRowViewModel>()
+            .Select(row => viewModel.Rows.IndexOf(row))
+            .Where(static index => index >= 0)
+            .ToHashSet();
+
+    private void ReadAdvancedOptions()
+    {
+        viewModel.XmlLanguage = SelectedComboText(XmlLanguageBox, "und");
+        viewModel.AutoGenerateNames = AutoNamesBox.IsChecked == true;
+        viewModel.UseTemplateNames = TemplateNamesBox.IsChecked == true;
+        viewModel.ApplyExpression = ApplyExpressionBox.IsChecked == true;
+        viewModel.Expression = ExpressionBox.Text ?? "t";
+        viewModel.OrderShift = (int)(OrderShiftBox.Value ?? 0);
+    }
+
+    private void Refresh()
+    {
+        isRefreshing = true;
+        try
+        {
+            StatusBlock.Text = viewModel.StatusText;
+            ProgressBar.Value = viewModel.Progress;
+            ChapterGrid.ItemsSource = null;
+            ChapterGrid.ItemsSource = viewModel.Rows;
+            ClipBox.ItemsSource = viewModel.ClipOptions.Select(static option => option.DisplayName).ToArray();
+            ClipBox.SelectedIndex = viewModel.ClipOptions.Count == 0 ? -1 : viewModel.SelectedClipIndex;
+            ClipBox.IsVisible = false;
+            CombineButton.IsVisible = false;
+            AppendMplsButton.IsVisible = false;
+            OpenMediaButton.IsVisible = false;
+            CombineButton.IsEnabled = viewModel.CombineCommand.CanExecute();
+            CombineMenuItem.IsEnabled = viewModel.CombineCommand.CanExecute();
+            AppendMplsButton.IsEnabled = viewModel.CanAppendMpls;
+            OpenMediaButton.IsEnabled = viewModel.OpenRelatedMediaCommand.CanExecute();
+            OpenMediaMenuItem.IsEnabled = viewModel.OpenRelatedMediaCommand.CanExecute();
+            ZonesMenuItem.IsEnabled = viewModel.Rows.Count > 0;
+            ForwardShiftMenuItem.IsEnabled = viewModel.Rows.Count > 0;
+            SaveButton.IsEnabled = viewModel.SaveCommand.CanExecute();
+            SaveToButton.IsEnabled = viewModel.SaveCommand.CanExecute();
+            SelectComboText(XmlLanguageBox, viewModel.XmlLanguage);
+            AutoNamesBox.IsChecked = viewModel.AutoGenerateNames;
+            TemplateNamesBox.IsChecked = viewModel.UseTemplateNames;
+            ApplyExpressionBox.IsChecked = viewModel.ApplyExpression;
+            ExpressionBox.Text = viewModel.Expression;
+            OrderShiftBox.Value = viewModel.OrderShift;
+        }
+        finally
+        {
+            isRefreshing = false;
+        }
+    }
+
+    private void ApplyAdvancedOptionsLayout()
+    {
+        var wide = Bounds.Width >= 900;
+        AdvancedOptionsGrid.ColumnDefinitions = new ColumnDefinitions(wide ? "*,*,*" : "*,*");
+        AdvancedOptionsGrid.RowDefinitions = new RowDefinitions(wide ? "Auto,Auto" : "Auto,Auto,Auto");
+
+        SetGridPosition(FormatOptionsGroup, 0, 0);
+        SetGridPosition(NamingOptionsGroup, 0, 1);
+        if (wide)
+        {
+            SetGridPosition(OrderShiftOptionsGroup, 0, 2);
+            SetGridPosition(XmlLanguageOptionsGroup, 1, 0);
+            SetGridPosition(ExpressionOptionsGroup, 1, 1);
+            SetGridPosition(LogButton, 1, 2);
+            return;
+        }
+
+        SetGridPosition(XmlLanguageOptionsGroup, 1, 0);
+        SetGridPosition(OrderShiftOptionsGroup, 1, 1);
+        SetGridPosition(ExpressionOptionsGroup, 2, 0);
+        SetGridPosition(LogButton, 2, 1);
+    }
+
+    private static void SetGridPosition(Control control, int row, int column)
+    {
+        Grid.SetRow(control, row);
+        Grid.SetColumn(control, column);
+        Grid.SetColumnSpan(control, 1);
+    }
+
+    private static string SettingsDirectory()
+    {
+        var root = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        return string.IsNullOrWhiteSpace(root)
+            ? Path.Combine(Environment.CurrentDirectory, "settings")
+            : Path.Combine(root, "ChapterTool");
+    }
+
+    private static string SelectedComboText(ComboBox comboBox, string fallback)
+    {
+        return comboBox.SelectedItem switch
+        {
+            ComboBoxItem item when item.Content is not null => item.Content.ToString() ?? fallback,
+            string text when !string.IsNullOrWhiteSpace(text) => text,
+            _ => fallback
+        };
+    }
+
+    private static void SelectComboText(ComboBox comboBox, string value)
+    {
+        for (var index = 0; index < comboBox.ItemCount; index++)
+        {
+            if (comboBox.Items[index] is ComboBoxItem item
+                && string.Equals(item.Content?.ToString(), value, StringComparison.OrdinalIgnoreCase))
+            {
+                comboBox.SelectedIndex = index;
+                return;
+            }
+        }
+
+        comboBox.SelectedIndex = comboBox.ItemCount > 0 ? 0 : -1;
+    }
+}

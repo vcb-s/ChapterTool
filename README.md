@@ -12,7 +12,8 @@ A simple tool for extracting chapters from various types of files and editing th
 - Move all chapter numbers backwards optionally (for OGM format)
 - Load chapter name from text file as template
 - Calculate frames from chapter time
-- Supported saving formats: `.txt`, `.xml`, `.qpf`, `.json`.
+- Supported saving formats: `.txt`, `.xml`, `.qpf`, `.TimeCodes.txt`, `.TsMuxeR_Meta.txt`, `.cue`, `.json`.
+- Avalonia + .NET 10 rewrite work is tracked under `openspec/changes/rewrite-avalonia-dotnet10`.
 
 ### Supported file type
 
@@ -42,9 +43,25 @@ A simple tool for extracting chapters from various types of files and editing th
 
 ## Requirements
 
-- You must have the `.NET Framework 4.8` available from Windows Update.
+- The Avalonia rewrite targets `.NET 10`.
 - The matroska file support is powered by [`MKVToolNix`](https://mkvtoolnix.download/downloads.html#windows).
-- The mp4 file support is powered by `libmp4v2`, you need to get the dll before using this feature.
+- BDMV import is powered by `eac3to`.
+- MP4-family import is isolated behind an optional MP4 reader adapter; missing native support is reported as a structured diagnostic.
+
+## Build And Test
+
+```powershell
+dotnet restore ChapterTool.Avalonia.slnx
+dotnet build ChapterTool.Avalonia.slnx --no-restore
+dotnet test ChapterTool.Avalonia.slnx --no-restore
+```
+
+Publish artifacts with:
+
+```powershell
+./scripts/publish.ps1 -Runtime win-x64
+./scripts/publish.ps1 -Runtime win-x64 -SelfContained
+```
 
 ## License
 
