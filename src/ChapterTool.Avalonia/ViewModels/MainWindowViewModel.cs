@@ -21,6 +21,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
     private readonly IWindowService windowService;
     private readonly IChapterTimeFormatter formatter;
     private readonly IFrameRateService frameRateService;
+    private readonly ChapterExpressionService chapterExpressionService;
     private readonly IApplicationLogService logService;
     private readonly IShellService? shellService;
     private readonly ISettingsStore<AppSettings>? appSettingsStore;
@@ -67,6 +68,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
         this.windowService = windowService;
         this.formatter = formatter;
         this.frameRateService = frameRateService ?? new FrameRateService();
+        chapterExpressionService = new ChapterExpressionService(new ExpressionService());
         this.logService = logService ?? new InMemoryApplicationLogService();
         this.shellService = shellService;
         this.appSettingsStore = appSettingsStore;
@@ -246,13 +248,25 @@ public sealed class MainWindowViewModel : ObservableViewModel
     public bool ApplyExpression
     {
         get => applyExpression;
-        set => SetProperty(ref applyExpression, value);
+        set
+        {
+            if (SetProperty(ref applyExpression, value))
+            {
+                RefreshRows();
+            }
+        }
     }
 
     public string Expression
     {
         get => expression;
-        set => SetProperty(ref expression, value);
+        set
+        {
+            if (SetProperty(ref expression, value))
+            {
+                RefreshRows();
+            }
+        }
     }
 
     public string? SaveDirectory
@@ -370,8 +384,9 @@ public sealed class MainWindowViewModel : ObservableViewModel
             return string.Empty;
         }
 
-        var options = CurrentExportOptions();
-        var result = new ChapterExportService(formatter, new ExpressionService()).Export(currentInfo, options);
+        var projection = CurrentExpressionProjection();
+        var options = CurrentExportOptionsForProjectedInfo();
+        var result = new ChapterExportService(formatter, new ExpressionService()).Export(projection.Info, options);
         if (!result.Success)
         {
             return string.Join(Environment.NewLine, result.Diagnostics.Select(static diagnostic => diagnostic.Message));
@@ -473,8 +488,9 @@ public sealed class MainWindowViewModel : ObservableViewModel
             return;
         }
 
-        var options = CurrentExportOptions();
-        var result = await saveService.SaveAsync(currentInfo, options, directory, cancellationToken);
+        var projection = CurrentExpressionProjection();
+        var options = CurrentExportOptionsForProjectedInfo();
+        var result = await saveService.SaveAsync(projection.Info, options, directory, cancellationToken);
         if (!string.IsNullOrWhiteSpace(directory))
         {
             SaveDirectory = directory;
@@ -641,11 +657,22 @@ public sealed class MainWindowViewModel : ObservableViewModel
             return;
         }
 
-        foreach (var chapter in currentInfo.Chapters)
+        var projection = CurrentExpressionProjection();
+        foreach (var chapter in projection.Info.Chapters)
         {
             Rows.Add(new ChapterRowViewModel(chapter, formatter));
         }
     }
+
+    private ChapterExpressionResult CurrentExpressionProjection() =>
+        currentInfo is null
+            ? new ChapterExpressionResult(
+                new ChapterInfo(string.Empty, null, 0, string.Empty, 0, TimeSpan.Zero, Array.Empty<Chapter>()),
+                Array.Empty<Core.Diagnostics.ChapterDiagnostic>())
+            : chapterExpressionService.Apply(currentInfo, ApplyExpression, Expression);
+
+    private ChapterExportOptions CurrentExportOptionsForProjectedInfo() =>
+        CurrentExportOptions() with { ApplyExpression = false };
 
     private void OnClipOptionsChanged(object? sender, NotifyCollectionChangedEventArgs args)
     {

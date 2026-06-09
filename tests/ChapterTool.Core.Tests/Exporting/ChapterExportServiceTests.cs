@@ -86,6 +86,42 @@ public sealed class ChapterExportServiceTests
         Assert.StartsWith("00:00:01.000", result.Content, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Expression_export_normalizes_negative_times_to_zero()
+    {
+        var info = Sample() with
+        {
+            Chapters = [new Chapter(1, TimeSpan.FromSeconds(10), "Middle", "240 K")]
+        };
+        var result = service.Export(
+            info,
+            new ChapterExportOptions(ChapterExportFormat.Txt, ApplyExpression: true, Expression: "t - 10000"));
+
+        Assert.Contains("CHAPTER01=00:00:00.000", result.Content, StringComparison.Ordinal);
+        Assert.DoesNotContain("-", result.Content, StringComparison.Ordinal);
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "InvalidExpressionTime");
+    }
+
+    [Fact]
+    public void Cue_export_applies_expression_when_enabled()
+    {
+        var result = service.Export(
+            Sample(),
+            new ChapterExportOptions(ChapterExportFormat.Cue, ApplyExpression: true, Expression: "t + 1"));
+
+        Assert.Contains("    INDEX 01 00:01:00", result.Content, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Qpf_export_uses_expression_adjusted_frames_when_enabled()
+    {
+        var result = service.Export(
+            Sample(),
+            new ChapterExportOptions(ChapterExportFormat.Qpf, ApplyExpression: true, Expression: "t + 1"));
+
+        Assert.StartsWith("24 I", result.Content, StringComparison.Ordinal);
+    }
+
     private static ChapterInfo Sample(string sourceType = "OGM") =>
         new(
             "Title",

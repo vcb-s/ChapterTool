@@ -158,9 +158,54 @@ public sealed class MainWindowViewModelTests
         Assert.Equal("jpn", save.LastOptions.XmlLanguage);
         Assert.True(save.LastOptions.AutoGenerateNames);
         Assert.Equal(2, save.LastOptions.OrderShift);
-        Assert.True(save.LastOptions.ApplyExpression);
+        Assert.False(save.LastOptions.ApplyExpression);
         Assert.Equal("t + 1", save.LastOptions.Expression);
         Assert.Equal("out", save.LastDirectory);
+    }
+
+    [Fact]
+    public async Task ExpressionAppliesToRowsPreviewAndSavedInfo()
+    {
+        var save = new FakeSaveService();
+        var vm = CreateViewModel(saveService: save);
+        await vm.LoadCommand.ExecuteAsync("movie.txt");
+        vm.SaveFormat = ChapterExportFormat.Txt;
+
+        vm.ApplyExpression = true;
+        vm.Expression = "t + 1";
+
+        Assert.Equal("00:00:01.000", vm.Rows[0].TimeText);
+        Assert.Equal("24 K", vm.Rows[0].FramesInfo);
+        Assert.Contains("CHAPTER01=00:00:01.000", vm.BuildPreview(), StringComparison.Ordinal);
+
+        await vm.SaveDirectoryCommand.ExecuteAsync("out");
+
+        Assert.NotNull(save.LastInfo);
+        Assert.Equal(TimeSpan.FromSeconds(1), save.LastInfo.Chapters[0].Time);
+        Assert.Equal("24 K", save.LastInfo.Chapters[0].FramesInfo);
+        Assert.NotNull(save.LastOptions);
+        Assert.False(save.LastOptions.ApplyExpression);
+    }
+
+    [Fact]
+    public async Task NegativeExpressionResultNormalizesRowsAndSavedInfoToZero()
+    {
+        var save = new FakeSaveService();
+        var load = new FakeLoadService(ImportResult("movie.txt", Info("OGM", "movie.txt", new Chapter(1, TimeSpan.FromSeconds(10), "Intro", "240 K"))));
+        var vm = CreateViewModel(load, save);
+        await vm.LoadCommand.ExecuteAsync("movie.txt");
+
+        vm.ApplyExpression = true;
+        vm.Expression = "t - 10000";
+
+        Assert.Equal("00:00:00.000", vm.Rows[0].TimeText);
+        Assert.Equal("0 K", vm.Rows[0].FramesInfo);
+
+        await vm.SaveDirectoryCommand.ExecuteAsync("out");
+
+        Assert.NotNull(save.LastInfo);
+        Assert.Equal(TimeSpan.Zero, save.LastInfo.Chapters[0].Time);
+        Assert.Equal("0 K", save.LastInfo.Chapters[0].FramesInfo);
     }
 
     [Fact]

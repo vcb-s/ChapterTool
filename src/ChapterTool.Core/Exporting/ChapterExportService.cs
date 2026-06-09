@@ -15,16 +15,23 @@ public sealed class ChapterExportService(
 {
     public ChapterExportResult Export(ChapterInfo info, ChapterExportOptions options)
     {
-        return options.Format switch
+        var expressionResult = new ChapterExpressionService(expressionService).Apply(info, options.ApplyExpression, options.Expression);
+        info = expressionResult.Info;
+        var result = options.Format switch
         {
             ChapterExportFormat.Txt => Text(info, options),
             ChapterExportFormat.Xml => Xml(info, options),
             ChapterExportFormat.Qpf => Lines(".qpf", info.Chapters.Where(NotSeparator).Select(static c => c.FramesInfo.TrimEnd('K', '*') + "I")),
-            ChapterExportFormat.TimeCodes => Lines(".TimeCodes.txt", info.Chapters.Where(NotSeparator).Select(c => FormatTime(c, info, options))),
+            ChapterExportFormat.TimeCodes => Lines(".TimeCodes.txt", info.Chapters.Where(NotSeparator).Select(FormatTime)),
             ChapterExportFormat.TsMuxerMeta => TsMuxer(info, options),
             ChapterExportFormat.Cue => Cue(info, options),
             ChapterExportFormat.Json => Json(info, options),
             _ => Failure("UnsupportedExportFormat", "Unsupported export format.")
+        };
+
+        return result with
+        {
+            Diagnostics = result.Diagnostics.Concat(expressionResult.Diagnostics).ToArray()
         };
     }
 
@@ -34,7 +41,7 @@ public sealed class ChapterExportService(
         foreach (var (chapter, index) in info.Chapters.Where(NotSeparator).Select((chapter, index) => (chapter, index)))
         {
             var number = chapter.Number <= 0 ? index + 1 : chapter.Number;
-            builder.AppendLine(CultureInfo.InvariantCulture, $"CHAPTER{number:D2}={FormatTime(chapter, info, options)}");
+            builder.AppendLine(CultureInfo.InvariantCulture, $"CHAPTER{number:D2}={FormatTime(chapter)}");
             builder.AppendLine(CultureInfo.InvariantCulture, $"CHAPTER{number:D2}NAME={DisplayName(chapter, index, options)}");
         }
 
@@ -49,7 +56,7 @@ public sealed class ChapterExportService(
                 "ChapterAtom",
                 new XElement("ChapterDisplay", new XElement("ChapterString", DisplayName(chapter, index, options)), new XElement("ChapterLanguage", language)),
                 new XElement("ChapterUID", index + 1),
-                new XElement("ChapterTimeStart", FormatTime(chapter, info, options) + "000"),
+                new XElement("ChapterTimeStart", FormatTime(chapter) + "000"),
                 new XElement("ChapterFlagHidden", "0"),
                 new XElement("ChapterFlagEnabled", "1")));
         var document = new XDocument(
@@ -66,7 +73,7 @@ public sealed class ChapterExportService(
 
     private ChapterExportResult TsMuxer(ChapterInfo info, ChapterExportOptions options)
     {
-        var chapters = info.Chapters.Where(NotSeparator).Select(chapter => FormatTime(chapter, info, options)).ToArray();
+        var chapters = info.Chapters.Where(NotSeparator).Select(FormatTime).ToArray();
         if (chapters.Length == 0)
         {
             return Failure("NoChapters", "No chapters are available for tsMuxeR meta export.");
@@ -127,17 +134,7 @@ public sealed class ChapterExportService(
 
     private static string Escape(string value) => value.Replace("\"", "\\\"", StringComparison.Ordinal);
 
-    private string FormatTime(Chapter chapter, ChapterInfo info, ChapterExportOptions options)
-    {
-        var time = chapter.Time;
-        if (options.ApplyExpression)
-        {
-            var evaluated = expressionService.EvaluateInfix(options.Expression, (decimal)time.TotalSeconds, (decimal)info.FramesPerSecond);
-            time = TimeSpan.FromSeconds((double)evaluated.Value);
-        }
-
-        return timeFormatter.Format(time);
-    }
+    private string FormatTime(Chapter chapter) => timeFormatter.Format(chapter.Time);
 
     private static string DisplayName(Chapter chapter, int index, ChapterExportOptions options) =>
         options.AutoGenerateNames ? $"Chapter {index + 1:D2}" : chapter.Name;

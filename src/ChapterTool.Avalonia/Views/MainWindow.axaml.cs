@@ -34,6 +34,11 @@ public sealed partial class MainWindow : Window
         AppendMplsCommand = new UiCommand(async (_, _) => await AppendMplsAsync(), _ => viewModel.CanAppendMpls);
         SaveCommand = new UiCommand(async (_, _) => await SaveAsync(null), _ => viewModel.SaveCommand.CanExecute());
         SaveToCommand = new UiCommand(async (_, _) => await SaveToAsync(), _ => viewModel.SaveCommand.CanExecute());
+        PreviewCommand = new UiCommand(async (_, _) =>
+        {
+            ReadAdvancedOptions();
+            await viewModel.PreviewCommand.ExecuteAsync();
+        }, _ => viewModel.PreviewCommand.CanExecute());
         RefreshRowsCommand = new UiCommand(async (_, _) =>
         {
             ReadAdvancedOptions();
@@ -73,6 +78,8 @@ public sealed partial class MainWindow : Window
     public UiCommand SaveCommand { get; }
 
     public UiCommand SaveToCommand { get; }
+
+    public UiCommand PreviewCommand { get; }
 
     public UiCommand RefreshRowsCommand { get; }
 
@@ -475,6 +482,7 @@ public sealed partial class MainWindow : Window
         AppendMplsCommand.RaiseCanExecuteChanged();
         SaveCommand.RaiseCanExecuteChanged();
         SaveToCommand.RaiseCanExecuteChanged();
+        PreviewCommand.RaiseCanExecuteChanged();
         RefreshRowsCommand.RaiseCanExecuteChanged();
         InsertSelectedCommand.RaiseCanExecuteChanged();
         DeleteSelectedCommand.RaiseCanExecuteChanged();

@@ -168,7 +168,7 @@
                     Classes="iconAction"
                     AutomationProperties.AutomationId="PreviewWindow"
                     Content="P"
-                    Command="{Binding PreviewCommand}" />
+                    Command="{Binding #RootWindow.PreviewCommand}" />
             <Button x:Name="RefreshButton"
                     Classes="iconAction"
                     AutomationProperties.AutomationId="RefreshRows"
@@ -217,7 +217,7 @@
               <MenuItem x:Name="OpenMediaMenuItem" Header="Open Related Media" IsEnabled="{Binding CanOpenRelatedMedia}" Command="{Binding #RootWindow.OpenRelatedMediaCommand}" />
               <MenuItem x:Name="ZonesMenuItem" Header="Create Zones" Command="{Binding #RootWindow.OpenZonesCommand}" />
               <MenuItem x:Name="ForwardShiftMenuItem" Header="Forward Translation" Command="{Binding #RootWindow.OpenForwardShiftCommand}" />
-              <MenuItem x:Name="PreviewMenuItem" Header="Preview" Command="{Binding PreviewCommand}" />
+              <MenuItem x:Name="PreviewMenuItem" Header="Preview" Command="{Binding #RootWindow.PreviewCommand}" />
             </ContextMenu>
           </DataGrid.ContextMenu>
           <DataGrid.Columns>
@@ -260,23 +260,25 @@
           </ComboBox>
         </Grid>
 
-        <StackPanel x:Name="NamingOptionsGroup"
-                    Grid.Row="0"
-                    Grid.Column="1"
-                    Orientation="Horizontal"
-                    Spacing="12"
-                    MinWidth="280"
-                    HorizontalAlignment="Stretch"
-                    VerticalAlignment="Center">
+        <Grid x:Name="NamingOptionsGroup"
+              Grid.Row="0"
+              Grid.Column="1"
+              ColumnDefinitions="132,*"
+              ColumnSpacing="10"
+              MinWidth="300"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Center">
           <CheckBox x:Name="TemplateNamesBox"
+                    Grid.Column="0"
                     AutomationProperties.AutomationId="TemplateNames"
                     IsChecked="{Binding UseTemplateNames}"
                     Content="使用章节名模板" />
           <CheckBox x:Name="AutoNamesBox"
+                    Grid.Column="1"
                     AutomationProperties.AutomationId="AutoNames"
                     IsChecked="{Binding AutoGenerateNames}"
                     Content="不使用章节名" />
-        </StackPanel>
+        </Grid>
 
         <Grid x:Name="OrderShiftOptionsGroup"
               Grid.Row="1"
@@ -321,7 +323,7 @@
         <Grid x:Name="ExpressionOptionsGroup"
               Grid.Row="2"
               Grid.Column="0"
-              ColumnDefinitions="Auto,Auto,*"
+              ColumnDefinitions="132,*"
               ColumnSpacing="10"
               MinWidth="300"
               HorizontalAlignment="Stretch"
@@ -331,13 +333,11 @@
                     AutomationProperties.AutomationId="ApplyExpression"
                     IsChecked="{Binding ApplyExpression}"
                     Content="应用表达式 (t)" />
-          <CheckBox x:Name="ExpressionEnableBox"
-                    Grid.Column="1" />
           <TextBox x:Name="ExpressionBox"
-                   Grid.Column="2"
+                   Grid.Column="1"
                    MinWidth="120"
                    HorizontalAlignment="Stretch"
-                   Text="{Binding Expression}"
+                   Text="{Binding Expression, UpdateSourceTrigger=PropertyChanged}"
                    AutomationProperties.AutomationId="ExpressionText" />
         </Grid>
 

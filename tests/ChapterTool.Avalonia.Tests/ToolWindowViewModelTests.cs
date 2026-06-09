@@ -57,7 +57,7 @@ public sealed class ToolWindowViewModelTests
         Assert.True(owner.ApplyExpression);
         Assert.True(owner.UseTemplateNames);
         Assert.True(owner.AutoGenerateNames);
-        Assert.Equal("00:00:04.000", owner.Rows[0].TimeText);
+        Assert.Equal("00:00:05.000", owner.Rows[0].TimeText);
     }
 
     private static MainWindowViewModel CreateOwner()
