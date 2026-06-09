@@ -15,7 +15,7 @@ public sealed class CueImporterTests
     {
         var importer = new CueChapterImporter();
         var result = await importer.ImportAsync(
-            new ChapterImportRequest(FixtureResolver.ExistingSample("Time_Shift_Test", "[cue_Sample]", "ARCHIVES 2.cue")),
+            new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Cue", "ARCHIVES 2.cue")),
             CancellationToken.None);
 
         Assert.True(result.Success);
@@ -33,7 +33,7 @@ public sealed class CueImporterTests
     {
         var importer = new CueChapterImporter();
         var result = await importer.ImportAsync(
-            new ChapterImportRequest(FixtureResolver.ExistingSample("Time_Shift_Test", "[cue_Sample]", "のんのんびより りぴーと オリジナルサウンドトラック.cue")),
+            new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Cue", "のんのんびより りぴーと オリジナルサウンドトラック.cue")),
             CancellationToken.None);
 
         Assert.True(result.Success);

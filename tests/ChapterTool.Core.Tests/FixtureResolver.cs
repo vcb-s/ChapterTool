@@ -27,4 +27,11 @@ public static class FixtureResolver
         Assert.True(File.Exists(path), $"Expected fixture to exist: {path}");
         return path;
     }
+
+    public static string Fixture(params string[] relativeSegments)
+    {
+        var path = Path.Combine(new[] { RepositoryRoot, "tests", "ChapterTool.Core.Tests", "Fixtures" }.Concat(relativeSegments).ToArray());
+        Assert.True(File.Exists(path), $"Expected fixture to exist: {path}");
+        return path;
+    }
 }

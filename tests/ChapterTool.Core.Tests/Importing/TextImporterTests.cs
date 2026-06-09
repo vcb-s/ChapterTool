@@ -14,7 +14,7 @@ public sealed class TextImporterTests
     {
         var importer = new OgmChapterImporter(formatter);
         var result = await importer.ImportAsync(
-            new ChapterImportRequest(FixtureResolver.ExistingSample("Time_Shift_Test", "[ogm_Sample]", "00001.txt")),
+            new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Text", "Ogm", "00001.txt")),
             CancellationToken.None);
 
         Assert.True(result.Success);
@@ -92,7 +92,7 @@ public sealed class TextImporterTests
     {
         var importer = new WebVttChapterImporter();
         var result = await importer.ImportAsync(
-            new ChapterImportRequest(FixtureResolver.ExistingSample("Time_Shift_Test", "[VTT_Sample]", "chapter.vtt")),
+            new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Text", "WebVtt", "chapter.vtt")),
             CancellationToken.None);
 
         Assert.True(result.Success);

@@ -3,19 +3,19 @@ namespace ChapterTool.Core.Tests;
 public sealed class FixtureResolverTests
 {
     [Fact]
-    public void ExistingSample_locates_legacy_vtt_fixture()
+    public void Fixture_locates_vtt_fixture()
     {
-        var path = FixtureResolver.ExistingSample("Time_Shift_Test", "[VTT_Sample]", "chapter.vtt");
+        var path = FixtureResolver.Fixture("Importing", "Text", "WebVtt", "chapter.vtt");
 
         Assert.EndsWith("chapter.vtt", path, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void ExistingSample_locates_non_ascii_cue_fixture()
+    public void Fixture_locates_non_ascii_cue_fixture()
     {
-        var path = FixtureResolver.ExistingSample(
-            "Time_Shift_Test",
-            "[cue_Sample]",
+        var path = FixtureResolver.Fixture(
+            "Importing",
+            "Cue",
             "のんのんびより りぴーと オリジナルサウンドトラック.cue");
 
         Assert.Contains("のんのんびより", Path.GetFileName(path), StringComparison.Ordinal);

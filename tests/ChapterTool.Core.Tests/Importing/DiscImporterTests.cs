@@ -13,7 +13,7 @@ public sealed class DiscImporterTests
     {
         var importer = new MplsChapterImporter();
         var result = await importer.ImportAsync(
-            new ChapterImportRequest(FixtureResolver.ExistingSample("Time_Shift_Test", "[mpls_Sample]", "00011_eva.mpls")),
+            new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Disc", "Mpls", "00011_eva.mpls")),
             CancellationToken.None);
 
         Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
@@ -25,7 +25,30 @@ public sealed class DiscImporterTests
         Assert.Equal(46, info.Chapters.Count);
         Assert.Equal(TimeSpan.Zero, info.Chapters[0].Time);
         Assert.Equal(TimeSpan.FromMilliseconds(14417), info.Chapters[1].Time);
+        Assert.Equal(MplsTimes(
+            0, 648750, 984375, 23799375, 27487500, 28044375, 28276875, 28918125, 29195625, 36823125, 41679375,
+            52321875, 56593125, 62563125, 73524375, 83199375, 95167500, 100741875, 106155000, 116420625,
+            120845625, 126307500, 129403125, 139273125, 141071250, 142704375, 147866250, 151578750, 157603125,
+            163599375, 170810625, 178768125, 186941250, 191786250, 192165000, 202076250, 213168750, 222028125,
+            228003750, 236915625, 244306875, 253316250, 260053125, 271863750, 284366250, 285738750),
+            info.Chapters.Select(chapter => chapter.Time));
         Assert.Contains(option.MediaReferences ?? [], reference => reference.RelativePath == Path.Combine("..", "STREAM", "00002.m2ts"));
+    }
+
+    [Fact]
+    public async Task MplsImporterReadsFchSampleWithLegacyTimestamps()
+    {
+        var importer = new MplsChapterImporter();
+        var result = await importer.ImportAsync(
+            new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Disc", "Mpls", "00001_fch.mpls")),
+            CancellationToken.None);
+
+        Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
+        var info = result.Groups.Single().Options.Single().ChapterInfo;
+        Assert.Equal("00001", info.SourceName);
+        Assert.Equal(24000d / 1001d, info.FramesPerSecond);
+        Assert.Equal(MplsChapterImporter.PtsToTime(163027149 - 90000), info.Duration);
+        Assert.Equal(MplsTimes(0, 41963170, 96516418, 96831733, 98138038, 102186457, 131841081, 158573411, 162621830), info.Chapters.Select(chapter => chapter.Time));
     }
 
     [Fact]
@@ -33,13 +56,17 @@ public sealed class DiscImporterTests
     {
         var importer = new MplsChapterImporter();
         var result = await importer.ImportAsync(
-            new ChapterImportRequest(FixtureResolver.ExistingSample("Time_Shift_Test", "[mpls_Sample]", "00002_tanji.mpls")),
+            new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Disc", "Mpls", "00002_tanji.mpls")),
             CancellationToken.None);
 
         Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
-        Assert.Equal(9, result.Groups.Single().Options.Count);
-        Assert.Equal("00006&00007", result.Groups.Single().Options[1].ChapterInfo.SourceName);
-        Assert.True(result.Groups.Single().Options[1].ChapterInfo.Chapters.Count >= 1);
+        var infos = result.Groups.Single().Options.Select(option => option.ChapterInfo).ToArray();
+        Assert.Equal(9, infos.Length);
+        Assert.Equal(["00005", "00006&00007", "00008", "00009&00010", "00011", "00012", "00013&00014", "00015", "00016"], infos.Select(info => info.SourceName));
+        Assert.All(infos, info => Assert.Equal(24000d / 1001d, info.FramesPerSecond));
+        Assert.Equal(TimeSpan.Zero, infos[1].Chapters.Single().Time);
+        Assert.Equal(MplsTimes(0, 20609964), infos[2].Chapters.Select(chapter => chapter.Time));
+        Assert.Equal(MplsTimes(0, 4185431, 8233850, 23263865), infos[5].Chapters.Select(chapter => chapter.Time));
     }
 
     [Fact]
@@ -59,7 +86,7 @@ public sealed class DiscImporterTests
     {
         var importer = new IfoChapterImporter();
         var result = await importer.ImportAsync(
-            new ChapterImportRequest(FixtureResolver.ExistingSample("Time_Shift_Test", "[ifo_Sample]", "VTS_05_0.IFO")),
+            new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Disc", "Ifo", "VTS_05_0.IFO")),
             CancellationToken.None);
 
         Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
@@ -83,6 +110,55 @@ public sealed class DiscImporterTests
         Assert.False(isPalNtsc);
         Assert.True(ntsc > TimeSpan.FromSeconds(1.5));
         Assert.Equal(TimeSpan.FromSeconds(1.4), pal);
+    }
+
+    [Fact]
+    public void IfoBcdToIntMatchesLegacyValidByteValues()
+    {
+        for (var value = 0; value <= byte.MaxValue; value++)
+        {
+            var high = value >> 4;
+            var low = value & 0x0f;
+            if (high <= 9 && low <= 9)
+            {
+                Assert.Equal((high * 10) + low, IfoChapterImporter.BcdToInt((byte)value));
+            }
+        }
+    }
+
+    [Fact]
+    public void IfoPlaybackTimePreservesLegacyCumulativeNtscFrames()
+    {
+        var cells = new[]
+        {
+            new[] { 0, 0, 5, 0 }, new[] { 0, 0, 15, 0 }, new[] { 0, 1, 29, 28 }, new[] { 0, 0, 10, 0 },
+            new[] { 0, 7, 54, 16 }, new[] { 0, 6, 40, 16 }, new[] { 0, 5, 8, 22 }, new[] { 0, 1, 19, 28 },
+            new[] { 0, 0, 14, 28 }, new[] { 0, 0, 10, 2 }, new[] { 0, 0, 6, 0 }, new[] { 0, 0, 5, 0 },
+            new[] { 0, 2, 44, 26 }, new[] { 0, 1, 29, 26 }, new[] { 0, 0, 10, 0 }, new[] { 0, 5, 35, 20 },
+            new[] { 0, 5, 21, 20 }, new[] { 0, 6, 16, 18 }, new[] { 0, 1, 19, 28 }, new[] { 0, 0, 14, 28 },
+            new[] { 0, 0, 10, 0 }, new[] { 0, 0, 6, 0 }
+        };
+        var expectedFrames = new[]
+        {
+            150, 600, 3298, 3598, 17834, 29850, 39112, 41510, 41958, 42260, 42440, 42590,
+            47536, 50232, 50532, 60602, 70252, 81550, 83948, 84396, 84696, 84876
+        };
+
+        var total = TimeSpan.Zero;
+        var actualFrames = new List<int>();
+        foreach (var cell in cells)
+        {
+            total += IfoChapterImporter.ConvertDvdPlaybackTime(
+                ToBcd(cell[0]),
+                ToBcd(cell[1]),
+                ToBcd(cell[2]),
+                (byte)(0xC0 | ToBcd(cell[3])),
+                out var isNtsc);
+            Assert.True(isNtsc);
+            actualFrames.Add((int)Math.Round(total.TotalSeconds * (30000d / 1001d)));
+        }
+
+        Assert.Equal(expectedFrames, actualFrames);
     }
 
     [Fact]
@@ -135,6 +211,43 @@ public sealed class DiscImporterTests
         Assert.Contains(result.Groups.Single().Options.Single().MediaReferences ?? [], reference => reference.RelativePath == Path.Combine("..", "HVDVD_TS", "main.evo"));
     }
 
+    [Fact]
+    public async Task XplImporterPreservesLegacyDefaultsAndNamePrecedence()
+    {
+        var importer = new XplChapterImporter();
+        using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(
+            """
+            <Playlist xmlns="http://www.dvdforum.org/2005/HDDVDVideo/Playlist">
+              <TitleSet>
+                <Title id="title-id" displayName="Display Title" titleDuration="00:00:10:12">
+                  <PrimaryAudioVideoClip src="ADV_OBJ/one.evo" />
+                  <ChapterList>
+                    <Chapter id="chapter-id" displayName="Display Chapter" titleTimeBegin="00:00:01:12" />
+                  </ChapterList>
+                </Title>
+                <Title id="Second Title" titleDuration="00:00:20:00">
+                  <ChapterList>
+                    <Chapter id="Second Chapter" titleTimeBegin="00:00:02:00" />
+                  </ChapterList>
+                </Title>
+              </TitleSet>
+            </Playlist>
+            """));
+
+        var result = await importer.ImportAsync(new ChapterImportRequest("movie.xpl", stream), CancellationToken.None);
+
+        Assert.True(result.Success);
+        var infos = result.Groups.Single().Options.Select(option => option.ChapterInfo).ToArray();
+        Assert.Equal(2, infos.Length);
+        Assert.Equal("Display Title", infos[0].Title);
+        Assert.Equal("Display Chapter", infos[0].Chapters.Single().Name);
+        Assert.Equal(TimeSpan.FromSeconds(1.5), infos[0].Chapters.Single().Time);
+        Assert.Equal(TimeSpan.FromSeconds(10.5), infos[0].Duration);
+        Assert.Equal("Second Title", infos[1].Title);
+        Assert.Equal("Second Chapter", infos[1].Chapters.Single().Name);
+        Assert.Equal(TimeSpan.FromSeconds(2), infos[1].Chapters.Single().Time);
+    }
+
     [Theory]
     [InlineData("<Playlist />")]
     [InlineData("<Playlist xmlns=\"http://www.dvdforum.org/2005/HDDVDVideo/Playlist\"><TitleSet><Title><ChapterList><Chapter /></ChapterList></Title></TitleSet></Playlist>")]
@@ -159,11 +272,11 @@ public sealed class DiscImporterTests
             new Mp4ChapterClip("Chapter 03", TimeSpan.FromSeconds(10)),
             new Mp4ChapterClip("Chapter 04", TimeSpan.FromSeconds(10)))));
 
-        var result = await importer.ImportAsync(new ChapterImportRequest(FixtureResolver.ExistingSample("Time_Shift_Test", "[Video_Sample]", "Chapter.mp4")), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Media", "Chapter.mp4")), CancellationToken.None);
 
         Assert.True(result.Success);
         Assert.Equal([TimeSpan.Zero, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(30)], result.Groups.Single().Options.Single().ChapterInfo.Chapters.Select(chapter => chapter.Time));
-        Assert.Contains(result.Groups.Single().Options.Single().MediaReferences ?? [], reference => reference.AbsolutePath == FixtureResolver.ExistingSample("Time_Shift_Test", "[Video_Sample]", "Chapter.mp4"));
+        Assert.Contains(result.Groups.Single().Options.Single().MediaReferences ?? [], reference => reference.AbsolutePath == FixtureResolver.Fixture("Importing", "Media", "Chapter.mp4"));
     }
 
     [Theory]
@@ -184,4 +297,10 @@ public sealed class DiscImporterTests
         public ValueTask<Mp4ChapterReadResult> ReadAsync(string path, CancellationToken cancellationToken) =>
             ValueTask.FromResult(result);
     }
+
+    private static TimeSpan[] MplsTimes(params uint[] ptsOffsets) =>
+        ptsOffsets.Select(MplsChapterImporter.PtsToTime).ToArray();
+
+    private static byte ToBcd(int value) =>
+        (byte)(((value / 10) << 4) | (value % 10));
 }
