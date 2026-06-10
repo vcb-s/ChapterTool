@@ -55,7 +55,15 @@ public sealed class MatroskaChapterImporter : IChapterImporter
             ["chapters", request.Path],
             Path.GetDirectoryName(request.Path),
             DefaultTimeout);
-        var result = await processRunner.RunAsync(processRequest, cancellationToken);
+        ProcessRunResult result;
+        try
+        {
+            result = await processRunner.RunAsync(processRequest, cancellationToken);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            return ChapterImportResult.Failed(Error("MatroskaCannotStart", $"mkvextract could not be started: {exception.Message}"));
+        }
 
         if (result.Cancelled)
         {

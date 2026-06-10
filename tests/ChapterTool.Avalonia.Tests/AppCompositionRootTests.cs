@@ -35,6 +35,16 @@ public sealed class AppCompositionRootTests
         Assert.DoesNotContain("new RuntimeChapterSaveService", mainWindow, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void AppDisablesSystemDarkThemeFollowing()
+    {
+        var app = File.ReadAllText(Path.Combine(RepositoryRoot(), "src", "ChapterTool.Avalonia", "App.axaml"), Encoding.UTF8);
+
+        Assert.Contains("RequestedThemeVariant=\"Light\"", app, StringComparison.Ordinal);
+        Assert.DoesNotContain("RequestedThemeVariant=\"Default\"", app, StringComparison.Ordinal);
+        Assert.DoesNotContain("RequestedThemeVariant=\"Dark\"", app, StringComparison.Ordinal);
+    }
+
     private static string SettingsDirectory() =>
         Path.Combine(Path.GetTempPath(), "ChapterTool.Tests", Guid.NewGuid().ToString("N"));
 

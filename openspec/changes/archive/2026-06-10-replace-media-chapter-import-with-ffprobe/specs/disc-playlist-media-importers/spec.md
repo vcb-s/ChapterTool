@@ -1,8 +1,5 @@
-# disc-playlist-media-importers Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change rewrite-avalonia-dotnet10. Update Purpose after archive.
-## Requirements
 ### Requirement: Disc and media importer contract
 The system SHALL import `.mpls`, `.ifo`, `.xpl`, BDMV directories, and ffprobe-supported multimedia files through UI-independent importers with automatic fallback only when a primary external tool cannot be located or started.
 
@@ -19,54 +16,6 @@ The system SHALL import `.mpls`, `.ifo`, `.xpl`, BDMV directories, and ffprobe-s
 - **THEN** it SHALL route legacy ATL-supported MP4 files (`.mp4`, `.m4a`, `.m4v`) to ffprobe as primary with ATL.NET fallback only when ffprobe cannot be invoked
 - **AND** it SHALL route other MP4-family files (`.mov`, `.qt`, `.3gp`, `.3g2`) and other multimedia extensions to ffprobe as primary with no fallback
 - **AND** it SHALL route Matroska-family files to mkvextract as primary with ffprobe fallback only when mkvextract cannot be invoked
-
-### Requirement: MPLS import
-The system SHALL parse Blu-ray `.mpls` playlists into selectable chapter segments.
-
-#### Scenario: Valid MPLS produces a group
-- **WHEN** a valid MPLS file has one or more play items
-- **THEN** each play item SHALL produce one `ChapterInfo` with source type `MPLS`
-
-#### Scenario: Chapter marks convert from PTS
-- **WHEN** matching chapter marks are found
-- **THEN** timestamps SHALL convert from PTS using `pts / 45000` seconds
-
-#### Scenario: MPLS can append
-- **WHEN** another `.mpls` is appended to an existing MPLS group
-- **THEN** new play items SHALL be added while preserving existing source context
-
-### Requirement: DVD IFO import
-The system SHALL import DVD `.ifo` chapter data.
-
-#### Scenario: Valid IFO produces DVD group
-- **WHEN** a valid `VTS_nn_0.IFO` is parsed
-- **THEN** the importer SHALL return one or more DVD chapter sets with normalized chapter numbers
-
-#### Scenario: PAL and NTSC times convert
-- **WHEN** DVD playback time is converted
-- **THEN** PAL SHALL use 25 fps and NTSC SHALL use `30000/1001`
-
-### Requirement: XPL import
-The system SHALL parse HD-DVD `.xpl` playlist XML.
-
-#### Scenario: Valid XPL title imports
-- **WHEN** an XPL file uses the documented namespace and contains title chapter lists
-- **THEN** each title with chapters SHALL produce a chapter set with source type `HD-DVD`
-
-#### Scenario: Invalid XPL is diagnosed
-- **WHEN** namespace, duration, or timestamp structure is malformed
-- **THEN** the importer SHALL return a parse diagnostic instead of a null-reference failure
-
-### Requirement: BDMV eac3to import
-The system SHALL import BDMV directories through an eac3to adapter.
-
-#### Scenario: Valid BDMV delegates chapter text
-- **WHEN** eac3to lists playlists and exports chapter text
-- **THEN** the importer SHALL parse exported chapter text through the OGM parser
-
-#### Scenario: Missing eac3to is recoverable
-- **WHEN** no valid eac3to path is configured
-- **THEN** import SHALL return a missing-dependency result and Core SHALL NOT prompt directly
 
 ### Requirement: MP4 import
 The system SHALL import MP4-family chapters through the ffprobe-backed media chapter importer, falling back to ATL.NET only for `.mp4`, `.m4a`, and `.m4v` when ffprobe cannot be located or started.
@@ -105,17 +54,6 @@ The system SHALL import MP4-family chapters through the ffprobe-backed media cha
 - **WHEN** MP4 chapter metadata contains non-ASCII titles
 - **THEN** the ffprobe-backed reader SHALL return the original Unicode strings without loss or mangling
 
-### Requirement: Segment selection and combine
-The system SHALL preserve multi-segment selection, combine, and related-media behavior with structured models.
-
-#### Scenario: Combine is limited to MPLS and IFO
-- **WHEN** combine is requested for a non-MPLS/IFO source group
-- **THEN** the command SHALL be disabled or return a validation diagnostic
-
-#### Scenario: Combined segments offset times
-- **WHEN** MPLS or IFO segments are combined
-- **THEN** chapter times SHALL be offset by accumulated segment duration and names SHALL be renumbered
-
 ### Requirement: Runtime importer registry
 Runtime chapter loading SHALL route supported sources through injected importer registrations or factories.
 
@@ -134,4 +72,3 @@ Runtime chapter loading SHALL route supported sources through injected importer 
 #### Scenario: Dependencies are not recreated per load by default
 - **WHEN** multiple load operations run in one application session
 - **THEN** singleton or scoped infrastructure services SHALL follow their registered lifetimes instead of being recreated manually inside `LoadAsync`
-

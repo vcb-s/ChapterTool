@@ -146,7 +146,7 @@ public sealed class CueImporterTests
         var result = await new FlacCueImporter().ImportAsync(new ChapterImportRequest("music.flac", stream), CancellationToken.None);
 
         Assert.False(result.Success);
-        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "EmbeddedCueNotFound");
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "FlacEmbeddedCueNotFound");
     }
 
     [Fact]

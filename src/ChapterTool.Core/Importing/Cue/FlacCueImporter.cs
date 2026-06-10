@@ -30,7 +30,7 @@ public sealed class FlacCueImporter(CueSheetParser? parser = null) : IChapterImp
 
         if (cue is null)
         {
-            return ChapterImportResult.Failed(Error("EmbeddedCueNotFound", "No Vorbis cuesheet comment was found."));
+            return ChapterImportResult.Failed(Error("FlacEmbeddedCueNotFound", "No Vorbis cuesheet comment was found."));
         }
 
         return parser.Parse(cue, request.Path);

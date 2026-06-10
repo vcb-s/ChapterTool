@@ -58,9 +58,13 @@ public sealed class AppCompositionRoot
             formatter,
             CreateExternalToolLocator(),
             CreateProcessRunner(),
+            CreateMediaChapterReader(),
             CreateMp4ChapterReader());
 
     public AtlMp4ChapterReader CreateMp4ChapterReader() => new();
+
+    public FfprobeMediaChapterReader CreateMediaChapterReader() =>
+        new(CreateExternalToolLocator(), CreateProcessRunner());
 
     public IChapterSaveService CreateChapterSaveService() =>
         new RuntimeChapterSaveService(new ChapterExportService(formatter, expressionService));

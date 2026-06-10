@@ -17,6 +17,29 @@ public sealed class RuntimeChapterLoadService(IChapterImporterRegistry importerR
 
         return importer is null
             ? ValueTask.FromResult(ChapterImportResult.Failed(new ChapterDiagnostic(DiagnosticSeverity.Error, "UnsupportedSource", $"Unsupported source extension: {extension}.")))
-            : importer.ImportAsync(new ChapterImportRequest(path), cancellationToken);
+            : LoadWithFallbackAsync(path, importer, cancellationToken);
+    }
+
+    private async ValueTask<ChapterImportResult> LoadWithFallbackAsync(string path, IChapterImporter importer, CancellationToken cancellationToken)
+    {
+        var primaryResult = await importer.ImportAsync(new ChapterImportRequest(path), cancellationToken);
+        if (primaryResult.Success)
+        {
+            return primaryResult;
+        }
+
+        var fallback = importerRegistry.ResolveFallback(path, importer, primaryResult);
+        if (fallback is null)
+        {
+            return primaryResult;
+        }
+
+        var fallbackResult = await fallback.ImportAsync(new ChapterImportRequest(path), cancellationToken);
+        var fallbackDiagnostic = new ChapterDiagnostic(
+            DiagnosticSeverity.Info,
+            "ImporterFallbackUsed",
+            $"Primary importer '{importer.Id}' could not be invoked; used fallback importer '{fallback.Id}'.");
+        var diagnostics = primaryResult.Diagnostics.Concat([fallbackDiagnostic]).Concat(fallbackResult.Diagnostics).ToArray();
+        return fallbackResult with { Diagnostics = diagnostics };
     }
 }

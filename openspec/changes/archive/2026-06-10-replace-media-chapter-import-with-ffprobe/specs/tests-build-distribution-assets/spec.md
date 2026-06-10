@@ -1,18 +1,4 @@
-# tests-build-distribution-assets Specification
-
-## Purpose
-TBD - created by archiving change rewrite-avalonia-dotnet10. Update Purpose after archive.
-## Requirements
-### Requirement: .NET 10 solution topology
-The rewrite SHALL provide an SDK-style .NET 10 solution with separated Core, Infrastructure, Avalonia, and test projects.
-
-#### Scenario: Required projects restore
-- **WHEN** `dotnet restore` runs on a clean checkout
-- **THEN** projects for Core, Infrastructure, Avalonia, and tests SHALL restore successfully
-
-#### Scenario: Core has no UI dependency
-- **WHEN** project references are inspected
-- **THEN** Core SHALL NOT reference Avalonia, WinForms, System.Drawing UI APIs, or Windows-only platform APIs
+## MODIFIED Requirements
 
 ### Requirement: xUnit test migration
 The rewrite SHALL migrate and strengthen existing MSTest coverage into .NET 10 tests.
@@ -45,28 +31,6 @@ The rewrite SHALL migrate and strengthen existing MSTest coverage into .NET 10 t
 - **WHEN** tests are organized
 - **THEN** Core behavior SHALL live in Core tests, process/native/filesystem behavior SHALL live in Infrastructure tests, and ViewModel commands SHALL live in Avalonia or ViewModel tests
 
-### Requirement: Fixture preservation
-The rewrite SHALL preserve existing sample fixtures as deterministic test assets.
-
-#### Scenario: Fixtures are working-directory independent
-- **WHEN** tests run from CLI, IDE, or CI
-- **THEN** VTT, OGM, CUE, MPLS, IFO, MP4, and expression fixtures SHALL be resolved without fragile current-directory assumptions
-
-#### Scenario: Non-ASCII fixture names work
-- **WHEN** the Japanese CUE sample is checked out and tested
-- **THEN** filename and content SHALL remain usable
-
-### Requirement: CI build test publish
-The rewrite SHALL use .NET CLI based CI.
-
-#### Scenario: CI runs tests
-- **WHEN** CI runs on push or pull request
-- **THEN** it SHALL execute restore, build, and test, and any test failure SHALL fail the workflow
-
-#### Scenario: Publish artifacts are explicit
-- **WHEN** a release workflow publishes artifacts
-- **THEN** artifacts SHALL include declared runtime files, assets, licenses, and native dependencies according to packaging decisions
-
 ### Requirement: Packaging, assets, licenses, and versioning
 The rewrite SHALL account for installer strategy, native dependencies, assets, licenses, and a unified version source.
 
@@ -92,4 +56,3 @@ The rewrite SHALL account for installer strategy, native dependencies, assets, l
 - **THEN** ATL.NET SHALL be retained as `.mp4`/`.m4a`/`.m4v` fallback (activated only when ffprobe cannot be invoked)
 - **AND** MKVToolNix/mkvextract SHALL be retained as Matroska-family primary (unchanged from current)
 - **AND** ffprobe/FFmpeg SHALL serve as Matroska-family fallback only when mkvextract cannot be invoked
-

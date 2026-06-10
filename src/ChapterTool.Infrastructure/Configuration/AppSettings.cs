@@ -5,6 +5,8 @@ public sealed record AppSettings(
     string Language = "",
     WindowLocation? MainWindowLocation = null,
     string? MkvToolnixPath = null,
-    string? Eac3toPath = null);
+    string? Eac3toPath = null,
+    string? FfprobePath = null,
+    string? FfmpegPath = null);
 
 public sealed record WindowLocation(int X, int Y);

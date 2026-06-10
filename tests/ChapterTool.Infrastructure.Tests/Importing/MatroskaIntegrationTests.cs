@@ -47,16 +47,27 @@ public sealed class MatroskaIntegrationTests : IAsyncLifetime
             new ProcessRunner(),
             new ChapterTimeFormatter());
 
-        var fixturePath = FixtureResolver.Fixture("Importing", "Matroska", "chaptered-small.mkv");
+        var fixturePath = FixtureResolver.Fixture("Importing", "Media", "Chapter.mkv");
         var result = await importer.ImportAsync(new ChapterImportRequest(fixturePath), CancellationToken.None);
 
         Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(static diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
-        var chapters = result.Groups.Single().Options.Single().ChapterInfo.Chapters;
-        Assert.Equal(2, chapters.Count);
-        Assert.Equal("序章", chapters[0].Name);
-        Assert.Equal(TimeSpan.Zero, chapters[0].Time);
-        Assert.Equal("Chapter 02", chapters[1].Name);
-        Assert.Equal(TimeSpan.FromSeconds(1), chapters[1].Time);
+        var options = result.Groups.Single().Options;
+        Assert.Equal(2, options.Count);
+
+        var chapters = options[0].ChapterInfo.Chapters;
+        Assert.Equal(["Intro", "Act 1", "Act 2", "Credits"], chapters.Select(static chapter => chapter.Name));
+        Assert.Equal(
+            [TimeSpan.Zero, TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(330), TimeSpan.FromSeconds(740)],
+            chapters.Select(static chapter => chapter.Time));
+        Assert.Equal(
+            [null, null, null, TimeSpan.FromSeconds(775)],
+            chapters.Select(static chapter => chapter.End));
+
+        var hiddenEditionChapters = options[1].ChapterInfo.Chapters;
+        var hiddenChapter = Assert.Single(hiddenEditionChapters);
+        Assert.Equal("A hidden and not enabled chapter.", hiddenChapter.Name);
+        Assert.Equal(TimeSpan.FromSeconds(120), hiddenChapter.Time);
+        Assert.Equal(TimeSpan.FromSeconds(240), hiddenChapter.End);
     }
 
     [Fact]

@@ -130,6 +130,90 @@ public sealed class ExternalToolLocatorTests
     }
 
     [Fact]
+    public async Task LocateAsync_uses_configured_ffprobe_executable_before_ffmpeg_directory_and_search_paths()
+    {
+        var root = CreateTempDirectory();
+        var configuredExecutable = Path.Combine(root, ToolExecutable("custom-ffprobe"));
+        await File.WriteAllTextAsync(configuredExecutable, "");
+        var ffmpegDirectory = Path.Combine(root, "ffmpeg");
+        Directory.CreateDirectory(ffmpegDirectory);
+        await File.WriteAllTextAsync(Path.Combine(ffmpegDirectory, ToolExecutable("ffprobe")), "");
+        var searchDirectory = Path.Combine(root, "search");
+        Directory.CreateDirectory(searchDirectory);
+        await File.WriteAllTextAsync(Path.Combine(searchDirectory, ToolExecutable("ffprobe")), "");
+
+        var settingsStore = new AppSettingsStore(root, [root]);
+        await settingsStore.SaveAsync(
+            new AppSettings(FfprobePath: configuredExecutable, FfmpegPath: ffmpegDirectory),
+            CancellationToken.None);
+        var locator = new ExternalToolLocator(settingsStore, [searchDirectory], new FakeMkvToolNixInstallProbe());
+
+        var location = await locator.LocateAsync("ffprobe", CancellationToken.None);
+
+        Assert.True(location.Found);
+        Assert.Equal(configuredExecutable, location.Path);
+    }
+
+    [Fact]
+    public async Task LocateAsync_uses_configured_ffprobe_directory()
+    {
+        var root = CreateTempDirectory();
+        var configuredDirectory = Path.Combine(root, "configured");
+        Directory.CreateDirectory(configuredDirectory);
+        var expectedToolPath = Path.Combine(configuredDirectory, ToolExecutable("ffprobe"));
+        await File.WriteAllTextAsync(expectedToolPath, "");
+
+        var settingsStore = new AppSettingsStore(root, [root]);
+        await settingsStore.SaveAsync(
+            new AppSettings(FfprobePath: configuredDirectory),
+            CancellationToken.None);
+        var locator = new ExternalToolLocator(settingsStore, [], new FakeMkvToolNixInstallProbe());
+
+        var location = await locator.LocateAsync("ffprobe", CancellationToken.None);
+
+        Assert.True(location.Found);
+        Assert.Equal(expectedToolPath, location.Path);
+    }
+
+    [Fact]
+    public async Task LocateAsync_uses_configured_ffmpeg_directory_for_ffprobe()
+    {
+        var root = CreateTempDirectory();
+        var ffmpegDirectory = Path.Combine(root, "ffmpeg");
+        Directory.CreateDirectory(ffmpegDirectory);
+        var expectedToolPath = Path.Combine(ffmpegDirectory, ToolExecutable("ffprobe"));
+        await File.WriteAllTextAsync(expectedToolPath, "");
+
+        var settingsStore = new AppSettingsStore(root, [root]);
+        await settingsStore.SaveAsync(
+            new AppSettings(FfmpegPath: ffmpegDirectory),
+            CancellationToken.None);
+        var locator = new ExternalToolLocator(settingsStore, [], new FakeMkvToolNixInstallProbe());
+
+        var location = await locator.LocateAsync("ffprobe", CancellationToken.None);
+
+        Assert.True(location.Found);
+        Assert.Equal(expectedToolPath, location.Path);
+    }
+
+    [Fact]
+    public async Task LocateAsync_uses_search_directory_for_ffprobe_when_unconfigured()
+    {
+        var root = CreateTempDirectory();
+        var searchDirectory = Path.Combine(root, "search");
+        Directory.CreateDirectory(searchDirectory);
+        var expectedToolPath = Path.Combine(searchDirectory, ToolExecutable("ffprobe"));
+        await File.WriteAllTextAsync(expectedToolPath, "");
+
+        var locator = new ExternalToolLocator(new AppSettingsStore(root, [root]), [searchDirectory], new FakeMkvToolNixInstallProbe());
+
+        var location = await locator.LocateAsync("ffprobe", CancellationToken.None);
+
+        Assert.True(location.Found);
+        Assert.Equal(expectedToolPath, location.Path);
+    }
+
+    [Fact]
     public void WindowsProbe_expands_registry_install_directories_and_display_icons()
     {
         var root = CreateTempDirectory();

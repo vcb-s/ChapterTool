@@ -53,14 +53,14 @@ public sealed class ExternalToolLocator(
             $"External tool '{toolId}' was not found.");
     }
 
-    private static string? GetConfiguredPath(string toolId, AppSettings settings)
-    {
-        return toolId.Equals("mkvextract", StringComparison.OrdinalIgnoreCase)
-            ? settings.MkvToolnixPath
-            : toolId.Equals("eac3to", StringComparison.OrdinalIgnoreCase)
-                ? settings.Eac3toPath
-                : null;
-    }
+    private static string? GetConfiguredPath(string toolId, AppSettings settings) =>
+        toolId.ToLowerInvariant() switch
+        {
+            "mkvextract" => settings.MkvToolnixPath,
+            "eac3to" => settings.Eac3toPath,
+            "ffprobe" => !string.IsNullOrWhiteSpace(settings.FfprobePath) ? settings.FfprobePath : settings.FfmpegPath,
+            _ => null
+        };
 
     private static IEnumerable<string> ExpandCandidates(string? configuredPath, string executableName)
     {

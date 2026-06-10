@@ -1,6 +1,9 @@
 using ChapterTool.Avalonia.Services;
 using ChapterTool.Avalonia.Composition;
+using ChapterTool.Core.Diagnostics;
+using ChapterTool.Core.Importing;
 using ChapterTool.Core.Importing.Media;
+using ChapterTool.Core.Models;
 using ChapterTool.Core.Services;
 using ChapterTool.Core.Transform;
 using ChapterTool.Infrastructure.Platform;
@@ -65,19 +68,27 @@ public sealed class RuntimeChapterLoadServiceTests
     [InlineData(".mp4")]
     [InlineData(".m4a")]
     [InlineData(".m4v")]
-    public async Task RuntimeRoutesMp4FamilyThroughInjectedReader(string extension)
+    public async Task RuntimeRoutesMp4FamilyThroughMediaReader(string extension)
     {
+        var fixturePath = Path.Combine(
+            RepositoryRoot(),
+            "tests",
+            "ChapterTool.Infrastructure.Tests",
+            "Fixtures",
+            "Importing",
+            "Media",
+            "Chapter.mp4");
         var path = Path.Combine(Path.GetTempPath(), "ChapterTool.Tests", Guid.NewGuid().ToString("N") + extension);
-        await File.WriteAllBytesAsync(path, [0]);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.Copy(fixturePath, path);
         try
         {
-            var result = await CreateService(Mp4ChapterReadResult.Succeeded(
-                new Mp4ChapterClip("Intro", TimeSpan.FromSeconds(1)),
-                new Mp4ChapterClip("Main", TimeSpan.FromSeconds(2))))
-                .LoadAsync(path, CancellationToken.None);
+            var result = await CreateService().LoadAsync(path, CancellationToken.None);
 
             Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(static diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
-            Assert.Equal([TimeSpan.Zero, TimeSpan.FromSeconds(1)], result.Groups.Single().Options.Single().ChapterInfo.Chapters.Select(static chapter => chapter.Time));
+            var chapters = result.Groups.Single().Options.Single().ChapterInfo.Chapters;
+            Assert.Equal(["Chapter 01", "Chapter 02", "Chapter 03", "Chapter 04"], chapters.Select(static chapter => chapter.Name));
+            Assert.Equal([TimeSpan.Zero, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(30)], chapters.Select(static chapter => chapter.Time));
         }
         finally
         {
@@ -92,12 +103,59 @@ public sealed class RuntimeChapterLoadServiceTests
         await File.WriteAllBytesAsync(path, [0]);
         try
         {
-            var result = await CreateService(Mp4ChapterReadResult.Failed("Mp4ReadFailed", "reader failed"))
-                .LoadAsync(path, CancellationToken.None);
+            var result = await CreateService().LoadAsync(path, CancellationToken.None);
 
             Assert.False(result.Success);
-            Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "Mp4ReadFailed");
+            Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code is "FfprobeMissingDependency" or "FfprobeCannotStart" or "FfprobeProcessFailed" or "FfprobeParseFailed");
             Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Code == "UnsupportedSource");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task RuntimeFallsBackWhenPrimaryCannotBeInvoked()
+    {
+        var path = await CreateTempFileAsync(".mp4");
+        var primary = new StubImporter("ffprobe-media", ChapterImportResult.Failed(new ChapterDiagnostic(DiagnosticSeverity.Error, "FfprobeMissingDependency", "missing")));
+        var fallback = new StubImporter("mp4", SuccessfulImport(path, "MP4"));
+        var registry = new StubRegistry(primary, fallback);
+        var service = new RuntimeChapterLoadService(registry);
+        try
+        {
+            var result = await service.LoadAsync(path, CancellationToken.None);
+
+            Assert.True(result.Success, Diagnostics(result));
+            Assert.Equal(1, primary.CallCount);
+            Assert.Equal(1, fallback.CallCount);
+            Assert.Contains(result.Diagnostics, static diagnostic => diagnostic.Code == "ImporterFallbackUsed" && diagnostic.Severity == DiagnosticSeverity.Info);
+            Assert.Contains(result.Diagnostics, static diagnostic => diagnostic.Code == "FfprobeMissingDependency");
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task RuntimeDoesNotFallbackAfterInvokedPrimaryFailure()
+    {
+        var path = await CreateTempFileAsync(".mp4");
+        var primary = new StubImporter("ffprobe-media", ChapterImportResult.Failed(new ChapterDiagnostic(DiagnosticSeverity.Error, "FfprobeProcessFailed", "process failed")));
+        var fallback = new StubImporter("mp4", SuccessfulImport(path, "MP4"));
+        var registry = new StubRegistry(primary, fallback);
+        var service = new RuntimeChapterLoadService(registry);
+        try
+        {
+            var result = await service.LoadAsync(path, CancellationToken.None);
+
+            Assert.False(result.Success);
+            Assert.Equal(1, primary.CallCount);
+            Assert.Equal(0, fallback.CallCount);
+            Assert.Contains(result.Diagnostics, static diagnostic => diagnostic.Code == "FfprobeProcessFailed");
+            Assert.DoesNotContain(result.Diagnostics, static diagnostic => diagnostic.Code == "ImporterFallbackUsed");
         }
         finally
         {
@@ -119,10 +177,30 @@ public sealed class RuntimeChapterLoadServiceTests
 
             if (result.Success)
             {
-                var chapters = result.Groups.Single().Options.Single().ChapterInfo.Chapters;
-                Assert.True(chapters.Count >= 2);
-                Assert.Equal(["序章", "Chapter 02"], chapters.Take(2).Select(static chapter => chapter.Name));
-                Assert.Equal([TimeSpan.Zero, TimeSpan.FromSeconds(1)], chapters.Take(2).Select(static chapter => chapter.Time));
+                var options = result.Groups.Single().Options;
+                var chapters = options[0].ChapterInfo.Chapters;
+                Assert.Equal(["Intro", "Act 1", "Act 2", "Credits"], chapters.Select(static chapter => chapter.Name));
+                Assert.Equal(
+                    [TimeSpan.Zero, TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(330), TimeSpan.FromSeconds(740)],
+                    chapters.Select(static chapter => chapter.Time));
+
+                if (result.Diagnostics.Any(static diagnostic => diagnostic.Code == "MatroskaMissingDependency"))
+                {
+                    Assert.Single(options);
+                    Assert.Equal(
+                        [TimeSpan.FromSeconds(29.15), null, null, TimeSpan.FromSeconds(775)],
+                        chapters.Select(static chapter => chapter.End));
+                    Assert.Contains(result.Diagnostics, static diagnostic => diagnostic.Code == "ImporterFallbackUsed");
+                    Assert.Equal("MEDIA", options.Single().ChapterInfo.SourceType);
+                }
+                else
+                {
+                    Assert.Equal(2, options.Count);
+                    Assert.Equal(
+                        [null, null, null, TimeSpan.FromSeconds(775)],
+                        chapters.Select(static chapter => chapter.End));
+                    Assert.Equal("XML", options[0].ChapterInfo.SourceType);
+                }
             }
             else
             {
@@ -193,35 +271,52 @@ public sealed class RuntimeChapterLoadServiceTests
             "ChapterTool.Infrastructure.Tests",
             "Fixtures",
             "Importing",
-            "Matroska",
-            "chaptered-small.mkv");
+            "Media",
+            "Chapter.mkv");
+
+    private static async Task<string> CreateTempFileAsync(string extension)
+    {
+        var path = Path.Combine(Path.GetTempPath(), "ChapterTool.Tests", Guid.NewGuid().ToString("N") + extension);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        await File.WriteAllBytesAsync(path, [0]);
+        return path;
+    }
+
+    private static ChapterImportResult SuccessfulImport(string path, string sourceType)
+    {
+        var info = new ChapterInfo(Path.GetFileNameWithoutExtension(path), Path.GetFileName(path), 0, sourceType, 0, TimeSpan.Zero, [new Chapter(1, TimeSpan.Zero, "Intro")]);
+        return new ChapterImportResult(true, [new ChapterInfoGroup(path, [new ChapterSourceOption("default", sourceType, info)], 0)], []);
+    }
+
+    private static string Diagnostics(ChapterImportResult result) =>
+        string.Join(Environment.NewLine, result.Diagnostics.Select(static diagnostic => $"{diagnostic.Severity} {diagnostic.Code}: {diagnostic.Message}"));
 
     private static IChapterLoadService CreateService() =>
         new AppCompositionRoot(settingsDirectory: Path.Combine(Path.GetTempPath(), "ChapterTool.Tests", Guid.NewGuid().ToString("N")))
             .CreateChapterLoadService();
 
-    private static IChapterLoadService CreateService(Mp4ChapterReadResult mp4ReadResult) =>
-        new RuntimeChapterLoadService(new RuntimeChapterImporterRegistry(
-            new ChapterTimeFormatter(),
-            new MissingExternalToolLocator(),
-            new MissingProcessRunner(),
-            new FakeMp4ChapterReader(mp4ReadResult)));
-
-    private sealed class FakeMp4ChapterReader(Mp4ChapterReadResult result) : IMp4ChapterReader
+    private sealed class StubRegistry(IChapterImporter primary, IChapterImporter? fallback) : IChapterImporterRegistry
     {
-        public ValueTask<Mp4ChapterReadResult> ReadAsync(string path, CancellationToken cancellationToken) =>
-            ValueTask.FromResult(result);
+        public IChapterImporter? Resolve(string path) => primary;
+
+        public IChapterImporter? ResolveFallback(string path, IChapterImporter primaryImporter, ChapterImportResult primaryResult) =>
+            primaryResult.Diagnostics.Any(static diagnostic => diagnostic.Code is "FfprobeMissingDependency" or "FfprobeCannotStart" or "MatroskaMissingDependency" or "MatroskaCannotStart" or "FlacEmbeddedCueNotFound")
+                ? fallback
+                : null;
     }
 
-    private sealed class MissingExternalToolLocator : IExternalToolLocator
+    private sealed class StubImporter(string id, ChapterImportResult result) : IChapterImporter
     {
-        public ValueTask<ExternalToolLocation> LocateAsync(string toolName, CancellationToken cancellationToken) =>
-            ValueTask.FromResult(new ExternalToolLocation(false, null, "MissingDependency", toolName));
-    }
+        public int CallCount { get; private set; }
 
-    private sealed class MissingProcessRunner : IProcessRunner
-    {
-        public ValueTask<ProcessRunResult> RunAsync(ProcessRunRequest request, CancellationToken cancellationToken) =>
-            ValueTask.FromResult(new ProcessRunResult(-1, string.Empty, string.Empty, TimedOut: false, Cancelled: false, request.FileName, request.Arguments, request.WorkingDirectory));
+        public string Id { get; } = id;
+
+        public IReadOnlySet<string> SupportedExtensions { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        public ValueTask<ChapterImportResult> ImportAsync(ChapterImportRequest request, CancellationToken cancellationToken)
+        {
+            CallCount++;
+            return ValueTask.FromResult(result);
+        }
     }
 }

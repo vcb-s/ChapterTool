@@ -41,14 +41,19 @@ public sealed class BuildPackagingTests
     }
 
     [Fact]
-    public void PackagingStrategyDocumentsMp4ManagedDependencyAndInstallerPolicy()
+    public void PackagingStrategyDocumentsFfprobeAndFallbackDependencyPolicy()
     {
         var document = File.ReadAllText(Path.Combine(RepositoryRoot(), "docs", "packaging-strategy.md"));
 
+        Assert.Contains("FFmpeg `ffprobe` as the primary reader", document, StringComparison.Ordinal);
+        Assert.Contains("configured ffprobe path", document, StringComparison.Ordinal);
+        Assert.Contains("configured FFmpeg directory", document, StringComparison.Ordinal);
+        Assert.Contains("ffprobe is used as fallback only when `mkvextract` cannot be located or started", document, StringComparison.Ordinal);
         Assert.Contains("IMp4ChapterReader", document, StringComparison.Ordinal);
         Assert.Contains("ATL.NET", document, StringComparison.Ordinal);
         Assert.Contains("z440.atl.core", document, StringComparison.Ordinal);
-        Assert.Contains("No separate MP4 command-line tool or `libmp4v2` DLL is required", document, StringComparison.Ordinal);
+        Assert.Contains("when ffprobe cannot be invoked", document, StringComparison.Ordinal);
+        Assert.Contains("No separate MP4-only command-line tool or `libmp4v2` DLL is required", document, StringComparison.Ordinal);
         Assert.DoesNotContain("NativeLibraryMissing", document, StringComparison.Ordinal);
         Assert.Contains("Fody and Costura are retired", document, StringComparison.Ordinal);
         Assert.Contains("legacy NSIS/Costura packaging path is not carried forward", document, StringComparison.Ordinal);

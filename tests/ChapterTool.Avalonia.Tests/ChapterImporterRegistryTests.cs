@@ -1,3 +1,4 @@
+using ChapterTool.Avalonia.Composition;
 using ChapterTool.Avalonia.Services;
 using ChapterTool.Core.Diagnostics;
 using ChapterTool.Core.Importing;
@@ -38,16 +39,14 @@ public sealed class ChapterImporterRegistryTests
     [InlineData("movie.txt", "OgmChapterImporter")]
     [InlineData("movie.xml", "XmlChapterImporter")]
     [InlineData("movie.mkv", "MatroskaChapterImporter")]
-    [InlineData("movie.mp4", "Mp4ChapterImporter")]
-    [InlineData("movie.m4a", "Mp4ChapterImporter")]
-    [InlineData("movie.m4v", "Mp4ChapterImporter")]
+    [InlineData("movie.mp4", "MediaChapterImporter")]
+    [InlineData("movie.m4a", "MediaChapterImporter")]
+    [InlineData("movie.m4v", "MediaChapterImporter")]
+    [InlineData("movie.mov", "MediaChapterImporter")]
+    [InlineData("movie.webm", "MatroskaChapterImporter")]
     public void RuntimeRegistryResolvesImporterBySource(string fileName, string expectedTypeName)
     {
-        var registry = new RuntimeChapterImporterRegistry(
-            new ChapterTimeFormatter(),
-            new FakeExternalToolLocator(),
-            new FakeProcessRunner(),
-            new FakeMp4ChapterReader(Mp4ChapterReadResult.Succeeded(new Mp4ChapterClip("Intro", TimeSpan.FromSeconds(1)))));
+        var registry = CreateRealRegistry();
 
         var importer = registry.Resolve(fileName);
 
@@ -59,20 +58,97 @@ public sealed class ChapterImporterRegistryTests
     [InlineData("movie.mp4")]
     [InlineData("movie.m4a")]
     [InlineData("movie.m4v")]
-    public async Task RuntimeRegistryRoutesMp4FamilyThroughInjectedReader(string fileName)
+    public async Task RuntimeRegistryRoutesMp4FamilyThroughMediaReader(string fileName)
     {
-        var reader = new FakeMp4ChapterReader(Mp4ChapterReadResult.Succeeded(new Mp4ChapterClip("Intro", TimeSpan.FromSeconds(1))));
-        var registry = new RuntimeChapterImporterRegistry(
-            new ChapterTimeFormatter(),
-            new FakeExternalToolLocator(),
-            new FakeProcessRunner(),
-            reader);
+        var fixturePath = Path.Combine(
+            RepositoryRoot(),
+            "tests",
+            "ChapterTool.Infrastructure.Tests",
+            "Fixtures",
+            "Importing",
+            "Media",
+            "Chapter.mp4");
+        var testPath = Path.Combine(Path.GetTempPath(), "ChapterTool.Tests", Guid.NewGuid().ToString("N"), fileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(testPath)!);
+        File.Copy(fixturePath, testPath);
+        try
+        {
+            var registry = CreateRealRegistry();
+            var importer = registry.Resolve(testPath);
+            var result = await importer!.ImportAsync(new ChapterImportRequest(testPath), CancellationToken.None);
 
-        var importer = registry.Resolve(fileName);
-        var result = await importer!.ImportAsync(new ChapterImportRequest(fileName), CancellationToken.None);
+            Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(static diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
+            Assert.Equal(["Chapter 01", "Chapter 02", "Chapter 03", "Chapter 04"], result.Groups.Single().Options.Single().ChapterInfo.Chapters.Select(static chapter => chapter.Name));
+        }
+        finally
+        {
+            File.Delete(testPath);
+        }
+    }
 
-        Assert.True(result.Success);
-        Assert.Equal(fileName, reader.LastPath);
+    [Fact]
+    public void RuntimeRegistryResolvesAtlFallbackForLegacyMp4WhenFfprobeCannotBeInvoked()
+    {
+        var registry = CreateFakeRegistry(
+            ffprobeResult: MediaChapterReadResult.Failed("FfprobeMissingDependency", "missing"),
+            mp4Result: Mp4ChapterReadResult.Succeeded(new Mp4ChapterClip("Fallback", TimeSpan.FromSeconds(1))));
+
+        var primary = registry.Resolve("movie.mp4")!;
+        var primaryResult = ChapterImportResult.Failed(new ChapterDiagnostic(DiagnosticSeverity.Error, "FfprobeMissingDependency", "missing"));
+        var fallback = registry.ResolveFallback("movie.mp4", primary, primaryResult);
+
+        Assert.NotNull(fallback);
+        Assert.Equal("Mp4ChapterImporter", fallback.GetType().Name);
+    }
+
+    [Fact]
+    public void RuntimeRegistryResolvesFfprobeFallbackForMatroskaWhenMkvextractCannotBeInvoked()
+    {
+        var registry = CreateFakeRegistry(
+            ffprobeResult: MediaChapterReadResult.Succeeded(new MediaChapterEntry(
+                0, "1/1000", 0, 1000, "0.000000", "1.000000",
+                new Dictionary<string, string> { ["title"] = "Intro" }, 0)),
+            mp4Result: Mp4ChapterReadResult.Failed("Mp4ReadFailed", "failed"));
+
+        var primary = registry.Resolve("movie.mkv")!;
+        var primaryResult = ChapterImportResult.Failed(new ChapterDiagnostic(DiagnosticSeverity.Error, "MatroskaMissingDependency", "missing"));
+        var fallback = registry.ResolveFallback("movie.mkv", primary, primaryResult);
+
+        Assert.NotNull(fallback);
+        Assert.Equal("MediaChapterImporter", fallback.GetType().Name);
+    }
+
+    [Fact]
+    public void RuntimeRegistryResolvesFfprobeFallbackForFlacWithoutEmbeddedCue()
+    {
+        var registry = CreateFakeRegistry(
+            ffprobeResult: MediaChapterReadResult.Succeeded(new MediaChapterEntry(
+                0, "1/1000", 0, 1000, "0.000000", "1.000000",
+                new Dictionary<string, string> { ["title"] = "Intro" }, 0)),
+            mp4Result: Mp4ChapterReadResult.Failed("Mp4ReadFailed", "failed"));
+
+        var primary = registry.Resolve("music.flac")!;
+        var primaryResult = ChapterImportResult.Failed(new ChapterDiagnostic(DiagnosticSeverity.Error, "FlacEmbeddedCueNotFound", "missing"));
+        var fallback = registry.ResolveFallback("music.flac", primary, primaryResult);
+
+        Assert.NotNull(fallback);
+        Assert.Equal("MediaChapterImporter", fallback.GetType().Name);
+    }
+
+    [Fact]
+    public void RuntimeRegistryDoesNotFallbackForInvokedFfprobeFailureOrNonLegacyMp4()
+    {
+        var registry = CreateFakeRegistry(
+            ffprobeResult: MediaChapterReadResult.Failed("FfprobeProcessFailed", "failed"),
+            mp4Result: Mp4ChapterReadResult.Succeeded(new Mp4ChapterClip("Fallback", TimeSpan.FromSeconds(1))));
+
+        var mp4Primary = registry.Resolve("movie.mp4")!;
+        var invokedFailure = ChapterImportResult.Failed(new ChapterDiagnostic(DiagnosticSeverity.Error, "FfprobeProcessFailed", "failed"));
+        var movPrimary = registry.Resolve("movie.mov")!;
+        var missingFfprobe = ChapterImportResult.Failed(new ChapterDiagnostic(DiagnosticSeverity.Error, "FfprobeMissingDependency", "missing"));
+
+        Assert.Null(registry.ResolveFallback("movie.mp4", mp4Primary, invokedFailure));
+        Assert.Null(registry.ResolveFallback("movie.mov", movPrimary, missingFfprobe));
     }
 
     [Fact]
@@ -102,6 +178,22 @@ public sealed class ChapterImporterRegistryTests
         throw new DirectoryNotFoundException("Could not locate repository root from test output directory.");
     }
 
+    private static RuntimeChapterImporterRegistry CreateRealRegistry()
+    {
+        var composition = new AppCompositionRoot(settingsDirectory: Path.Combine(Path.GetTempPath(), "ChapterTool.Tests", Guid.NewGuid().ToString("N")));
+        return (RuntimeChapterImporterRegistry)composition.CreateChapterImporterRegistry();
+    }
+
+    private static RuntimeChapterImporterRegistry CreateFakeRegistry(MediaChapterReadResult ffprobeResult, Mp4ChapterReadResult mp4Result)
+    {
+        return new RuntimeChapterImporterRegistry(
+            new ChapterTimeFormatter(),
+            new FakeExternalToolLocator(),
+            new FakeProcessRunner(),
+            new FakeMediaChapterReader(ffprobeResult),
+            new FakeMp4ChapterReader(mp4Result));
+    }
+
     private sealed class FakeRegistry(IChapterImporter importer) : IChapterImporterRegistry
     {
         public string? LastPath { get; private set; }
@@ -111,6 +203,8 @@ public sealed class ChapterImporterRegistryTests
             LastPath = path;
             return importer;
         }
+
+        public IChapterImporter? ResolveFallback(string path, IChapterImporter primaryImporter, ChapterImportResult primaryResult) => null;
     }
 
     private sealed class FakeImporter : IChapterImporter
@@ -140,6 +234,17 @@ public sealed class ChapterImporterRegistryTests
     {
         public ValueTask<ProcessRunResult> RunAsync(ProcessRunRequest request, CancellationToken cancellationToken) =>
             ValueTask.FromResult(new ProcessRunResult(-1, string.Empty, string.Empty, TimedOut: false, Cancelled: false, request.FileName, request.Arguments, request.WorkingDirectory));
+    }
+
+    private sealed class FakeMediaChapterReader(MediaChapterReadResult result) : IMediaChapterReader
+    {
+        public string? LastPath { get; private set; }
+
+        public ValueTask<MediaChapterReadResult> ReadAsync(string path, CancellationToken cancellationToken)
+        {
+            LastPath = path;
+            return ValueTask.FromResult(result);
+        }
     }
 
     private sealed class FakeMp4ChapterReader(Mp4ChapterReadResult result) : IMp4ChapterReader
