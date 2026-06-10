@@ -37,7 +37,7 @@ public sealed class PlatformServiceTests
     {
         var service = new FileSystemNativeDependencyService([]);
 
-        var result = await service.ResolveAsync("libmp4v2", CancellationToken.None);
+        var result = await service.ResolveAsync("missing-tool", CancellationToken.None);
 
         Assert.False(result.Found);
         Assert.Equal("NativeLibraryMissing", result.DiagnosticCode);

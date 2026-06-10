@@ -1,5 +1,9 @@
 using ChapterTool.Avalonia.Services;
 using ChapterTool.Avalonia.Composition;
+using ChapterTool.Core.Importing.Media;
+using ChapterTool.Core.Services;
+using ChapterTool.Core.Transform;
+using ChapterTool.Infrastructure.Platform;
 
 namespace ChapterTool.Avalonia.Tests;
 
@@ -58,19 +62,41 @@ public sealed class RuntimeChapterLoadServiceTests
     }
 
     [Theory]
-    [InlineData(".mp4", "NativeLibraryMissing")]
-    [InlineData(".m4a", "NativeLibraryMissing")]
-    [InlineData(".m4v", "NativeLibraryMissing")]
-    public async Task RuntimeRoutesMp4FamilyToNativeReaderDiagnostics(string extension, string expectedCode)
+    [InlineData(".mp4")]
+    [InlineData(".m4a")]
+    [InlineData(".m4v")]
+    public async Task RuntimeRoutesMp4FamilyThroughInjectedReader(string extension)
     {
         var path = Path.Combine(Path.GetTempPath(), "ChapterTool.Tests", Guid.NewGuid().ToString("N") + extension);
         await File.WriteAllBytesAsync(path, [0]);
         try
         {
-            var result = await CreateService().LoadAsync(path, CancellationToken.None);
+            var result = await CreateService(Mp4ChapterReadResult.Succeeded(
+                new Mp4ChapterClip("Intro", TimeSpan.FromSeconds(1)),
+                new Mp4ChapterClip("Main", TimeSpan.FromSeconds(2))))
+                .LoadAsync(path, CancellationToken.None);
+
+            Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(static diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
+            Assert.Equal([TimeSpan.Zero, TimeSpan.FromSeconds(1)], result.Groups.Single().Options.Single().ChapterInfo.Chapters.Select(static chapter => chapter.Time));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public async Task RuntimeSurfacesMp4ReaderFailureDiagnostics()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "ChapterTool.Tests", Guid.NewGuid().ToString("N") + ".mp4");
+        await File.WriteAllBytesAsync(path, [0]);
+        try
+        {
+            var result = await CreateService(Mp4ChapterReadResult.Failed("Mp4ReadFailed", "reader failed"))
+                .LoadAsync(path, CancellationToken.None);
 
             Assert.False(result.Success);
-            Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == expectedCode);
+            Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "Mp4ReadFailed");
             Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Code == "UnsupportedSource");
         }
         finally
@@ -80,9 +106,9 @@ public sealed class RuntimeChapterLoadServiceTests
     }
 
     [Theory]
-    [InlineData(".mkv", "MatroskaMissingDependency")]
-    [InlineData(".mka", "MatroskaMissingDependency")]
-    public async Task RuntimeRoutesMatroskaFamilyToMkvextractDiagnostics(string extension, string expectedCode)
+    [InlineData(".mkv")]
+    [InlineData(".mka")]
+    public async Task RuntimeRoutesMatroskaFamilyToMkvextractDiagnostics(string extension)
     {
         var path = Path.Combine(Path.GetTempPath(), "ChapterTool.Tests", Guid.NewGuid().ToString("N") + extension);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
@@ -92,7 +118,7 @@ public sealed class RuntimeChapterLoadServiceTests
             var result = await CreateService().LoadAsync(path, CancellationToken.None);
 
             Assert.False(result.Success);
-            Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == expectedCode);
+            Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code.StartsWith("Matroska", StringComparison.Ordinal));
             Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Code == "UnsupportedSource");
         }
         finally
@@ -153,4 +179,29 @@ public sealed class RuntimeChapterLoadServiceTests
     private static IChapterLoadService CreateService() =>
         new AppCompositionRoot(settingsDirectory: Path.Combine(Path.GetTempPath(), "ChapterTool.Tests", Guid.NewGuid().ToString("N")))
             .CreateChapterLoadService();
+
+    private static IChapterLoadService CreateService(Mp4ChapterReadResult mp4ReadResult) =>
+        new RuntimeChapterLoadService(new RuntimeChapterImporterRegistry(
+            new ChapterTimeFormatter(),
+            new MissingExternalToolLocator(),
+            new MissingProcessRunner(),
+            new FakeMp4ChapterReader(mp4ReadResult)));
+
+    private sealed class FakeMp4ChapterReader(Mp4ChapterReadResult result) : IMp4ChapterReader
+    {
+        public ValueTask<Mp4ChapterReadResult> ReadAsync(string path, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(result);
+    }
+
+    private sealed class MissingExternalToolLocator : IExternalToolLocator
+    {
+        public ValueTask<ExternalToolLocation> LocateAsync(string toolName, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(new ExternalToolLocation(false, null, "MissingDependency", toolName));
+    }
+
+    private sealed class MissingProcessRunner : IProcessRunner
+    {
+        public ValueTask<ProcessRunResult> RunAsync(ProcessRunRequest request, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(new ProcessRunResult(-1, string.Empty, string.Empty, TimedOut: false, Cancelled: false, request.FileName, request.Arguments, request.WorkingDirectory));
+    }
 }

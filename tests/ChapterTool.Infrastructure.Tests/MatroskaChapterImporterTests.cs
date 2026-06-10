@@ -24,6 +24,17 @@ public sealed class MatroskaChapterImporterTests
         </Chapters>
         """;
 
+    private const string UnicodeXml = """
+        <Chapters>
+          <EditionEntry>
+            <ChapterAtom>
+              <ChapterTimeStart>00:00:00.000000000</ChapterTimeStart>
+              <ChapterDisplay><ChapterString>序章</ChapterString></ChapterDisplay>
+            </ChapterAtom>
+          </EditionEntry>
+        </Chapters>
+        """;
+
     [Fact]
     public async Task ImportAsyncReturnsMissingToolDiagnostic()
     {
@@ -45,6 +56,17 @@ public sealed class MatroskaChapterImporterTests
         Assert.True(result.Success);
         Assert.Equal(2, result.Groups.Single().Options.Count);
         Assert.Equal("Intro", result.Groups.Single().Options[0].ChapterInfo.Chapters.Single().Name);
+    }
+
+    [Fact]
+    public async Task ImportAsyncPreservesNonAsciiStdoutXmlChapterNames()
+    {
+        var importer = NewImporter(result: Successful(UnicodeXml));
+
+        var result = await importer.ImportAsync(new ChapterImportRequest("/media/movie.mkv"), CancellationToken.None);
+
+        Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(static diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
+        Assert.Equal("序章", result.Groups.Single().Options.Single().ChapterInfo.Chapters.Single().Name);
     }
 
     [Theory]
@@ -79,6 +101,27 @@ public sealed class MatroskaChapterImporterTests
         var diagnostic = Assert.Single(result.Diagnostics);
         Assert.Equal("MatroskaProcessFailed", diagnostic.Code);
         Assert.Contains("ExitCode: 2", diagnostic.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ImportAsyncPreservesNonAsciiStderrDiagnostics()
+    {
+        var importer = NewImporter(result: new ProcessRunResult(
+            2,
+            "",
+            "错误: 无法读取章节",
+            false,
+            false,
+            "mkvextract",
+            ["chapters", "/media/movie.mkv"],
+            "/media"));
+
+        var result = await importer.ImportAsync(new ChapterImportRequest("/media/movie.mkv"), CancellationToken.None);
+
+        Assert.False(result.Success);
+        var diagnostic = Assert.Single(result.Diagnostics);
+        Assert.Equal("MatroskaProcessFailed", diagnostic.Code);
+        Assert.Contains("错误", diagnostic.Message, StringComparison.Ordinal);
     }
 
     [Fact]

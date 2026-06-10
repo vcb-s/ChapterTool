@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using ChapterTool.Core.Services;
 
 namespace ChapterTool.Infrastructure.Processes;
@@ -57,6 +58,8 @@ public sealed class ProcessRunner : IProcessRunner
             WorkingDirectory = request.WorkingDirectory ?? string.Empty,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8,
             UseShellExecute = false,
             CreateNoWindow = true
         };

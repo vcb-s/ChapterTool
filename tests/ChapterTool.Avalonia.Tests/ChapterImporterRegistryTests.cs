@@ -1,10 +1,10 @@
 using ChapterTool.Avalonia.Services;
 using ChapterTool.Core.Diagnostics;
 using ChapterTool.Core.Importing;
+using ChapterTool.Core.Importing.Media;
 using ChapterTool.Core.Models;
 using ChapterTool.Core.Services;
 using ChapterTool.Core.Transform;
-using ChapterTool.Infrastructure.Platform;
 
 namespace ChapterTool.Avalonia.Tests;
 
@@ -39,18 +39,40 @@ public sealed class ChapterImporterRegistryTests
     [InlineData("movie.xml", "XmlChapterImporter")]
     [InlineData("movie.mkv", "MatroskaChapterImporter")]
     [InlineData("movie.mp4", "Mp4ChapterImporter")]
+    [InlineData("movie.m4a", "Mp4ChapterImporter")]
+    [InlineData("movie.m4v", "Mp4ChapterImporter")]
     public void RuntimeRegistryResolvesImporterBySource(string fileName, string expectedTypeName)
     {
         var registry = new RuntimeChapterImporterRegistry(
             new ChapterTimeFormatter(),
             new FakeExternalToolLocator(),
             new FakeProcessRunner(),
-            new FileSystemNativeDependencyService([]));
+            new FakeMp4ChapterReader(Mp4ChapterReadResult.Succeeded(new Mp4ChapterClip("Intro", TimeSpan.FromSeconds(1)))));
 
         var importer = registry.Resolve(fileName);
 
         Assert.NotNull(importer);
         Assert.Equal(expectedTypeName, importer.GetType().Name);
+    }
+
+    [Theory]
+    [InlineData("movie.mp4")]
+    [InlineData("movie.m4a")]
+    [InlineData("movie.m4v")]
+    public async Task RuntimeRegistryRoutesMp4FamilyThroughInjectedReader(string fileName)
+    {
+        var reader = new FakeMp4ChapterReader(Mp4ChapterReadResult.Succeeded(new Mp4ChapterClip("Intro", TimeSpan.FromSeconds(1))));
+        var registry = new RuntimeChapterImporterRegistry(
+            new ChapterTimeFormatter(),
+            new FakeExternalToolLocator(),
+            new FakeProcessRunner(),
+            reader);
+
+        var importer = registry.Resolve(fileName);
+        var result = await importer!.ImportAsync(new ChapterImportRequest(fileName), CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Equal(fileName, reader.LastPath);
     }
 
     [Fact]
@@ -118,5 +140,19 @@ public sealed class ChapterImporterRegistryTests
     {
         public ValueTask<ProcessRunResult> RunAsync(ProcessRunRequest request, CancellationToken cancellationToken) =>
             ValueTask.FromResult(new ProcessRunResult(-1, string.Empty, string.Empty, TimedOut: false, Cancelled: false, request.FileName, request.Arguments, request.WorkingDirectory));
+    }
+
+    private sealed class FakeMp4ChapterReader(Mp4ChapterReadResult result) : IMp4ChapterReader
+    {
+        public string? LastPath { get; private set; }
+
+        public ValueTask<Mp4ChapterReadResult> ReadAsync(string path, CancellationToken cancellationToken) =>
+            ValueTask.FromResult(Read(path));
+
+        private Mp4ChapterReadResult Read(string path)
+        {
+            LastPath = path;
+            return result;
+        }
     }
 }

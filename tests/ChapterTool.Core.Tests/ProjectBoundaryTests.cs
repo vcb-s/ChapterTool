@@ -20,4 +20,24 @@ public sealed class ProjectBoundaryTests
         Assert.DoesNotContain("System.Drawing", projectText, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Microsoft.Win32.Registry", projectText, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void Core_source_does_not_reference_platform_discovery_or_process_encoding_implementations()
+    {
+        var coreRoot = Path.Combine(FixtureResolver.RepositoryRoot, "src", "ChapterTool.Core");
+        var sourceText = string.Join(
+            Environment.NewLine,
+            Directory.EnumerateFiles(coreRoot, "*.cs", SearchOption.AllDirectories)
+                .Where(static path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+                .Select(File.ReadAllText));
+
+        Assert.DoesNotContain("Microsoft.Win32", sourceText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Registry", sourceText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("MkvToolNixInstallProbe", sourceText, StringComparison.Ordinal);
+        Assert.DoesNotContain("MKVToolNix", sourceText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Contents", sourceText, StringComparison.Ordinal);
+        Assert.DoesNotContain("MacOS", sourceText, StringComparison.Ordinal);
+        Assert.DoesNotContain("StandardOutputEncoding", sourceText, StringComparison.Ordinal);
+        Assert.DoesNotContain("StandardErrorEncoding", sourceText, StringComparison.Ordinal);
+    }
 }

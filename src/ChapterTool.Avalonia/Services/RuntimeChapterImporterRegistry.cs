@@ -7,7 +7,6 @@ using ChapterTool.Core.Services;
 using ChapterTool.Core.Transform;
 using ChapterTool.Infrastructure.Importing.Bdmv;
 using ChapterTool.Infrastructure.Importing.Matroska;
-using ChapterTool.Infrastructure.Platform;
 
 namespace ChapterTool.Avalonia.Services;
 
@@ -15,7 +14,7 @@ public sealed class RuntimeChapterImporterRegistry(
     IChapterTimeFormatter formatter,
     IExternalToolLocator toolLocator,
     IProcessRunner processRunner,
-    INativeDependencyService nativeDependencyService) : IChapterImporterRegistry
+    IMp4ChapterReader mp4ChapterReader) : IChapterImporterRegistry
 {
     public IChapterImporter? Resolve(string path)
     {
@@ -36,7 +35,7 @@ public sealed class RuntimeChapterImporterRegistry(
             ".ifo" => new IfoChapterImporter(),
             ".xpl" => new XplChapterImporter(),
             ".mkv" or ".mka" => new MatroskaChapterImporter(toolLocator, processRunner, formatter),
-            ".mp4" or ".m4a" or ".m4v" => new Mp4ChapterImporter(new MissingMp4ChapterReader(nativeDependencyService)),
+            ".mp4" or ".m4a" or ".m4v" => new Mp4ChapterImporter(mp4ChapterReader),
             _ => null
         };
     }

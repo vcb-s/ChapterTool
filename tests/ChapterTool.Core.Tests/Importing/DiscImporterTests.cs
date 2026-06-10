@@ -263,25 +263,40 @@ public sealed class DiscImporterTests
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code is "XplParseFailed" or "XplNoChapters");
     }
 
-    [Fact]
-    public async Task Mp4ImporterConvertsDurationsToCumulativeStarts()
+    [Theory]
+    [InlineData(".mp4")]
+    [InlineData(".m4a")]
+    [InlineData(".m4v")]
+    public async Task Mp4ImporterConvertsDurationsToCumulativeStartsForMp4Family(string extension)
     {
         var importer = new Mp4ChapterImporter(new FakeMp4Reader(Mp4ChapterReadResult.Succeeded(
             new Mp4ChapterClip("Chapter 01", TimeSpan.FromSeconds(10)),
             new Mp4ChapterClip("Chapter 02", TimeSpan.FromSeconds(10)),
             new Mp4ChapterClip("Chapter 03", TimeSpan.FromSeconds(10)),
             new Mp4ChapterClip("Chapter 04", TimeSpan.FromSeconds(10)))));
+        var path = Path.ChangeExtension(FixtureResolver.Fixture("Importing", "Media", "Chapter.mp4"), extension);
 
-        var result = await importer.ImportAsync(new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Media", "Chapter.mp4")), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest(path), CancellationToken.None);
 
         Assert.True(result.Success);
         Assert.Equal([TimeSpan.Zero, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(30)], result.Groups.Single().Options.Single().ChapterInfo.Chapters.Select(chapter => chapter.Time));
-        Assert.Contains(result.Groups.Single().Options.Single().MediaReferences ?? [], reference => reference.AbsolutePath == FixtureResolver.Fixture("Importing", "Media", "Chapter.mp4"));
+        Assert.Contains(result.Groups.Single().Options.Single().MediaReferences ?? [], reference => reference.AbsolutePath == path);
+    }
+
+    [Fact]
+    public async Task Mp4ImporterRejectsEmptyReaderOutput()
+    {
+        var importer = new Mp4ChapterImporter(new FakeMp4Reader(Mp4ChapterReadResult.Succeeded()));
+
+        var result = await importer.ImportAsync(new ChapterImportRequest("movie.mp4"), CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "NoChaptersFound");
     }
 
     [Theory]
-    [InlineData("NativeLibraryMissing")]
-    [InlineData("NativeReadFailed")]
+    [InlineData("Mp4UnsupportedMetadata")]
+    [InlineData("Mp4ReadFailed")]
     public async Task Mp4ImporterReturnsReaderDiagnostics(string code)
     {
         var importer = new Mp4ChapterImporter(new FakeMp4Reader(Mp4ChapterReadResult.Failed(code, "reader failed")));

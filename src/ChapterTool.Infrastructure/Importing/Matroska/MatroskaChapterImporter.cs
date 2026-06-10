@@ -84,8 +84,13 @@ public sealed class MatroskaChapterImporter : IChapterImporter
         return xmlImporter.ImportText(result.StandardOutput, request.Path);
     }
 
-    private static ChapterDiagnostic ProcessError(string code, string message, ProcessRunResult result) =>
-        Error(code, $"{message} Command: {result.FileName} {string.Join(" ", result.Arguments)} ExitCode: {result.ExitCode?.ToString() ?? "<none>"}");
+    private static ChapterDiagnostic ProcessError(string code, string message, ProcessRunResult result)
+    {
+        var stderr = string.IsNullOrWhiteSpace(result.StandardError)
+            ? string.Empty
+            : $" Stderr: {result.StandardError.Trim()}";
+        return Error(code, $"{message}{stderr} Command: {result.FileName} {string.Join(" ", result.Arguments)} ExitCode: {result.ExitCode?.ToString() ?? "<none>"}");
+    }
 
     private static ChapterDiagnostic Error(string code, string message) =>
         new(DiagnosticSeverity.Error, code, message);

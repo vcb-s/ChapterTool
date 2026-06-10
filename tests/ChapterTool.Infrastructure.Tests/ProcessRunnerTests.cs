@@ -27,6 +27,19 @@ public sealed class ProcessRunnerTests
     }
 
     [Fact]
+    public async Task RunAsync_decodes_non_ascii_stdout_and_stderr()
+    {
+        var runner = new ProcessRunner();
+        var request = ShellCommand.CreateUtf8Output("章節", "错误");
+
+        var result = await runner.RunAsync(request, CancellationToken.None);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Contains("章節", result.StandardOutput, StringComparison.Ordinal);
+        Assert.Contains("错误", result.StandardError, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task RunAsync_marks_timeout_and_kills_process()
     {
         var runner = new ProcessRunner();
@@ -75,6 +88,16 @@ public sealed class ProcessRunnerTests
             }
 
             return Create($"sleep {Math.Max(1, (int)duration.TotalSeconds)}", timeout: timeout);
+        }
+
+        public static ProcessRunRequest CreateUtf8Output(string stdout, string stderr)
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                return Create($"chcp 65001 > nul && powershell -NoProfile -Command \"[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; [Console]::Error.WriteLine('{stderr}'); [Console]::WriteLine('{stdout}')\"");
+            }
+
+            return Create($"printf '{stdout}\\n'; printf '{stderr}\\n' 1>&2");
         }
     }
 }

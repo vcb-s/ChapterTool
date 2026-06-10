@@ -7,6 +7,7 @@ using ChapterTool.Core.Exporting;
 using ChapterTool.Core.Services;
 using ChapterTool.Core.Transform;
 using ChapterTool.Infrastructure.Configuration;
+using ChapterTool.Infrastructure.Importing.Media;
 using ChapterTool.Infrastructure.Platform;
 using ChapterTool.Infrastructure.Processes;
 using ChapterTool.Infrastructure.Tools;
@@ -57,7 +58,9 @@ public sealed class AppCompositionRoot
             formatter,
             CreateExternalToolLocator(),
             CreateProcessRunner(),
-            CreateNativeDependencyService());
+            CreateMp4ChapterReader());
+
+    public AtlMp4ChapterReader CreateMp4ChapterReader() => new();
 
     public IChapterSaveService CreateChapterSaveService() =>
         new RuntimeChapterSaveService(new ChapterExportService(formatter, expressionService));

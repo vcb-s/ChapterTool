@@ -21,7 +21,7 @@ public sealed class Mp4ChapterImporter(IMp4ChapterReader reader) : IChapterImpor
         {
             return ChapterImportResult.Failed(new ChapterDiagnostic(
                 DiagnosticSeverity.Error,
-                read.DiagnosticCode ?? "NativeReadFailed",
+                read.DiagnosticCode ?? "Mp4ReadFailed",
                 read.Message ?? "MP4 chapter reader failed."));
         }
 

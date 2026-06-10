@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ChapterTool.Core\ChapterTool.Core.csproj" />
+    <PackageReference Include="z440.atl.core" Version="7.15.3" />
   </ItemGroup>
 
   <PropertyGroup>

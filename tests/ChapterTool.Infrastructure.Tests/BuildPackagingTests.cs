@@ -41,14 +41,31 @@ public sealed class BuildPackagingTests
     }
 
     [Fact]
-    public void PackagingStrategyDocumentsMp4NativeAndInstallerPolicy()
+    public void PackagingStrategyDocumentsMp4ManagedDependencyAndInstallerPolicy()
     {
         var document = File.ReadAllText(Path.Combine(RepositoryRoot(), "docs", "packaging-strategy.md"));
 
         Assert.Contains("IMp4ChapterReader", document, StringComparison.Ordinal);
-        Assert.Contains("NativeLibraryMissing", document, StringComparison.Ordinal);
+        Assert.Contains("ATL.NET", document, StringComparison.Ordinal);
+        Assert.Contains("z440.atl.core", document, StringComparison.Ordinal);
+        Assert.Contains("No separate MP4 command-line tool or `libmp4v2` DLL is required", document, StringComparison.Ordinal);
+        Assert.DoesNotContain("NativeLibraryMissing", document, StringComparison.Ordinal);
         Assert.Contains("Fody and Costura are retired", document, StringComparison.Ordinal);
         Assert.Contains("legacy NSIS/Costura packaging path is not carried forward", document, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AvaloniaProjectDoesNotBundleLegacyMp4NativeDlls()
+    {
+        var project = File.ReadAllText(Path.Combine(RepositoryRoot(), "src", "ChapterTool.Avalonia", "ChapterTool.Avalonia.csproj"));
+        var publishScript = File.ReadAllText(Path.Combine(RepositoryRoot(), "scripts", "publish.ps1"));
+
+        Assert.DoesNotContain("Time_Shift/mp4v2", project, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Time_Shift\\mp4v2", project, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("libmp4v2", project, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Time_Shift/mp4v2", publishScript, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Time_Shift\\mp4v2", publishScript, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("libmp4v2", publishScript, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

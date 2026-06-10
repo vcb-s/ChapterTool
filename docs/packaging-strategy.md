@@ -11,9 +11,14 @@ The Avalonia rewrite publishes from `src/ChapterTool.Avalonia/ChapterTool.Avalon
 ## Native And External Dependencies
 
 - Matroska chapters use MKVToolNix `mkvextract`; the app reports `MatroskaMissingDependency` when absent.
+  Discovery checks the migrated/configured MKVToolNix path first, then environment/PATH search directories, then platform install probes.
+  Windows probes MKVToolNix uninstall registry entries for an install directory or display icon; macOS probes app bundles such as `/Applications/MKVToolNix-96.0.app/Contents/MacOS/mkvextract`.
+  Linux and other Unix-like platforms use the configured path and PATH search only unless a future probe is explicitly designed.
 - BDMV import uses `eac3to`; the app reports `MissingDependency` when absent.
-- MP4 import is isolated behind `IMp4ChapterReader`; current packaging treats native MP4 support as optional and reports `NativeLibraryMissing` or `NativeReadFailed`.
-- Native DLLs are not bundled until a replacement MP4 reader or redistributable native package is selected.
+- MP4 import is isolated behind `IMp4ChapterReader` and uses ATL.NET (`z440.atl.core`) as the managed reader dependency for `.mp4`, `.m4a`, and `.m4v` chapters.
+- No separate MP4 command-line tool or `libmp4v2` DLL is required for the default MP4 import path.
+- Legacy `libmp4v2`/Knuckleball integration, external MP4 command-line experiments, and Windows `fsutil` hardlink behavior remain retired unless a future backend is explicitly designed.
+- Legacy native MP4 DLLs from `Time_Shift/mp4v2` are not bundled in Avalonia publish output by default.
 
 ## Installer Strategy
 

@@ -5,9 +5,12 @@ namespace ChapterTool.Infrastructure.Tools;
 
 public sealed class ExternalToolLocator(
     ISettingsStore<AppSettings> settingsStore,
-    IReadOnlyList<string>? searchDirectories = null)
+    IReadOnlyList<string>? searchDirectories = null,
+    IMkvToolNixInstallProbe? mkvToolNixInstallProbe = null)
     : IExternalToolLocator
 {
+    private readonly IMkvToolNixInstallProbe mkvToolNixInstallProbe = mkvToolNixInstallProbe ?? MkvToolNixInstallProbe.CreateDefault();
+
     public async ValueTask<ExternalToolLocation> LocateAsync(string toolId, CancellationToken cancellationToken)
     {
         var settings = await settingsStore.LoadAsync(cancellationToken);
@@ -28,6 +31,18 @@ public sealed class ExternalToolLocator(
             if (File.Exists(candidate))
             {
                 return new ExternalToolLocation(true, candidate);
+            }
+        }
+
+        if (toolId.Equals("mkvextract", StringComparison.OrdinalIgnoreCase))
+        {
+            foreach (var candidate in mkvToolNixInstallProbe.FindMkvExtractCandidates(executableName))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (File.Exists(candidate))
+                {
+                    return new ExternalToolLocation(true, candidate);
+                }
             }
         }
 
