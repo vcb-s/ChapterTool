@@ -274,7 +274,7 @@ public sealed class DiscImporterTests
             new Mp4ChapterClip("Chapter 02", TimeSpan.FromSeconds(10)),
             new Mp4ChapterClip("Chapter 03", TimeSpan.FromSeconds(10)),
             new Mp4ChapterClip("Chapter 04", TimeSpan.FromSeconds(10)))));
-        var path = Path.ChangeExtension(FixtureResolver.Fixture("Importing", "Media", "Chapter.mp4"), extension);
+        var path = Path.ChangeExtension(Path.Combine(Path.GetTempPath(), "Chapter"), extension);
 
         var result = await importer.ImportAsync(new ChapterImportRequest(path), CancellationToken.None);
 

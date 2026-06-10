@@ -108,17 +108,27 @@ public sealed class RuntimeChapterLoadServiceTests
     [Theory]
     [InlineData(".mkv")]
     [InlineData(".mka")]
-    public async Task RuntimeRoutesMatroskaFamilyToMkvextractDiagnostics(string extension)
+    public async Task RuntimeRoutesMatroskaFamilyToMkvextractWithChapterFixture(string extension)
     {
         var path = Path.Combine(Path.GetTempPath(), "ChapterTool.Tests", Guid.NewGuid().ToString("N") + extension);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        await File.WriteAllBytesAsync(path, [0]);
+        File.Copy(MatroskaFixture(), path);
         try
         {
             var result = await CreateService().LoadAsync(path, CancellationToken.None);
 
-            Assert.False(result.Success);
-            Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code.StartsWith("Matroska", StringComparison.Ordinal));
+            if (result.Success)
+            {
+                var chapters = result.Groups.Single().Options.Single().ChapterInfo.Chapters;
+                Assert.True(chapters.Count >= 2);
+                Assert.Equal(["序章", "Chapter 02"], chapters.Take(2).Select(static chapter => chapter.Name));
+                Assert.Equal([TimeSpan.Zero, TimeSpan.FromSeconds(1)], chapters.Take(2).Select(static chapter => chapter.Time));
+            }
+            else
+            {
+                Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "MatroskaMissingDependency");
+            }
+
             Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Code == "UnsupportedSource");
         }
         finally
@@ -175,6 +185,16 @@ public sealed class RuntimeChapterLoadServiceTests
 
         throw new DirectoryNotFoundException("Could not locate repository root from test output directory.");
     }
+
+    private static string MatroskaFixture() =>
+        Path.Combine(
+            RepositoryRoot(),
+            "tests",
+            "ChapterTool.Infrastructure.Tests",
+            "Fixtures",
+            "Importing",
+            "Matroska",
+            "chaptered-small.mkv");
 
     private static IChapterLoadService CreateService() =>
         new AppCompositionRoot(settingsDirectory: Path.Combine(Path.GetTempPath(), "ChapterTool.Tests", Guid.NewGuid().ToString("N")))
