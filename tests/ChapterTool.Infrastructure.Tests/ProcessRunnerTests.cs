@@ -96,7 +96,7 @@ public sealed class ProcessRunnerTests
             {
                 return new ProcessRunRequest(
                     "powershell.exe",
-                    ["-NoProfile", "-Command", $"$OutputEncoding = [System.Text.Encoding]::UTF8; [Console]::Error.WriteLine('{stderr}'); [Console]::WriteLine('{stdout}')"],
+                    ["-NoProfile", "-Command", $"[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; [Console]::WriteLine('{stdout}'); [Console]::Error.WriteLine('{stderr}')"],
                     null);
             }
 
