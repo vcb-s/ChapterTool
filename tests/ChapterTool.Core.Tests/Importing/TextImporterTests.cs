@@ -13,9 +13,29 @@ public sealed class TextImporterTests
     public async Task OgmImporterReadsExistingSampleLeniently()
     {
         var importer = new OgmChapterImporter(formatter);
-        var result = await importer.ImportAsync(
-            new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Text", "Ogm", "00001.txt")),
-            CancellationToken.None);
+        var ogmText = """
+
+
+
+
+            CHAPTER01 = 00:00:00.000
+            CHAPTER01NAME=	Chapter 01
+
+            CHAPTER02=00:00:41.041
+            CHAPTER02NAME=Chapter 02
+            CHAPTER03=00:02:12.799
+            CHAPTER03NAME=Chapter 03
+            CHAPTER04=00:03:36.258
+
+            CHAPTER04NAME=Chapter 04
+            CHAPTER05=00:04:37.944
+            CHAPTER05NAME=Chapter 05
+            CHAPTER06=00:05:44.928
+            CHAPTER06NAME=Chapter 06
+
+            CHAPTER07=00:08:59.247
+            """;
+        var result = importer.ImportText(ogmText);
 
         Assert.True(result.Success);
         Assert.True(result.IsPartial);
@@ -91,9 +111,38 @@ public sealed class TextImporterTests
     public async Task WebVttImporterReadsExistingSample()
     {
         var importer = new WebVttChapterImporter();
-        var result = await importer.ImportAsync(
-            new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Text", "WebVtt", "chapter.vtt")),
-            CancellationToken.None);
+        var vttText = """
+            WEBVTT
+
+            chapter-1
+            00:00:00.000 --> 00:00:26.000
+            Introduction
+
+            chapter-2
+            00:00:28.206 --> 00:01:02.000
+            Watch out!
+
+            chapter-3
+            00:01:02.034 --> 00:03:10.000
+            Let's go
+
+            chapter-4
+            00:03:10.014 --> 00:05:40.000
+            The machine
+
+            chapter-5
+            00:05:41.208 --> 00:07:26.000
+            Close your eyes
+
+            chapter-6
+            00:07:27.125 --> 00:08:12.000
+            There's nothing there
+
+            chapter-7
+            00:08:13.000 --> 00:09:07.500
+            The Colossus of Rhodes
+            """;
+        var result = importer.ImportText(vttText);
 
         Assert.True(result.Success);
         var chapters = result.Groups.Single().Options.Single().ChapterInfo.Chapters;
@@ -225,4 +274,195 @@ public sealed class TextImporterTests
         Assert.False(result.Success);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == code);
     }
+
+    [Fact]
+    public async Task XmlLiveSamplePreservesUtf8ChapterNames()
+    {
+        var importer = new XmlChapterImporter(formatter);
+
+        var result = await importer.ImportAsync(
+            new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Text", "Xml", "[philosophy-raws][Hatsune Miku Magical Mirai 2014 in OSAKA][Live].xml")),
+            CancellationToken.None);
+
+        Assert.True(result.Success, Diagnostics(result));
+        var chapters = result.Groups.Single().Options.Single().ChapterInfo.Chapters;
+        Assert.Equal(30, chapters.Count);
+        Assert.Equal("01 High-energy Particle", chapters[0].Name);
+        Assert.Contains(chapters, chapter => chapter.Name.Contains("カゲロウデイズ", StringComparison.Ordinal));
+        Assert.Equal(TimeSpan.FromMilliseconds(6789383), chapters[^1].Time);
+    }
+
+    [Fact]
+    public async Task XmlChapter25SampleMatchesDeduplicatedLegacyOutput()
+    {
+        var importer = new XmlChapterImporter(formatter);
+
+        var result = await importer.ImportAsync(
+            new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Text", "Xml", "XML_Chapter_25.xml")),
+            CancellationToken.None);
+
+        Assert.True(result.Success, Diagnostics(result));
+        var chapters = result.Groups.Single().Options.Single().ChapterInfo.Chapters;
+        Assert.Equal(17, chapters.Count);
+        Assert.Equal("Chapter 01", chapters[0].Name.Trim());
+        Assert.Equal(TimeSpan.FromMilliseconds(267080), chapters[1].Time);
+    }
+
+    [Fact]
+    public async Task XmlHiddenChapterSampleImportsBothEditionsWithEndTimes()
+    {
+        var importer = new XmlChapterImporter(formatter);
+        var xmlText = """
+            <?xml version="1.0" encoding="ISO-8859-1"?>
+
+            <!DOCTYPE Chapters SYSTEM "matroskachapters.dtd">
+
+            <Chapters>
+              <EditionEntry>
+                <ChapterAtom>
+                  <ChapterTimeStart>00:00:00.000</ChapterTimeStart>
+                  <ChapterDisplay>
+                    <ChapterString>Intro</ChapterString>
+                    <ChapterLanguage>eng</ChapterLanguage>
+                  </ChapterDisplay>
+                </ChapterAtom>
+                <ChapterAtom>
+                  <ChapterTimeStart>00:01:00.000</ChapterTimeStart>
+                  <ChapterDisplay>
+                    <ChapterString>Act 1</ChapterString>
+                    <ChapterLanguage>eng</ChapterLanguage>
+                  </ChapterDisplay>
+                </ChapterAtom>
+                <ChapterAtom>
+                  <ChapterTimeStart>00:05:30.000</ChapterTimeStart>
+                  <ChapterDisplay>
+                    <ChapterString>Act 2</ChapterString>
+                    <ChapterLanguage>eng</ChapterLanguage>
+                  </ChapterDisplay>
+                </ChapterAtom>
+                <ChapterAtom>
+                  <ChapterTimeStart>00:12:20.000</ChapterTimeStart>
+                  <ChapterTimeEnd>00:12:55.000</ChapterTimeEnd>
+                  <ChapterDisplay>
+                    <ChapterString>Credits</ChapterString>
+                    <ChapterLanguage>eng</ChapterLanguage>
+                  </ChapterDisplay>
+                </ChapterAtom>
+              </EditionEntry>
+
+              <EditionEntry>
+                <ChapterAtom>
+                  <ChapterTimeStart>00:02:00.000</ChapterTimeStart>
+                  <ChapterTimeEnd>00:04:00.000</ChapterTimeEnd>
+                  <ChapterDisplay>
+                    <ChapterString>A hidden and not enabled chapter.</ChapterString>
+                    <ChapterLanguage>eng</ChapterLanguage>
+                  </ChapterDisplay>
+                  <ChapterFlagHidden>1</ChapterFlagHidden>
+                  <ChapterFlagEnabled>0</ChapterFlagEnabled>
+                </ChapterAtom>
+              </EditionEntry>
+            </Chapters>
+            """;
+
+        var result = importer.ImportText(xmlText);
+
+        Assert.True(result.Success, Diagnostics(result));
+        var options = result.Groups.Single().Options;
+        Assert.Equal(2, options.Count);
+        Assert.Equal(["Intro", "Act 1", "Act 2", "Credits"], options[0].ChapterInfo.Chapters.Select(static chapter => chapter.Name));
+        Assert.Equal(TimeSpan.FromMinutes(2), options[1].ChapterInfo.Chapters.Single().Time);
+        Assert.Equal(TimeSpan.FromMinutes(4), options[1].ChapterInfo.Chapters.Single().End);
+        Assert.Equal("A hidden and not enabled chapter.", options[1].ChapterInfo.Chapters.Single().Name);
+    }
+
+    [Fact]
+    public async Task XmlNestedChapterSampleFlattensSubChapters()
+    {
+        var importer = new XmlChapterImporter(formatter);
+
+        var result = await importer.ImportAsync(
+            new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Text", "Xml", "example-chapters-2_sub_chapter.xml")),
+            CancellationToken.None);
+
+        Assert.True(result.Success, Diagnostics(result));
+        var chapters = result.Groups.Single().Options.Single().ChapterInfo.Chapters;
+        Assert.Equal(6, chapters.Count);
+        Assert.StartsWith("Ouvert", chapters[0].Name, StringComparison.Ordinal);
+        Assert.Equal(TimeSpan.Zero, chapters[0].Time);
+        Assert.Equal(TimeSpan.FromMinutes(6).Add(TimeSpan.FromSeconds(24)), chapters[0].End);
+        Assert.Equal("Dialog: Er erwacht!", chapters[^1].Name);
+        Assert.Equal(TimeSpan.FromMinutes(27).Add(TimeSpan.FromSeconds(27)), chapters[^1].Time);
+    }
+
+    [Fact]
+    public async Task XmlFourEditionLegacySampleCreatesOneOptionPerEdition()
+    {
+        var importer = new XmlChapterImporter(formatter);
+
+        var result = await importer.ImportAsync(
+            new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Text", "Xml", "xml (T2 - 4 Editions).xml")),
+            CancellationToken.None);
+
+        Assert.True(result.Success, Diagnostics(result));
+        var options = result.Groups.Single().Options;
+        Assert.Equal(4, options.Count);
+        Assert.All(options, option => Assert.NotEmpty(option.ChapterInfo.Chapters));
+        Assert.Equal("Prologue", options[0].ChapterInfo.Chapters[0].Name);
+    }
+
+    [Theory]
+    [MemberData(nameof(XmlSampleExpectations))]
+    public async Task AdditionalXmlSamplesMatchExpectedEditionShape(XmlSampleExpectation sample)
+    {
+        var importer = new XmlChapterImporter(formatter);
+
+        var result = await importer.ImportAsync(
+            new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Text", "Xml", sample.FileName)),
+            CancellationToken.None);
+
+        Assert.True(result.Success, Diagnostics(result));
+        var options = result.Groups.Single().Options;
+        Assert.Equal(sample.Options.Length, options.Count);
+        for (var i = 0; i < sample.Options.Length; i++)
+        {
+            var expected = sample.Options[i];
+            var chapters = options[i].ChapterInfo.Chapters;
+            Assert.Equal(expected.ChapterCount, chapters.Count);
+            Assert.Equal(expected.Duration, options[i].ChapterInfo.Duration);
+            Assert.Equal(expected.FirstName, chapters[0].Name);
+            Assert.Equal(expected.FirstTime, chapters[0].Time);
+            Assert.Equal(expected.LastName, chapters[^1].Name);
+            Assert.Equal(expected.LastTime, chapters[^1].Time);
+        }
+    }
+
+    public static TheoryData<XmlSampleExpectation> XmlSampleExpectations() => new()
+    {
+        new("[philosophy-raws][Hatsune Miku Magical Mirai 2014 in OSAKA][Live].xml",
+        [
+            new(30, Ms(6789383), "01 High-energy Particle", TimeSpan.Zero, "End Roll", Ms(6789383))
+        ]),
+        new("Angel Beats! - NCOP_Ordered_Chapter.xml", AngelBeatsEditions())
+    };
+
+    public sealed record XmlSampleExpectation(string FileName, XmlOptionExpectation[] Options);
+
+    public sealed record XmlOptionExpectation(
+        int ChapterCount,
+        TimeSpan Duration,
+        string FirstName,
+        TimeSpan FirstTime,
+        string LastName,
+        TimeSpan LastTime);
+
+    private static XmlOptionExpectation[] AngelBeatsEditions() =>
+        Enumerable.Range(0, 14)
+            .Select(static _ => new XmlOptionExpectation(3, Ms(59601), "Part A", TimeSpan.Zero, "Part C", Ms(59601)))
+            .ToArray();
+
+    private static TimeSpan Ms(int milliseconds) => TimeSpan.FromMilliseconds(milliseconds);
+
+    private static string Diagnostics(ChapterImportResult result) =>
+        string.Join(Environment.NewLine, result.Diagnostics.Select(static diagnostic => $"{diagnostic.Code}: {diagnostic.Message}"));
 }

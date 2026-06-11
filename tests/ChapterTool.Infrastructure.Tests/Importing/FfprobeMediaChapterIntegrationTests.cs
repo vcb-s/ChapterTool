@@ -52,6 +52,13 @@ public sealed class FfprobeMediaChapterIntegrationTests
             ["Intro", "Act 1", "Act 2", "Credits"],
             [TimeSpan.Zero, TimeSpan.FromSeconds(60), TimeSpan.FromSeconds(330), TimeSpan.FromSeconds(740)],
             [TimeSpan.FromSeconds(29.15), null, null, TimeSpan.FromSeconds(775)]
+        },
+        {
+            "Chapter.flac",
+            TimeSpan.FromMilliseconds(17947),
+            ["Intro", "Sweep", "Tone"],
+            [TimeSpan.Zero, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(12)],
+            [TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(12), TimeSpan.FromMilliseconds(17947)]
         }
     };
 
