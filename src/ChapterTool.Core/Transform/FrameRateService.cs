@@ -26,22 +26,69 @@ public sealed class FrameRateService : IFrameRateService
             ?? FrameRateOptions[0];
     }
 
-    public FrameRateOption Detect(ChapterInfo info, decimal tolerance)
-    {
-        var bestOption = FrameRateOptions[1];
-        var bestScore = -1;
+    public FrameRateOption Detect(ChapterInfo info, decimal tolerance) =>
+        DetectDetailed(info, tolerance).Option;
 
-        foreach (var option in FrameRateOptions.Where(option => option.IsValid))
+    public FrameRateDetectionResult DetectDetailed(ChapterInfo info, decimal tolerance)
+    {
+        var defaultOption = FrameRateOptions[1];
+        var evaluated = info.Chapters.Count(static chapter => !chapter.IsSeparator);
+        if (evaluated == 0)
         {
-            var score = info.Chapters.Sum(chapter => IsAccurate(chapter, option.Value, tolerance) ? 1 : 0);
-            if (score > bestScore)
+            return new FrameRateDetectionResult(defaultOption, 0, 0, 0m, FrameRateConfidence.Low);
+        }
+
+        FrameRateOption bestOption = defaultOption;
+        var bestDeviation = decimal.MaxValue;
+        var bestAccurateCount = -1;
+
+        foreach (var option in FrameRateOptions.Where(static option => option.IsValid))
+        {
+            var deviation = 0m;
+            var accurateCount = 0;
+            foreach (var chapter in info.Chapters.Where(static chapter => !chapter.IsSeparator))
             {
-                bestScore = score;
+                var frames = CalculateFrames(chapter, option.Value);
+                var rounded = Math.Round(frames, MidpointRounding.AwayFromZero);
+                var delta = Math.Abs(frames - rounded);
+                deviation += Math.Min(delta, tolerance);
+                if (delta < tolerance)
+                {
+                    accurateCount++;
+                }
+            }
+
+            if (deviation < bestDeviation
+                || (deviation == bestDeviation && accurateCount > bestAccurateCount))
+            {
+                bestDeviation = deviation;
+                bestAccurateCount = accurateCount;
                 bestOption = option;
             }
         }
 
-        return bestOption;
+        var averageDeviation = bestDeviation / evaluated;
+        var confidence = ClassifyConfidence(averageDeviation, bestAccurateCount, evaluated, tolerance);
+        return new FrameRateDetectionResult(bestOption, bestAccurateCount, evaluated, bestDeviation, confidence);
+    }
+
+    private static FrameRateConfidence ClassifyConfidence(
+        decimal averageDeviation,
+        int accurateCount,
+        int evaluatedCount,
+        decimal tolerance)
+    {
+        if (averageDeviation < tolerance / 4m && accurateCount == evaluatedCount)
+        {
+            return FrameRateConfidence.High;
+        }
+
+        if (averageDeviation < tolerance && accurateCount * 2 >= evaluatedCount)
+        {
+            return FrameRateConfidence.Medium;
+        }
+
+        return FrameRateConfidence.Low;
     }
 
     public FrameInfoResult UpdateFrames(
@@ -73,20 +120,6 @@ public sealed class FrameRateService : IFrameRateService
         };
 
         return new FrameInfoResult(updatedInfo, chapters, selectedOption, selectedOption.Value);
-    }
-
-    private static bool IsAccurate(Chapter chapter, decimal framesPerSecond, decimal tolerance)
-    {
-        if (!framesPerSecondIsValid(framesPerSecond) || chapter.IsSeparator)
-        {
-            return false;
-        }
-
-        var frames = CalculateFrames(chapter, framesPerSecond);
-        var rounded = Math.Round(frames, MidpointRounding.AwayFromZero);
-        return Math.Abs(frames - rounded) < tolerance;
-
-        static bool framesPerSecondIsValid(decimal fps) => fps > 0m;
     }
 
     private static string FormatFrames(Chapter chapter, decimal framesPerSecond, bool round, decimal tolerance)

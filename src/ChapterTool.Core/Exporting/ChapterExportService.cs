@@ -29,6 +29,7 @@ public sealed class ChapterExportService(
             ChapterExportFormat.TsMuxerMeta => TsMuxer(outputInfo, options),
             ChapterExportFormat.Cue => Cue(outputInfo, options),
             ChapterExportFormat.Json => Json(info, options),
+            ChapterExportFormat.WebVtt => WebVtt(outputInfo, options),
             _ => Failure("UnsupportedExportFormat", "Unsupported export format.")
         };
 
@@ -99,6 +100,38 @@ public sealed class ChapterExportService(
         }
 
         return Success(builder.ToString(), ".cue");
+    }
+
+    private ChapterExportResult WebVtt(ChapterInfo info, ChapterExportOptions options)
+    {
+        var builder = new StringBuilder();
+        builder.AppendLine("WEBVTT");
+        builder.AppendLine();
+
+        var chapters = info.Chapters.Where(NotSeparator).ToArray();
+        for (var i = 0; i < chapters.Length; i++)
+        {
+            var chapter = chapters[i];
+            var endTime = i + 1 < chapters.Length ? chapters[i + 1].Time : info.Duration;
+
+            builder.AppendLine(CultureInfo.InvariantCulture, $"{FormatWebVttTime(chapter.Time)} --> {FormatWebVttTime(endTime)}");
+            builder.AppendLine(chapter.Name);
+            if (i < chapters.Length - 1)
+            {
+                builder.AppendLine();
+            }
+        }
+
+        return Success(builder.ToString(), ".vtt");
+    }
+
+    private static string FormatWebVttTime(TimeSpan time)
+    {
+        var hours = (int)time.TotalHours;
+        var minutes = time.Minutes;
+        var seconds = time.Seconds;
+        var milliseconds = time.Milliseconds;
+        return $"{hours:D2}:{minutes:D2}:{seconds:D2}.{milliseconds:D3}";
     }
 
     private ChapterExportResult Json(ChapterInfo info, ChapterExportOptions options)

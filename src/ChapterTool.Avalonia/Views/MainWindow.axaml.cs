@@ -100,7 +100,15 @@ public sealed partial class MainWindow : Window
 
     private async Task LoadAsync()
     {
-        await viewModel.LoadCommand.ExecuteAsync(PathBox.Text ?? string.Empty);
+        isRefreshing = true;
+        try
+        {
+            await viewModel.LoadCommand.ExecuteAsync(PathBox.Text ?? string.Empty);
+        }
+        finally
+        {
+            isRefreshing = false;
+        }
         Refresh();
     }
 
@@ -113,7 +121,15 @@ public sealed partial class MainWindow : Window
         }
 
         PathBox.Text = path;
-        await viewModel.LoadCommand.ExecuteAsync(path);
+        isRefreshing = true;
+        try
+        {
+            await viewModel.LoadCommand.ExecuteAsync(path);
+        }
+        finally
+        {
+            isRefreshing = false;
+        }
         Refresh();
     }
 
@@ -146,7 +162,15 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        await viewModel.AppendMplsCommand.ExecuteAsync(path);
+        isRefreshing = true;
+        try
+        {
+            await viewModel.AppendMplsCommand.ExecuteAsync(path);
+        }
+        finally
+        {
+            isRefreshing = false;
+        }
         Refresh();
     }
 
@@ -237,7 +261,15 @@ public sealed partial class MainWindow : Window
             }
 
             PathBox.Text = path;
-            await viewModel.DropPathLoadCommand.ExecuteAsync(path);
+            isRefreshing = true;
+            try
+            {
+                await viewModel.DropPathLoadCommand.ExecuteAsync(path);
+            }
+            finally
+            {
+                isRefreshing = false;
+            }
             Refresh();
         }
         catch (Exception exception)

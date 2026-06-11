@@ -166,7 +166,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
     public int SelectedClipIndex
     {
         get => selectedClipIndex;
-        private set
+        set
         {
             if (SetProperty(ref selectedClipIndex, value))
             {
@@ -561,6 +561,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
         DisplayPath = Path.GetFileName(path);
         currentGroup = result.Groups[0];
         currentInfoBelongsToSelectedClip = false;
+        SelectedClipIndex = -1;
         ClipOptions.Clear();
         foreach (var option in currentGroup.Options)
         {
@@ -718,14 +719,35 @@ public sealed class MainWindowViewModel : ObservableViewModel
             return;
         }
 
-        var option = selectedFrameRateOption.LegacyMplsCode == 0
-            ? frameRateService.FindByValue((decimal)currentInfo.FramesPerSecond)
-            : selectedFrameRateOption;
-        var result = frameRateService.UpdateFrames(currentInfo, option, RoundFrames, tolerance: 0.01m);
+        FrameRateOption appliedOption;
+        FrameRateDetectionResult? detection = null;
+
+        if (selectedFrameRateOption.LegacyMplsCode == 0)
+        {
+            detection = frameRateService.DetectDetailed(currentInfo, tolerance: 0.01m);
+            appliedOption = detection.Option;
+        }
+        else
+        {
+            appliedOption = selectedFrameRateOption;
+        }
+
+        var result = frameRateService.UpdateFrames(currentInfo, appliedOption, RoundFrames, tolerance: 0.01m);
         currentInfo = result.Info;
-        selectedFrameRateOption = result.SelectedOption;
+
+        if (detection is not null)
+        {
+            selectedFrameRateOption = frameRateService.Options[0];
+            StatusText = $"Detected {detection.Option.DisplayName} (confidence: {detection.Confidence})";
+            Log($"Auto frame-rate detection: option={detection.Option.DisplayName}, confidence={detection.Confidence}, accurate={detection.AccurateChapterCount}/{detection.EvaluatedChapterCount}, deviation={detection.CumulativeDeviation:0.######}");
+        }
+        else
+        {
+            selectedFrameRateOption = result.SelectedOption;
+        }
+
         SelectedFrameRateIndex = ComboIndexFor(selectedFrameRateOption);
-        Log($"Frame info updated: option={selectedFrameRateOption.DisplayName}, fps={result.FramesPerSecond:0.###}, round={RoundFrames}, chapters={currentInfo.Chapters.Count}");
+        Log($"Frame info updated: option={appliedOption.DisplayName}, fps={result.FramesPerSecond:0.###}, round={RoundFrames}, chapters={currentInfo.Chapters.Count}");
         if (currentInfoBelongsToSelectedClip)
         {
             UpdateCurrentClipOption(currentInfo);
@@ -736,20 +758,27 @@ public sealed class MainWindowViewModel : ObservableViewModel
 
     private void UpdateCurrentClipOption(ChapterInfo info)
     {
-        if (currentGroup is null || SelectedClipIndex < 0 || SelectedClipIndex >= ClipOptions.Count)
+        if (currentGroup is null)
         {
             return;
         }
 
-        var updatedOption = ClipOptions[SelectedClipIndex] with { ChapterInfo = info };
-        ClipOptions[SelectedClipIndex] = updatedOption;
+        var index = SelectedClipIndex;
+        if (index < 0 || index >= ClipOptions.Count)
+        {
+            return;
+        }
 
         var options = currentGroup.Options.ToArray();
-        if (SelectedClipIndex < options.Length)
+        if (index >= options.Length)
         {
-            options[SelectedClipIndex] = updatedOption;
-            currentGroup = currentGroup with { Options = options };
+            return;
         }
+
+        var updatedOption = options[index] with { ChapterInfo = info };
+        options[index] = updatedOption;
+        ClipOptions[index] = updatedOption;
+        currentGroup = currentGroup with { Options = options };
 
         OnPropertyChanged(nameof(RelatedMediaReferences));
     }
@@ -835,18 +864,35 @@ public sealed class MainWindowViewModel : ObservableViewModel
         ForwardShiftCommand.RaiseCanExecuteChanged();
     }
 
-    private static int ComboIndexFor(FrameRateOption option) =>
-        option.LegacyMplsCode > 0 ? option.LegacyMplsCode - 1 : -1;
+    private static int ComboIndexFor(FrameRateOption option)
+    {
+        if (option.LegacyMplsCode == 0)
+        {
+            return 0;
+        }
+
+        return option.IsValid ? option.LegacyMplsCode : -1;
+    }
 
     private FrameRateOption? FrameRateOptionForComboIndex(int frameRateIndex)
     {
-        var legacyCode = frameRateIndex >= 0 ? frameRateIndex + 1 : 0;
-        if (legacyCode == 5)
+        if (frameRateIndex == 0)
         {
-            legacyCode = 4;
+            return frameRateService.Options[0];
         }
 
-        return frameRateService.Options.FirstOrDefault(option => option.LegacyMplsCode == legacyCode && option.IsValid);
+        if (frameRateIndex < 1)
+        {
+            return null;
+        }
+
+        var legacyCode = frameRateIndex;
+        if (legacyCode == 5)
+        {
+            return null;
+        }
+
+        return frameRateService.Options.FirstOrDefault(option => option.LegacyMplsCode == legacyCode);
     }
 
     private UiCommand WindowCommand(string id) =>

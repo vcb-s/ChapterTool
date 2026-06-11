@@ -202,6 +202,7 @@
                     HorizontalAlignment="Right"
                     SelectedIndex="{Binding SelectedFrameRateIndex}"
                     SelectionChanged="OnFrameOptionsChanged">
+            <ComboBoxItem Content="Auto" />
             <ComboBoxItem Content="24000 / 1001" />
             <ComboBoxItem Content="24000 / 1000" />
             <ComboBoxItem Content="25000 / 1000" />

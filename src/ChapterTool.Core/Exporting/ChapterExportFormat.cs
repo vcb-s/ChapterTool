@@ -8,5 +8,6 @@ public enum ChapterExportFormat
     TimeCodes,
     TsMuxerMeta,
     Cue,
-    Json
+    Json,
+    WebVtt
 }

@@ -388,11 +388,58 @@ public sealed class TextImporterTests
         Assert.True(result.Success, Diagnostics(result));
         var chapters = result.Groups.Single().Options.Single().ChapterInfo.Chapters;
         Assert.Equal(6, chapters.Count);
-        Assert.StartsWith("Ouvert", chapters[0].Name, StringComparison.Ordinal);
+        Assert.Equal("Ouvertüre", chapters[0].Name);
         Assert.Equal(TimeSpan.Zero, chapters[0].Time);
         Assert.Equal(TimeSpan.FromMinutes(6).Add(TimeSpan.FromSeconds(24)), chapters[0].End);
         Assert.Equal("Dialog: Er erwacht!", chapters[^1].Name);
         Assert.Equal(TimeSpan.FromMinutes(27).Add(TimeSpan.FromSeconds(27)), chapters[^1].Time);
+    }
+
+    [Fact]
+    public async Task XmlImporterPreservesIso88591EncodingFromDeclaration()
+    {
+        var importer = new XmlChapterImporter(formatter);
+
+        var result = await importer.ImportAsync(
+            new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Text", "Xml", "example-chapters-2_sub_chapter.xml")),
+            CancellationToken.None);
+
+        Assert.True(result.Success, Diagnostics(result));
+        var chapters = result.Groups.Single().Options.Single().ChapterInfo.Chapters;
+        Assert.Contains(chapters, c => c.Name.Contains("Schätzchen", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task XmlImporterSetsDefaultOptionIndexFromEditionFlagDefault()
+    {
+        var importer = new XmlChapterImporter(formatter);
+        var xml = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <Chapters>
+              <EditionEntry>
+                <EditionFlagDefault>0</EditionFlagDefault>
+                <ChapterAtom>
+                  <ChapterTimeStart>00:00:00.000000000</ChapterTimeStart>
+                  <ChapterDisplay><ChapterString>First Edition</ChapterString></ChapterDisplay>
+                </ChapterAtom>
+              </EditionEntry>
+              <EditionEntry>
+                <EditionFlagDefault>1</EditionFlagDefault>
+                <ChapterAtom>
+                  <ChapterTimeStart>00:00:10.000000000</ChapterTimeStart>
+                  <ChapterDisplay><ChapterString>Default Edition</ChapterString></ChapterDisplay>
+                </ChapterAtom>
+              </EditionEntry>
+            </Chapters>
+            """;
+
+        var result = importer.ImportText(xml);
+
+        Assert.True(result.Success, Diagnostics(result));
+        var group = result.Groups.Single();
+        Assert.Equal(2, group.Options.Count);
+        Assert.Equal(1, group.DefaultOptionIndex);
+        Assert.Equal("Default Edition", group.Options[1].ChapterInfo.Chapters.Single().Name);
     }
 
     [Fact]

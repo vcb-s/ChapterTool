@@ -24,9 +24,16 @@ public sealed partial class ThemeSettingsStore : ISettingsStore<ThemeColorSettin
         var currentPath = Path.Combine(settingsDirectory, CurrentFileName);
         if (File.Exists(currentPath))
         {
-            await using var stream = File.OpenRead(currentPath);
-            return await JsonSerializer.DeserializeAsync<ThemeColorSettings>(stream, JsonOptions, cancellationToken)
-                ?? ThemeColorSettings.Default;
+            try
+            {
+                await using var stream = File.OpenRead(currentPath);
+                return await JsonSerializer.DeserializeAsync<ThemeColorSettings>(stream, JsonOptions, cancellationToken)
+                    ?? ThemeColorSettings.Default;
+            }
+            catch (JsonException)
+            {
+                return ThemeColorSettings.Default;
+            }
         }
 
         foreach (var legacyDirectory in legacyDirectories)
@@ -51,8 +58,25 @@ public sealed partial class ThemeSettingsStore : ISettingsStore<ThemeColorSettin
     {
         Directory.CreateDirectory(settingsDirectory);
         var currentPath = Path.Combine(settingsDirectory, CurrentFileName);
-        await using var stream = File.Create(currentPath);
-        await JsonSerializer.SerializeAsync(stream, settings, JsonOptions, cancellationToken);
+        var tempPath = currentPath + ".tmp";
+
+        try
+        {
+            await using (var stream = File.Create(tempPath))
+            {
+                await JsonSerializer.SerializeAsync(stream, settings, JsonOptions, cancellationToken);
+            }
+
+            File.Move(tempPath, currentPath, overwrite: true);
+        }
+        catch
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+            throw;
+        }
     }
 
     private static async ValueTask<ThemeColorSettings?> TryLoadLegacyAsync(string path, CancellationToken cancellationToken)

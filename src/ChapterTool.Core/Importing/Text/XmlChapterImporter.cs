@@ -16,8 +16,32 @@ public sealed class XmlChapterImporter(IChapterTimeFormatter timeFormatter) : IC
 
     public async ValueTask<ChapterImportResult> ImportAsync(ChapterImportRequest request, CancellationToken cancellationToken)
     {
-        var text = await TextImportUtilities.ReadTextAsync(request, cancellationToken);
-        return ImportText(text, request.Path);
+        if (request.Content is not null)
+        {
+            try
+            {
+                var document = new XmlDocument();
+                document.Load(request.Content);
+                request.Content.Position = 0;
+                return ParseDocument(document, request.Path);
+            }
+            catch (XmlException exception)
+            {
+                return ChapterImportResult.Failed(Error("InvalidXml", exception.Message));
+            }
+        }
+
+        try
+        {
+            var document = new XmlDocument();
+            await using var stream = File.OpenRead(request.Path);
+            document.Load(stream);
+            return ParseDocument(document, request.Path);
+        }
+        catch (XmlException exception)
+        {
+            return ChapterImportResult.Failed(Error("InvalidXml", exception.Message));
+        }
     }
 
     public ChapterImportResult ImportText(string text, string path = "")
@@ -32,6 +56,11 @@ public sealed class XmlChapterImporter(IChapterTimeFormatter timeFormatter) : IC
             return ChapterImportResult.Failed(Error("InvalidXml", exception.Message));
         }
 
+        return ParseDocument(document, path);
+    }
+
+    private ChapterImportResult ParseDocument(XmlDocument document, string path)
+    {
         var root = document.DocumentElement;
         if (root is null)
         {
@@ -45,6 +74,7 @@ public sealed class XmlChapterImporter(IChapterTimeFormatter timeFormatter) : IC
 
         var groups = new List<ChapterInfoGroup>();
         var options = new List<ChapterSourceOption>();
+        var defaultOptionIndex = 0;
         var editionIndex = 0;
         foreach (XmlNode child in root.ChildNodes)
         {
@@ -58,6 +88,7 @@ public sealed class XmlChapterImporter(IChapterTimeFormatter timeFormatter) : IC
                 return ChapterImportResult.Failed(Error("InvalidEntryElement", $"Expected EditionEntry, got {child.Name}."));
             }
 
+            var isDefaultEdition = false;
             var chapters = new List<Chapter>();
             var atomIndex = 0;
             foreach (XmlNode atom in child.ChildNodes)
@@ -65,6 +96,10 @@ public sealed class XmlChapterImporter(IChapterTimeFormatter timeFormatter) : IC
                 if (atom.Name == "ChapterAtom")
                 {
                     chapters.AddRange(ParseAtom(atom, ++atomIndex));
+                }
+                else if (atom.Name == "EditionFlagDefault" && atom.InnerText == "1")
+                {
+                    isDefaultEdition = true;
                 }
             }
 
@@ -85,6 +120,12 @@ public sealed class XmlChapterImporter(IChapterTimeFormatter timeFormatter) : IC
                 chapters.Count == 0 ? TimeSpan.Zero : chapters[^1].Time,
                 Renumber(chapters));
             options.Add(new ChapterSourceOption($"edition-{editionIndex}", info.Title, info));
+
+            if (isDefaultEdition && defaultOptionIndex == 0)
+            {
+                defaultOptionIndex = editionIndex;
+            }
+
             editionIndex++;
         }
 
@@ -93,7 +134,7 @@ public sealed class XmlChapterImporter(IChapterTimeFormatter timeFormatter) : IC
             return ChapterImportResult.Failed(Error("XmlNoChapters", "No Matroska XML chapters were parsed."));
         }
 
-        groups.Add(new ChapterInfoGroup(path, options, 0));
+        groups.Add(new ChapterInfoGroup(path, options, defaultOptionIndex));
         return new ChapterImportResult(true, groups, Array.Empty<ChapterDiagnostic>());
     }
 

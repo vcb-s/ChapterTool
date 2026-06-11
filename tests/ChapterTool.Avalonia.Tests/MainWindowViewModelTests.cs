@@ -72,9 +72,70 @@ public sealed class MainWindowViewModelTests
         Assert.True(vm.IsClipSelectionVisible);
         Assert.Single(vm.Rows);
         Assert.Equal("0 K", vm.Rows[0].FramesInfo);
-        Assert.Equal(1, vm.SelectedFrameRateIndex);
+        Assert.Equal(2, vm.SelectedFrameRateIndex);
         Assert.Equal("Loaded 1 chapters", vm.StatusText);
         Assert.Equal(1, vm.Progress);
+    }
+
+    [Fact]
+    public async Task LoadMplsRaisesSelectedClipIndexChangeAfterClipOptionsPopulate()
+    {
+        var load = new FakeLoadService(ImportResult(
+            "movie.mpls",
+            Info("MPLS", "00001", new Chapter(1, TimeSpan.Zero, "A")),
+            Info("MPLS", "00002", new Chapter(1, TimeSpan.FromSeconds(1), "B"))));
+        var vm = CreateViewModel(load);
+        var indexNotifications = new List<int>();
+        ((INotifyPropertyChanged)vm).PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(MainWindowViewModel.SelectedClipIndex))
+            {
+                indexNotifications.Add(vm.SelectedClipIndex);
+            }
+        };
+
+        await vm.LoadCommand.ExecuteAsync("movie.mpls");
+
+        Assert.Equal(2, vm.ClipOptions.Count);
+        Assert.Equal(0, vm.SelectedClipIndex);
+        Assert.NotEmpty(indexNotifications);
+        Assert.Equal(0, indexNotifications[^1]);
+    }
+
+    [Fact]
+    public async Task LoadAfterPreviousLoadRaisesSelectedClipIndexNotification()
+    {
+        var firstLoad = ImportResult(
+            "first.mpls",
+            Info("MPLS", "00001", new Chapter(1, TimeSpan.Zero, "A")),
+            Info("MPLS", "00002", new Chapter(1, TimeSpan.FromSeconds(1), "B")));
+        var secondLoad = ImportResult(
+            "second.mpls",
+            Info("MPLS", "00010", new Chapter(1, TimeSpan.Zero, "X")),
+            Info("MPLS", "00020", new Chapter(1, TimeSpan.FromSeconds(2), "Y")),
+            Info("MPLS", "00030", new Chapter(1, TimeSpan.FromSeconds(4), "Z")));
+        var load = new FakeLoadService(firstLoad, secondLoad);
+        var vm = CreateViewModel(load);
+
+        await vm.LoadCommand.ExecuteAsync("first.mpls");
+        await vm.SelectClipCommand.ExecuteAsync(1);
+        Assert.Equal(1, vm.SelectedClipIndex);
+
+        var notifications = new List<int>();
+        ((INotifyPropertyChanged)vm).PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(MainWindowViewModel.SelectedClipIndex))
+            {
+                notifications.Add(vm.SelectedClipIndex);
+            }
+        };
+
+        await vm.LoadCommand.ExecuteAsync("second.mpls");
+
+        Assert.Equal(3, vm.ClipOptions.Count);
+        Assert.Equal(0, vm.SelectedClipIndex);
+        Assert.Contains(0, notifications);
+        Assert.Equal(0, notifications[^1]);
     }
 
     [Fact]
@@ -163,14 +224,54 @@ public sealed class MainWindowViewModelTests
         var vm = CreateViewModel(load, save);
 
         await vm.LoadCommand.ExecuteAsync("movie.txt");
-        vm.SetFrameOptions(frameRateIndex: 2, roundFrames: false);
+        vm.SetFrameOptions(frameRateIndex: 3, roundFrames: false);
         await vm.RefreshCommand.ExecuteAsync();
         await vm.SaveDirectoryCommand.ExecuteAsync("out");
 
         Assert.Equal("12.5", vm.Rows[0].FramesInfo);
-        Assert.Equal(2, vm.SelectedFrameRateIndex);
+        Assert.Equal(3, vm.SelectedFrameRateIndex);
         Assert.NotNull(save.LastInfo);
         Assert.Equal("12.5", save.LastInfo.Chapters[0].FramesInfo);
+    }
+
+    [Fact]
+    public async Task AutoFrameRateRunsDetectionAndUpdatesStatusText()
+    {
+        var info = Info(
+            "OGM",
+            "movie.txt",
+            new Chapter(1, TimeSpan.Zero, "A"),
+            new Chapter(2, TimeSpan.FromMilliseconds(40), "B"),
+            new Chapter(3, TimeSpan.FromMilliseconds(80), "C"));
+        var load = new FakeLoadService(ImportResult("movie.txt", info));
+        var vm = CreateViewModel(load);
+
+        await vm.LoadCommand.ExecuteAsync("movie.txt");
+        vm.SetFrameOptions(frameRateIndex: 0, roundFrames: false);
+        await vm.RefreshCommand.ExecuteAsync();
+
+        Assert.Equal(0, vm.SelectedFrameRateIndex);
+        Assert.Contains("Detected 25000 / 1000", vm.StatusText, StringComparison.Ordinal);
+        Assert.Contains("High", vm.StatusText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ManualFrameRateChoiceDoesNotEmitDetectedStatusText()
+    {
+        var info = Info(
+            "OGM",
+            "movie.txt",
+            new Chapter(1, TimeSpan.Zero, "A"),
+            new Chapter(2, TimeSpan.FromMilliseconds(40), "B"));
+        var load = new FakeLoadService(ImportResult("movie.txt", info));
+        var vm = CreateViewModel(load);
+
+        await vm.LoadCommand.ExecuteAsync("movie.txt");
+        vm.SetFrameOptions(frameRateIndex: 3, roundFrames: false);
+        await vm.RefreshCommand.ExecuteAsync();
+
+        Assert.Equal(3, vm.SelectedFrameRateIndex);
+        Assert.DoesNotContain("Detected", vm.StatusText, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -521,10 +622,25 @@ public sealed class MainWindowViewModelTests
         throw new DirectoryNotFoundException("Could not locate repository root from test output directory.");
     }
 
-    private sealed class FakeLoadService(ChapterImportResult result) : IChapterLoadService
+    private sealed class FakeLoadService : IChapterLoadService
     {
-        public ValueTask<ChapterImportResult> LoadAsync(string path, CancellationToken cancellationToken) =>
-            ValueTask.FromResult(result);
+        private readonly Queue<ChapterImportResult> results;
+
+        public FakeLoadService(params ChapterImportResult[] results)
+        {
+            this.results = new Queue<ChapterImportResult>(results);
+        }
+
+        public ValueTask<ChapterImportResult> LoadAsync(string path, CancellationToken cancellationToken)
+        {
+            if (results.Count == 0)
+            {
+                throw new InvalidOperationException("FakeLoadService has no more results queued.");
+            }
+
+            var result = results.Count == 1 ? results.Peek() : results.Dequeue();
+            return ValueTask.FromResult(result);
+        }
     }
 
     private sealed class FakeSaveService : IChapterSaveService

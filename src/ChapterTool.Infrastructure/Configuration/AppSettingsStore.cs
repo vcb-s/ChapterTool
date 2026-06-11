@@ -24,9 +24,16 @@ public sealed partial class AppSettingsStore : ISettingsStore<AppSettings>
         var currentPath = Path.Combine(settingsDirectory, CurrentFileName);
         if (File.Exists(currentPath))
         {
-            await using var stream = File.OpenRead(currentPath);
-            return await JsonSerializer.DeserializeAsync<AppSettings>(stream, JsonOptions, cancellationToken)
-                ?? new AppSettings();
+            try
+            {
+                await using var stream = File.OpenRead(currentPath);
+                return await JsonSerializer.DeserializeAsync<AppSettings>(stream, JsonOptions, cancellationToken)
+                    ?? new AppSettings();
+            }
+            catch (JsonException)
+            {
+                return new AppSettings();
+            }
         }
 
         foreach (var legacyDirectory in legacyDirectories)
@@ -51,8 +58,25 @@ public sealed partial class AppSettingsStore : ISettingsStore<AppSettings>
     {
         Directory.CreateDirectory(settingsDirectory);
         var currentPath = Path.Combine(settingsDirectory, CurrentFileName);
-        await using var stream = File.Create(currentPath);
-        await JsonSerializer.SerializeAsync(stream, settings, JsonOptions, cancellationToken);
+        var tempPath = currentPath + ".tmp";
+
+        try
+        {
+            await using (var stream = File.Create(tempPath))
+            {
+                await JsonSerializer.SerializeAsync(stream, settings, JsonOptions, cancellationToken);
+            }
+
+            File.Move(tempPath, currentPath, overwrite: true);
+        }
+        catch
+        {
+            if (File.Exists(tempPath))
+            {
+                File.Delete(tempPath);
+            }
+            throw;
+        }
     }
 
     private static async ValueTask<AppSettings?> TryLoadLegacyAsync(string path, CancellationToken cancellationToken)

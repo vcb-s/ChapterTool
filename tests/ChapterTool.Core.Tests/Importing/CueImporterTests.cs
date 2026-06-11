@@ -252,6 +252,36 @@ public sealed class CueImporterTests
         Assert.Contains("    INDEX 01 01:05:38", result.Content, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void WebVttExporterWritesHeaderAndCuesWithEndTimes()
+    {
+        var info = new ChapterInfo(
+            "WebVTT",
+            "video.mp4",
+            0,
+            "WebVTT",
+            0,
+            TimeSpan.FromMinutes(2),
+            [
+                new Chapter(1, TimeSpan.Zero, "Introduction"),
+                new Chapter(2, TimeSpan.FromSeconds(30), "Main Content"),
+                new Chapter(3, TimeSpan.FromSeconds(90), "Conclusion")
+            ]);
+        var exporter = new ChapterExportService(new ChapterTimeFormatter(), new ExpressionService());
+
+        var result = exporter.Export(info, new ChapterExportOptions(ChapterExportFormat.WebVtt));
+
+        Assert.True(result.Success);
+        Assert.Equal(".vtt", result.FileExtension);
+        Assert.StartsWith("WEBVTT", result.Content, StringComparison.Ordinal);
+        Assert.Contains("00:00:00.000 --> 00:00:30.000", result.Content, StringComparison.Ordinal);
+        Assert.Contains("Introduction", result.Content, StringComparison.Ordinal);
+        Assert.Contains("00:00:30.000 --> 00:01:30.000", result.Content, StringComparison.Ordinal);
+        Assert.Contains("Main Content", result.Content, StringComparison.Ordinal);
+        Assert.Contains("00:01:30.000 --> 00:02:00.000", result.Content, StringComparison.Ordinal);
+        Assert.Contains("Conclusion", result.Content, StringComparison.Ordinal);
+    }
+
     public static IEnumerable<object[]> EncodedCueSheets()
     {
         var text = MinimalCue();

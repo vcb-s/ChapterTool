@@ -10,6 +10,8 @@ public interface IFrameRateService
 
     FrameRateOption Detect(ChapterInfo info, decimal tolerance);
 
+    FrameRateDetectionResult DetectDetailed(ChapterInfo info, decimal tolerance);
+
     FrameInfoResult UpdateFrames(
         ChapterInfo info,
         FrameRateOption option,
