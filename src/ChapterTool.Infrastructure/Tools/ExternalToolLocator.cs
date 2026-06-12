@@ -6,10 +6,13 @@ namespace ChapterTool.Infrastructure.Tools;
 public sealed class ExternalToolLocator(
     ISettingsStore<AppSettings> settingsStore,
     IReadOnlyList<string>? searchDirectories = null,
-    IMkvToolNixInstallProbe? mkvToolNixInstallProbe = null)
+    IMkvToolNixInstallProbe? mkvToolNixInstallProbe = null,
+    IExternalToolDefaultCandidateProvider? defaultCandidateProvider = null)
     : IExternalToolLocator
 {
     private readonly IMkvToolNixInstallProbe mkvToolNixInstallProbe = mkvToolNixInstallProbe ?? MkvToolNixInstallProbe.CreateDefault();
+    private readonly IExternalToolDefaultCandidateProvider defaultCandidateProvider =
+        defaultCandidateProvider ?? ExternalToolDefaultCandidateProvider.Instance;
 
     public async ValueTask<ExternalToolLocation> LocateAsync(string toolId, CancellationToken cancellationToken)
     {
@@ -34,7 +37,7 @@ public sealed class ExternalToolLocator(
             }
         }
 
-        foreach (var candidate in ExternalToolPathResolver.DefaultCandidates(toolId, executableName))
+        foreach (var candidate in defaultCandidateProvider.FindCandidates(toolId, executableName))
         {
             cancellationToken.ThrowIfCancellationRequested();
             if (File.Exists(candidate))
