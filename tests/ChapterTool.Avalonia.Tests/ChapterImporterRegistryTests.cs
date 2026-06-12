@@ -36,7 +36,8 @@ public sealed class ChapterImporterRegistryTests
     }
 
     [Theory]
-    [InlineData("movie.txt", "OgmChapterImporter")]
+    [InlineData("movie.txt", "TextChapterImporter")]
+    [InlineData("markers.csv", "PremiereMarkerListImporter")]
     [InlineData("movie.xml", "XmlChapterImporter")]
     [InlineData("movie.mkv", "MatroskaChapterImporter")]
     [InlineData("movie.mp4", "MediaChapterImporter")]

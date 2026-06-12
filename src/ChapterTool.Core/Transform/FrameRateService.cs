@@ -106,10 +106,14 @@ public sealed class FrameRateService : IFrameRateService
             selectedOption = FrameRateOptions[1];
         }
 
+        var frameDisplays = info.Chapters
+            .Select(chapter => FormatFrames(chapter, selectedOption.Value, round, tolerance))
+            .ToArray();
         var chapters = info.Chapters
-            .Select(chapter => chapter with
+            .Select((chapter, index) => chapter with
             {
-                FramesInfo = FormatFrames(chapter, selectedOption.Value, round, tolerance)
+                FramesInfo = frameDisplays[index].Text,
+                FrameAccuracy = frameDisplays[index].Accuracy
             })
             .ToArray();
 
@@ -119,24 +123,26 @@ public sealed class FrameRateService : IFrameRateService
             Chapters = chapters
         };
 
-        return new FrameInfoResult(updatedInfo, chapters, selectedOption, selectedOption.Value);
+        return new FrameInfoResult(updatedInfo, chapters, selectedOption, selectedOption.Value, frameDisplays.Select(static display => display.Accuracy).ToArray());
     }
 
-    private static string FormatFrames(Chapter chapter, decimal framesPerSecond, bool round, decimal tolerance)
+    private static FrameDisplay FormatFrames(Chapter chapter, decimal framesPerSecond, bool round, decimal tolerance)
     {
         var frames = CalculateFrames(chapter, framesPerSecond);
         if (!round)
         {
-            return frames.ToString(CultureInfo.InvariantCulture);
+            return new FrameDisplay(frames.ToString(CultureInfo.InvariantCulture), FrameAccuracy.Neutral);
         }
 
         var rounded = ChapterRounding.RoundToInt64(frames);
-        var marker = Math.Abs(frames - rounded) < tolerance ? "K" : "*";
-        return $"{rounded.ToString(CultureInfo.InvariantCulture)} {marker}";
+        var accuracy = Math.Abs(frames - rounded) < tolerance ? FrameAccuracy.Accurate : FrameAccuracy.Inexact;
+        return new FrameDisplay(rounded.ToString(CultureInfo.InvariantCulture), accuracy);
     }
 
     private static decimal CalculateFrames(Chapter chapter, decimal framesPerSecond)
     {
         return (decimal)chapter.Time.TotalSeconds * framesPerSecond;
     }
+
+    private sealed record FrameDisplay(string Text, FrameAccuracy Accuracy);
 }

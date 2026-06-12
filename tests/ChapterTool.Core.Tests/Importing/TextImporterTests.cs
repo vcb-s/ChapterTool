@@ -91,6 +91,108 @@ public sealed class TextImporterTests
     }
 
     [Fact]
+    public void TextImporterFallsBackToOgmForNonPremiereTxt()
+    {
+        var importer = new TextChapterImporter(formatter);
+        var result = importer.ImportText(
+            """
+            CHAPTER01=00:00:00.000
+            CHAPTER01NAME=Intro
+            CHAPTER02=00:00:10.000
+            CHAPTER02NAME=Main
+            """);
+
+        Assert.True(result.Success, Diagnostics(result));
+        var info = result.Groups.Single().Options.Single().ChapterInfo;
+        Assert.Equal("OGM", info.SourceType);
+        Assert.Equal(["Intro", "Main"], info.Chapters.Select(static chapter => chapter.Name));
+    }
+
+    [Fact]
+    public void PremiereImporterReadsTabSeparatedMarkerListAndIgnoresNonChapterRows()
+    {
+        var importer = new PremiereMarkerListImporter(formatter);
+        const string content =
+            "Marker Name\tDescription\tIn\tOut\tDuration\tMarker Type\tComment\r\n" +
+            "Intro\t\t00:00:00.000\t00:00:10.000\t00:00:10.000\tChapter\tOpening\r\n" +
+            "Note\t\t00:00:05.000\t00:00:06.000\t00:00:01.000\tComment\tIgnore me\r\n" +
+            "Part A\t\t00:01:23.456\t00:01:30.000\t00:00:06.544\tChapter\t\r\n";
+
+        var result = importer.ImportText(content, "markers.txt");
+
+        Assert.True(result.Success, Diagnostics(result));
+        var info = result.Groups.Single().Options.Single().ChapterInfo;
+        Assert.Equal("Adobe Premiere Pro", info.SourceType);
+        Assert.Equal("markers.txt", info.SourceName);
+        Assert.Equal(2, info.Chapters.Count);
+        Assert.Equal("Intro", info.Chapters[0].Name);
+        Assert.Equal(TimeSpan.Zero, info.Chapters[0].Time);
+        Assert.Equal("Part A", info.Chapters[1].Name);
+        Assert.Equal(TimeSpan.FromMilliseconds(83456), info.Chapters[1].Time);
+    }
+
+    [Fact]
+    public void PremiereImporterUsesCommentAsFallbackNameForCsv()
+    {
+        var importer = new PremiereMarkerListImporter(formatter);
+        const string content =
+            "\"Marker Name\",\"In\",\"Marker Type\",\"Comment\"\r\n" +
+            "\"\",\"00:00:12.345\",\"Chapter\",\"Scene 02\"\r\n";
+
+        var result = importer.ImportText(content);
+
+        Assert.True(result.Success, Diagnostics(result));
+        var chapter = result.Groups.Single().Options.Single().ChapterInfo.Chapters.Single();
+        Assert.Equal("Scene 02", chapter.Name);
+        Assert.Equal(TimeSpan.FromMilliseconds(12345), chapter.Time);
+    }
+
+    [Fact]
+    public void PremiereImporterHandlesQuotedCommaAndFrameTime()
+    {
+        var importer = new PremiereMarkerListImporter(formatter);
+        const string content =
+            "\"Marker Name\",\"In\",\"Marker Type\"\r\n" +
+            "\"Act \"\"One, Start\"\"\",\"00:00:10:12\",\"Chapter\"\r\n";
+
+        var result = importer.ImportText(content);
+
+        Assert.True(result.Success, Diagnostics(result));
+        var chapter = result.Groups.Single().Options.Single().ChapterInfo.Chapters.Single();
+        Assert.Equal("Act \"One, Start\"", chapter.Name);
+        Assert.Equal(TimeSpan.FromSeconds(10) + TimeSpan.FromTicks((long)Math.Round(12 * TimeSpan.TicksPerSecond / 23.976M)), chapter.Time);
+    }
+
+    [Fact]
+    public void TextImporterDetectsPremiereTxtBeforeOgmFallback()
+    {
+        var importer = new TextChapterImporter(formatter);
+        const string content =
+            "Marker Name\tIn\tMarker Type\r\n" +
+            "Intro\t00:00:00.000\tChapter\r\n";
+
+        var result = importer.ImportText(content, "markers.txt");
+
+        Assert.True(result.Success, Diagnostics(result));
+        var info = result.Groups.Single().Options.Single().ChapterInfo;
+        Assert.Equal("Adobe Premiere Pro", info.SourceType);
+        Assert.Equal("Intro", info.Chapters.Single().Name);
+    }
+
+    [Theory]
+    [InlineData("Marker Name,Comment\r\nIntro,Missing time", "PremiereMarkerListInvalid")]
+    [InlineData("Marker Name,In,Marker Type\r\nNote,not-time,Chapter", "PremiereMarkerListInvalid")]
+    public void PremiereImporterFailsInvalidMarkerLists(string text, string code)
+    {
+        var importer = new PremiereMarkerListImporter(formatter);
+        var result = importer.ImportText(text);
+
+        Assert.False(result.Success);
+        Assert.Empty(result.Groups);
+        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == code);
+    }
+
+    [Fact]
     public void OgmImporterReturnsPartialAfterDanglingTime()
     {
         var importer = new OgmChapterImporter(formatter);

@@ -1,8 +1,5 @@
-# chapter-core-transform-export Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change rewrite-avalonia-dotnet10. Update Purpose after archive.
-## Requirements
 ### Requirement: UI-independent chapter core
 The system SHALL represent chapters, chapter sets, and source groups without depending on Avalonia, WinForms, or UI control state.
 
@@ -53,36 +50,6 @@ The system SHALL provide deterministic time parsing, formatting, frame-rate sele
 - **WHEN** `DetectDetailed` is called on a chapter set with zero non-separator chapters
 - **THEN** Core SHALL return the default `Fps23976` option with `FrameRateConfidence.Low` and an evaluated chapter count of zero
 
-### Requirement: Expression transforms
-The system SHALL transform chapter times through supported infix and postfix expressions using structured success or failure results.
-
-#### Scenario: Expression uses chapter time and fps
-- **WHEN** an expression references `t` or `fps`
-- **THEN** Core SHALL evaluate it using chapter time in seconds and the current frame rate
-
-#### Scenario: Invalid expression does not crash
-- **WHEN** expression parsing or evaluation fails
-- **THEN** Core SHALL return a failure diagnostic and preserve original chapter time behavior
-
-#### Scenario: Unsupported legacy operators are explicit
-- **WHEN** `and`, `or`, `xor`, or other incomplete legacy operators are encountered
-- **THEN** the behavior SHALL be either tested as supported or reported as unsupported; it SHALL NOT be silently documented as complete
-
-### Requirement: Chapter editing operations
-The system SHALL expose chapter editing as Core operations callable by ViewModels.
-
-#### Scenario: Edit chapter frame
-- **WHEN** a chapter frame cell is edited and the current frame rate is valid
-- **THEN** Core SHALL convert the frame value to time using `frame / fps` and refresh derived frame display
-
-#### Scenario: Delete first chapter
-- **WHEN** the first chapter is deleted and chapters remain
-- **THEN** Core SHALL shift remaining chapter times so the new first chapter starts at zero
-
-#### Scenario: Insert chapter
-- **WHEN** exactly one chapter is selected for insertion
-- **THEN** Core SHALL insert a chapter named `New Chapter` before it and renumber the chapter list
-
 ### Requirement: Export formats
 The system SHALL export TXT/OGM, Matroska XML, QPFile, TimeCodes, tsMuxeR meta, CUE, and JSON through UI-independent exporter contracts.
 
@@ -121,37 +88,3 @@ The system SHALL use documented legacy compatibility rounding policies for chapt
 #### Scenario: Exporters share timestamp rounding policy
 - **WHEN** TXT, XML, QPFile, TimeCodes, tsMuxeR meta, CUE, JSON, WebVTT, or celltimes output formats convert times to text or frames
 - **THEN** equivalent timestamp-text outputs SHALL use the same Core timestamp rounding policy and equivalent frame-number outputs SHALL use the documented Core frame rounding policy
-
-### Requirement: Legacy-compatible ChangeFps transform
-The system SHALL expose a ChangeFps transform that recalculates chapter times and durations by preserving frame positions from a source frame rate to a target frame rate.
-
-#### Scenario: ChangeFps preserves chapter frame numbers
-- **WHEN** a chapter at source FPS maps to frame `N`
-- **THEN** ChangeFps SHALL set the transformed chapter time to `N / targetFps`
-
-#### Scenario: ChangeFps preserves frame durations
-- **WHEN** a chapter has an end time or duration that maps to a source frame span
-- **THEN** ChangeFps SHALL preserve that frame span and recalculate the transformed end or duration at the target FPS
-
-#### Scenario: Invalid ChangeFps input fails structurally
-- **WHEN** source FPS or target FPS is invalid or zero
-- **THEN** ChangeFps SHALL return a structured failure diagnostic and SHALL NOT mutate the chapter set
-
-### Requirement: Legacy-compatible Matroska XML export
-The system SHALL export Matroska chapter XML in a legacy-compatible structured format for user-facing XML saves.
-
-#### Scenario: XML export includes document preamble
-- **WHEN** XML export runs
-- **THEN** output SHALL include an XML declaration and the documented legacy-compatible Matroska chapters comment or doctype guidance before the `Chapters` document body
-
-#### Scenario: XML export is formatted
-- **WHEN** XML export runs
-- **THEN** output SHALL be indented and line-broken consistently rather than emitted as a single-line document
-
-#### Scenario: XML export uses non-trivial UIDs
-- **WHEN** XML export creates `EditionUID` or `ChapterUID` values
-- **THEN** generated UID values SHALL be valid positive Matroska UID values and SHALL NOT default every edition to `1` or every chapter UID to only the chapter number unless an explicit compatibility option requests deterministic IDs
-
-#### Scenario: XML export preserves selected language
-- **WHEN** XML export runs with a selected ISO chapter language code
-- **THEN** each `ChapterLanguage` SHALL contain that code exactly when the code is valid

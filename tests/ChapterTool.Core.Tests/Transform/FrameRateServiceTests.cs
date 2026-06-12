@@ -181,27 +181,30 @@ public sealed class FrameRateServiceTests
 
         Assert.Equal("Fps25", actual.SelectedOption.Code);
         Assert.Equal(25m, actual.FramesPerSecond);
-        Assert.Equal(["0 K", "7 K"], actual.Chapters.Select(chapter => chapter.FramesInfo));
+        Assert.Equal(["0", "7"], actual.Chapters.Select(chapter => chapter.FramesInfo));
+        Assert.Equal([FrameAccuracy.Accurate, FrameAccuracy.Accurate], actual.Chapters.Select(chapter => chapter.FrameAccuracy));
     }
 
     [Fact]
-    public void UpdateFrames_marks_rounded_frames_with_k_when_difference_is_less_than_tolerance()
+    public void UpdateFrames_marks_rounded_frames_accurate_when_difference_is_less_than_tolerance()
     {
         var info = NewInfo(0m, [new Chapter(1, TimeSpan.FromSeconds(1.0004), "Chapter 1")]);
 
         var actual = _service.UpdateFrames(info, _service.Options[3], round: true, tolerance: 0.15m);
 
-        Assert.Equal("25 K", actual.Chapters.Single().FramesInfo);
+        Assert.Equal("25", actual.Chapters.Single().FramesInfo);
+        Assert.Equal(FrameAccuracy.Accurate, actual.Chapters.Single().FrameAccuracy);
     }
 
     [Fact]
-    public void UpdateFrames_marks_rounded_frames_with_star_when_difference_is_not_less_than_tolerance()
+    public void UpdateFrames_marks_rounded_frames_inexact_when_difference_is_not_less_than_tolerance()
     {
         var info = NewInfo(0m, [new Chapter(1, TimeSpan.FromSeconds(1.004), "Chapter 1")]);
 
         var actual = _service.UpdateFrames(info, _service.Options[3], round: true, tolerance: 0.01m);
 
-        Assert.Equal("25 *", actual.Chapters.Single().FramesInfo);
+        Assert.Equal("25", actual.Chapters.Single().FramesInfo);
+        Assert.Equal(FrameAccuracy.Inexact, actual.Chapters.Single().FrameAccuracy);
     }
 
     [Fact]
@@ -211,7 +214,8 @@ public sealed class FrameRateServiceTests
 
         var actual = _service.UpdateFrames(info, _service.Options[3], round: true, tolerance: 0.01m);
 
-        Assert.Equal("13 *", actual.Chapters.Single().FramesInfo);
+        Assert.Equal("13", actual.Chapters.Single().FramesInfo);
+        Assert.Equal(FrameAccuracy.Inexact, actual.Chapters.Single().FrameAccuracy);
     }
 
     [Fact]
@@ -222,6 +226,7 @@ public sealed class FrameRateServiceTests
         var actual = _service.UpdateFrames(info, _service.Options[2], round: false, tolerance: 0.15m);
 
         Assert.Equal("12.0", actual.Chapters.Single().FramesInfo);
+        Assert.Equal(FrameAccuracy.Neutral, actual.Chapters.Single().FrameAccuracy);
     }
 
     private static ChapterInfo NewInfo(decimal fps, IReadOnlyList<Chapter> chapters)

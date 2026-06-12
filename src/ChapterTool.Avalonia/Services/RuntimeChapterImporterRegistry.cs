@@ -26,7 +26,8 @@ public sealed class RuntimeChapterImporterRegistry(
 
         return Path.GetExtension(path).ToLowerInvariant() switch
         {
-            ".txt" => new OgmChapterImporter(formatter),
+            ".txt" => new TextChapterImporter(formatter),
+            ".csv" => new PremiereMarkerListImporter(formatter),
             ".xml" => new XmlChapterImporter(formatter),
             ".vtt" => new WebVttChapterImporter(),
             ".cue" => new CueChapterImporter(),

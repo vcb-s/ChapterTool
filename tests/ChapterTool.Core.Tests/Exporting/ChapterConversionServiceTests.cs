@@ -6,7 +6,7 @@ namespace ChapterTool.Core.Tests.Exporting;
 
 public sealed class ChapterConversionServiceTests
 {
-    private readonly ChapterConversionService service = new(new ChapterTimeFormatter());
+    private readonly ChapterConversionService service = new();
 
     [Fact]
     public void Celltimes_exports_non_separator_start_frames()
@@ -31,48 +31,6 @@ public sealed class ChapterConversionServiceTests
         Assert.Equal("2", result.Content);
         Assert.False(invalid.Success);
         Assert.Contains(invalid.Diagnostics, diagnostic => diagnostic.Code == "InvalidFrameRate");
-    }
-
-    [Fact]
-    public void ChapterTextToQpfile_converts_ogm_chapter_text()
-    {
-        const string text = """
-            CHAPTER01=00:00:00.000
-            CHAPTER01NAME=Intro
-            CHAPTER02=00:00:10.000
-            CHAPTER02NAME=Middle
-            """;
-
-        var result = service.ChapterTextToQpfile(text, 24m);
-
-        Assert.True(result.Success);
-        Assert.Equal($"0 I{Environment.NewLine}240 I", result.Content);
-    }
-
-    [Fact]
-    public void ChapterTextToQpfile_uses_timecode_mapping()
-    {
-        const string text = "CHAPTER01=00:00:00.050";
-        const string timecodes = """
-            # timecode format v2
-            0
-            41.708
-            83.417
-            """;
-
-        var result = service.ChapterTextToQpfile(text, 24m, timecodes);
-
-        Assert.True(result.Success);
-        Assert.Equal("2 I", result.Content);
-    }
-
-    [Fact]
-    public void ChapterTextToQpfile_invalid_input_returns_diagnostic()
-    {
-        var result = service.ChapterTextToQpfile("not chapters", 24m);
-
-        Assert.False(result.Success);
-        Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "InvalidChapterText");
     }
 
     private static ChapterInfo Sample() =>

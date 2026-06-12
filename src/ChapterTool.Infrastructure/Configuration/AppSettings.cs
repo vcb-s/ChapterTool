@@ -9,6 +9,7 @@ public sealed record AppSettings(
     string? FfprobePath = null,
     string? FfmpegPath = null,
     string DefaultSaveFormat = "Txt",
-    string DefaultXmlLanguage = "und");
+    string DefaultXmlLanguage = "und",
+    decimal FrameAccuracyTolerance = 0.15m);
 
 public sealed record WindowLocation(int X, int Y);

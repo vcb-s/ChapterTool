@@ -287,19 +287,18 @@ public sealed class TextToolFormatSelector(MainWindowViewModel owner)
     [
         ChapterExportFormat.Txt,
         ChapterExportFormat.Xml,
-        ChapterExportFormat.Qpf,
+        ChapterExportFormat.Qpfile,
         ChapterExportFormat.TimeCodes,
         ChapterExportFormat.TsMuxerMeta,
         ChapterExportFormat.Cue,
         ChapterExportFormat.Json,
         ChapterExportFormat.WebVtt,
-        ChapterExportFormat.Celltimes,
-        ChapterExportFormat.Chapter2Qpfile
+        ChapterExportFormat.Celltimes
     ];
 
     private MainWindowViewModel Owner { get; } = owner;
 
-    public IReadOnlyList<string> Labels { get; } = Formats.Select(static format => format.ToString()).ToArray();
+    public IReadOnlyList<string> Labels { get; } = Formats.Select(ChapterExportFormatDisplay.LabelFor).ToArray();
 
     public int SelectedIndex
     {
@@ -322,6 +321,12 @@ public sealed class TextToolFormatSelector(MainWindowViewModel owner)
             ChapterExportFormat.Json => TextToolKind.Json,
             _ => TextToolKind.Plain
         };
+}
+
+internal static class ChapterExportFormatDisplay
+{
+    public static string LabelFor(ChapterExportFormat format) =>
+        format == ChapterExportFormat.Qpfile ? "QPFile" : format.ToString();
 }
 
 public sealed class ColorSettingsViewModel : ObservableViewModel

@@ -34,10 +34,12 @@ public sealed class ChapterExpressionService(IExpressionService expressionServic
                 diagnostics.Add(diagnostic);
             }
 
+            var frameDisplay = FormatFrames(normalized, (decimal)info.FramesPerSecond);
             return chapter with
             {
                 Time = TimeSpan.FromSeconds((double)normalized),
-                FramesInfo = FormatFrames(normalized, (decimal)info.FramesPerSecond)
+                FramesInfo = frameDisplay.Text,
+                FrameAccuracy = frameDisplay.Accuracy
             };
         }).ToArray();
 
@@ -62,16 +64,18 @@ public sealed class ChapterExpressionService(IExpressionService expressionServic
         return seconds;
     }
 
-    private static string FormatFrames(decimal seconds, decimal framesPerSecond)
+    private static FrameDisplay FormatFrames(decimal seconds, decimal framesPerSecond)
     {
         var frames = seconds * framesPerSecond;
         var rounded = ChapterRounding.RoundToInt64(frames);
-        var marker = Math.Abs(frames - rounded) < 0.01m ? "K" : "*";
-        return $"{rounded.ToString(CultureInfo.InvariantCulture)} {marker}";
+        var accuracy = Math.Abs(frames - rounded) < 0.01m ? FrameAccuracy.Accurate : FrameAccuracy.Inexact;
+        return new FrameDisplay(rounded.ToString(CultureInfo.InvariantCulture), accuracy);
     }
 
     private static ChapterDiagnostic InvalidTime(string message) =>
         new(DiagnosticSeverity.Warning, "InvalidExpressionTime", message);
+
+    private sealed record FrameDisplay(string Text, FrameAccuracy Accuracy);
 }
 
 public sealed record ChapterExpressionResult(

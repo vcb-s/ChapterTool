@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using ChapterTool.Avalonia.Localization;
 using ChapterTool.Avalonia.Services;
 using ChapterTool.Core.Exporting;
@@ -14,14 +15,13 @@ public sealed class SettingsToolViewModel : ObservableViewModel
     [
         ChapterExportFormat.Txt,
         ChapterExportFormat.Xml,
-        ChapterExportFormat.Qpf,
+        ChapterExportFormat.Qpfile,
         ChapterExportFormat.TimeCodes,
         ChapterExportFormat.TsMuxerMeta,
         ChapterExportFormat.Cue,
         ChapterExportFormat.Json,
         ChapterExportFormat.WebVtt,
-        ChapterExportFormat.Celltimes,
-        ChapterExportFormat.Chapter2Qpfile
+        ChapterExportFormat.Celltimes
     ];
 
     private readonly MainWindowViewModel owner;
@@ -33,6 +33,7 @@ public sealed class SettingsToolViewModel : ObservableViewModel
     private string selectedLanguage;
     private int defaultSaveFormatIndex;
     private int defaultXmlLanguageIndex;
+    private decimal frameAccuracyTolerance;
 
     public SettingsToolViewModel(
         MainWindowViewModel owner,
@@ -51,6 +52,7 @@ public sealed class SettingsToolViewModel : ObservableViewModel
         selectedLanguage = AppLanguage.Normalize(owner.UiLanguage);
         defaultSaveFormatIndex = Math.Clamp(owner.SaveFormatIndex, 0, SaveFormats.Length - 1);
         defaultXmlLanguageIndex = XmlLanguageIndex(owner.XmlLanguage);
+        frameAccuracyTolerance = owner.FrameAccuracyTolerance;
         Languages = BuildLanguages();
         ColorSlots = new ObservableCollection<ColorSlotViewModel>(
             ThemeColorSettings.Default.OrderedSlots.Select(static slot => new ColorSlotViewModel(slot.Name, slot.Value)));
@@ -85,7 +87,7 @@ public sealed class SettingsToolViewModel : ObservableViewModel
 
     public IReadOnlyList<LanguageOptionViewModel> Languages { get; private set; }
 
-    public IReadOnlyList<string> SaveFormatOptions { get; } = SaveFormats.Select(static format => format.ToString()).ToArray();
+    public IReadOnlyList<string> SaveFormatOptions { get; } = SaveFormats.Select(ChapterExportFormatDisplay.LabelFor).ToArray();
 
     public IReadOnlyList<string> XmlLanguageOptions { get; } =
         XmlChapterLanguageCatalog.Languages.Select(static language => language.Code).ToArray();
@@ -186,6 +188,28 @@ public sealed class SettingsToolViewModel : ObservableViewModel
         set => SetProperty(ref defaultXmlLanguageIndex, Math.Clamp(value, 0, XmlLanguageOptions.Count - 1));
     }
 
+    public decimal FrameAccuracyTolerance
+    {
+        get => frameAccuracyTolerance;
+        set
+        {
+            if (SetProperty(ref frameAccuracyTolerance, MainWindowViewModel.NormalizeFrameAccuracyTolerance(value)))
+            {
+                OnPropertyChanged(nameof(FrameAccuracyToleranceSliderValue));
+                OnPropertyChanged(nameof(FrameAccuracyToleranceDisplayText));
+            }
+        }
+    }
+
+    public double FrameAccuracyToleranceSliderValue
+    {
+        get => (double)FrameAccuracyTolerance;
+        set => FrameAccuracyTolerance = (decimal)value;
+    }
+
+    public string FrameAccuracyToleranceDisplayText =>
+        FrameAccuracyTolerance.ToString("0.###", CultureInfo.InvariantCulture);
+
     public string StatusText
     {
         get;
@@ -255,6 +279,7 @@ public sealed class SettingsToolViewModel : ObservableViewModel
             FfmpegPath = settings.FfmpegPath;
             DefaultSaveFormatIndex = SaveFormatIndex(settings.DefaultSaveFormat);
             DefaultXmlLanguageIndex = XmlLanguageIndex(settings.DefaultXmlLanguage);
+            FrameAccuracyTolerance = settings.FrameAccuracyTolerance;
         }
 
         if (themeSettingsStore is not null)
@@ -281,7 +306,8 @@ public sealed class SettingsToolViewModel : ObservableViewModel
                 FfprobePath = FfprobePath,
                 FfmpegPath = FfmpegPath,
                 DefaultSaveFormat = SaveFormats[DefaultSaveFormatIndex].ToString(),
-                DefaultXmlLanguage = XmlLanguageOptions[DefaultXmlLanguageIndex]
+                DefaultXmlLanguage = XmlLanguageOptions[DefaultXmlLanguageIndex],
+                FrameAccuracyTolerance = FrameAccuracyTolerance
             };
             await appSettingsStore.SaveAsync(settings, cancellationToken);
             owner.ApplySettings(settings);
@@ -307,6 +333,7 @@ public sealed class SettingsToolViewModel : ObservableViewModel
         FfmpegPath = defaults.FfmpegPath;
         DefaultSaveFormatIndex = SaveFormatIndex(defaults.DefaultSaveFormat);
         DefaultXmlLanguageIndex = XmlLanguageIndex(defaults.DefaultXmlLanguage);
+        FrameAccuracyTolerance = defaults.FrameAccuracyTolerance;
         ApplyColors(ThemeColorSettings.Default);
         RefreshToolStatuses();
         StatusText = localizer.GetString("Settings.Status.Reset");

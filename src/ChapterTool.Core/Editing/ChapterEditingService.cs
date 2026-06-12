@@ -40,7 +40,12 @@ public sealed partial class ChapterEditingService(IChapterTimeFormatter timeForm
 
         var frame = decimal.Parse(match.Value, CultureInfo.InvariantCulture);
         var seconds = frame / framesPerSecond;
-        chapters[index] = chapter with { Time = TimeSpan.FromSeconds((double)seconds), FramesInfo = $"{frame:0} K" };
+        chapters[index] = chapter with
+        {
+            Time = TimeSpan.FromSeconds((double)seconds),
+            FramesInfo = frame.ToString("0", CultureInfo.InvariantCulture),
+            FrameAccuracy = FrameAccuracy.Accurate
+        };
         return new ChapterEditResult(info with { Chapters = Renumber(chapters) }, []);
     }
 
@@ -203,12 +208,6 @@ public sealed partial class ChapterEditingService(IChapterTimeFormatter timeForm
 
     private static long ChapterFrame(Chapter chapter, decimal framesPerSecond)
     {
-        var match = FirstIntegerRegex().Match(chapter.FramesInfo);
-        if (match.Success)
-        {
-            return long.Parse(match.Value, CultureInfo.InvariantCulture);
-        }
-
         return ChapterRounding.RoundToInt64((decimal)chapter.Time.TotalSeconds * framesPerSecond);
     }
 }

@@ -329,7 +329,7 @@ public sealed partial class MainWindow : Window
 
         if (gesture.StartsWith("Alt+", StringComparison.Ordinal) && int.TryParse(gesture["Alt+".Length..], out var saveIndex))
         {
-            var mapped = saveIndex == 0 ? 9 : saveIndex - 1;
+            var mapped = saveIndex == 0 ? FormatBox.ItemCount - 1 : saveIndex - 1;
             if (mapped >= 0 && mapped < FormatBox.ItemCount)
             {
                 FormatBox.SelectedIndex = mapped;

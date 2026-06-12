@@ -24,16 +24,15 @@ public sealed class ChapterExportService(
         {
             ChapterExportFormat.Txt => Text(outputInfo, options),
             ChapterExportFormat.Xml => Xml(outputInfo, options),
-            ChapterExportFormat.Qpf => Lines(".qpf", outputInfo.Chapters.Select(static c => c.FramesInfo.TrimEnd('K', '*') + "I")),
+            ChapterExportFormat.Qpfile => Qpfile(outputInfo),
             ChapterExportFormat.TimeCodes => Lines(".TimeCodes.txt", outputInfo.Chapters.Select(FormatTime)),
             ChapterExportFormat.TsMuxerMeta => TsMuxer(outputInfo, options),
             ChapterExportFormat.Cue => Cue(outputInfo, options),
             ChapterExportFormat.Json => Json(info, options),
             ChapterExportFormat.WebVtt => WebVtt(outputInfo, options),
-            ChapterExportFormat.Celltimes => new ChapterConversionService(timeFormatter).ToCelltimes(outputInfo, (decimal)outputInfo.FramesPerSecond) is { } conversion
+            ChapterExportFormat.Celltimes => new ChapterConversionService().ToCelltimes(outputInfo, (decimal)outputInfo.FramesPerSecond) is { } conversion
                 ? new ChapterExportResult(conversion.Success, conversion.Content, conversion.Extension, conversion.Diagnostics)
                 : Failure("CelltimesExportFailed", "Celltimes export failed."),
-            ChapterExportFormat.Chapter2Qpfile => Chapter2Qpfile(outputInfo, options),
             _ => Failure("UnsupportedExportFormat", "Unsupported export format.")
         };
 
@@ -93,12 +92,21 @@ public sealed class ChapterExportService(
         return Success($"--custom-{Environment.NewLine}chapters={string.Join(';', chapters)}", ".TsMuxeR_Meta.txt");
     }
 
-    private ChapterExportResult Chapter2Qpfile(ChapterInfo info, ChapterExportOptions options)
+    private static ChapterExportResult Qpfile(ChapterInfo info)
     {
-        var text = Text(info, options);
-        var conversion = new ChapterConversionService(timeFormatter)
-            .ChapterTextToQpfile(text.Content, (decimal)info.FramesPerSecond);
-        return new ChapterExportResult(conversion.Success, conversion.Content, conversion.Extension, conversion.Diagnostics);
+        var framesPerSecond = (decimal)info.FramesPerSecond;
+        if (framesPerSecond <= 0)
+        {
+            return Failure("InvalidFrameRate", "Frame rate must be greater than zero for QPFile export.");
+        }
+
+        return Lines(
+            ".qpf",
+            info.Chapters
+                .Where(NotSeparator)
+                .Select(chapter => ChapterRounding
+                    .RoundToInt64((decimal)chapter.Time.TotalSeconds * framesPerSecond)
+                    .ToString(CultureInfo.InvariantCulture) + " I"));
     }
 
     private ChapterExportResult Cue(ChapterInfo info, ChapterExportOptions options)

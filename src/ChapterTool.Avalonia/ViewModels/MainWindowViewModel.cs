@@ -40,6 +40,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
     private string chapterNameTemplateStatus;
     private string statusText;
     private LocalizedMessage? currentStatusMessage;
+    private decimal frameAccuracyTolerance = 0.15m;
 
     public MainWindowViewModel(
         IChapterLoadService loadService,
@@ -189,6 +190,19 @@ public sealed class MainWindowViewModel : ObservableViewModel
         get;
         set => SetProperty(ref field, value);
     } = true;
+
+    public decimal FrameAccuracyTolerance
+    {
+        get => frameAccuracyTolerance;
+        set
+        {
+            var normalized = NormalizeFrameAccuracyTolerance(value);
+            if (SetProperty(ref frameAccuracyTolerance, normalized))
+            {
+                RefreshRows();
+            }
+        }
+    }
 
     public int SelectedFrameRateIndex
     {
@@ -495,6 +509,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
             SaveFormat = format;
         }
 
+        FrameAccuracyTolerance = settings.FrameAccuracyTolerance;
         XmlLanguage = string.IsNullOrWhiteSpace(settings.DefaultXmlLanguage)
             ? "und"
             : settings.DefaultXmlLanguage;
@@ -787,7 +802,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
 
         if (selectedFrameRateOption.LegacyMplsCode == 0)
         {
-            detection = frameRateService.DetectDetailed(currentInfo, tolerance: 0.01m);
+            detection = frameRateService.DetectDetailed(currentInfo, FrameAccuracyTolerance);
             appliedOption = detection.Option;
         }
         else
@@ -795,7 +810,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
             appliedOption = selectedFrameRateOption;
         }
 
-        var result = frameRateService.UpdateFrames(currentInfo, appliedOption, RoundFrames, tolerance: 0.01m);
+        var result = frameRateService.UpdateFrames(currentInfo, appliedOption, RoundFrames, FrameAccuracyTolerance);
         currentInfo = result.Info;
 
         if (detection is not null)
@@ -1201,6 +1216,35 @@ public sealed class MainWindowViewModel : ObservableViewModel
             DiagnosticSeverity.Warning => LogLevel.Warning,
             _ => LogLevel.Information
         };
+
+    public static decimal NormalizeFrameAccuracyTolerance(decimal value)
+    {
+        if (value <= 0m)
+        {
+            return 0.15m;
+        }
+
+        var bounded = Math.Clamp(value, 0.01m, 0.30m);
+        foreach (var recommended in FrameAccuracyToleranceRecommendedValues)
+        {
+            if (Math.Abs(bounded - recommended) <= 0.01m)
+            {
+                return recommended;
+            }
+        }
+
+        return bounded;
+    }
+
+    private static readonly decimal[] FrameAccuracyToleranceRecommendedValues =
+    [
+        0.05m,
+        0.10m,
+        0.15m,
+        0.20m,
+        0.25m,
+        0.30m
+    ];
 
     private enum EditKind
     {

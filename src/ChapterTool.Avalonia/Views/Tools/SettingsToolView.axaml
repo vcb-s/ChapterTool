@@ -23,6 +23,16 @@
     <Style Selector="TextBox, ComboBox">
       <Setter Property="MinHeight" Value="32" />
     </Style>
+    <Style Selector="Slider.toleranceSlider">
+      <Setter Property="MinHeight" Value="36" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.valueBadge">
+      <Setter Property="MinWidth" Value="46" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="TextAlignment" Value="Right" />
+    </Style>
     <Style Selector="Button.compact">
       <Setter Property="MinWidth" Value="42" />
       <Setter Property="MinHeight" Value="30" />
@@ -138,11 +148,25 @@
       <TabItem Header="{DynamicResource Settings.OutputDefaults}">
         <StackPanel Spacing="12" Margin="4,12,12,4">
           <TextBlock Classes="sectionTitle" Text="{DynamicResource Settings.OutputDefaults}" />
-          <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto" RowSpacing="10" ColumnSpacing="12">
+          <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto" RowSpacing="10" ColumnSpacing="12">
             <TextBlock Grid.Row="0" Grid.Column="0" Classes="label" Text="{DynamicResource Settings.DefaultSaveFormat}" />
             <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding SaveFormatOptions}" SelectedIndex="{Binding DefaultSaveFormatIndex}" />
             <TextBlock Grid.Row="1" Grid.Column="0" Classes="label" Text="{DynamicResource Settings.DefaultXmlLanguage}" />
             <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding XmlLanguageOptions}" SelectedIndex="{Binding DefaultXmlLanguageIndex}" />
+            <TextBlock Grid.Row="2" Grid.Column="0" Classes="label" Text="{DynamicResource Settings.FrameAccuracyTolerance}" />
+            <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+              <Slider Grid.Column="0"
+                      Classes="toleranceSlider"
+                      Minimum="0.01"
+                      Maximum="0.30"
+                      Ticks="0.05,0.10,0.15,0.20,0.25,0.30"
+                      TickPlacement="BottomRight"
+                      IsSnapToTickEnabled="False"
+                      Value="{Binding FrameAccuracyToleranceSliderValue}" />
+              <TextBlock Grid.Column="1"
+                         Classes="valueBadge"
+                         Text="{Binding FrameAccuracyToleranceDisplayText}" />
+            </Grid>
           </Grid>
         </StackPanel>
       </TabItem>

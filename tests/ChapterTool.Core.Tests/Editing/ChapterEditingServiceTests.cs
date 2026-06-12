@@ -22,7 +22,8 @@ public sealed class ChapterEditingServiceTests
         var result = service.EditFrame(Sample(), 1, "240 frames", 24);
 
         Assert.Equal(TimeSpan.FromSeconds(10), result.ChapterInfo.Chapters[1].Time);
-        Assert.Equal("240 K", result.ChapterInfo.Chapters[1].FramesInfo);
+        Assert.Equal("240", result.ChapterInfo.Chapters[1].FramesInfo);
+        Assert.Equal(FrameAccuracy.Accurate, result.ChapterInfo.Chapters[1].FrameAccuracy);
     }
 
     [Fact]
@@ -98,9 +99,9 @@ public sealed class ChapterEditingServiceTests
         {
             Chapters =
             [
-                new Chapter(1, TimeSpan.Zero, "Intro", "0 K"),
-                new Chapter(2, TimeSpan.FromSeconds(10), "Middle", "240 K"),
-                new Chapter(3, TimeSpan.FromSeconds(20), "End", "480 K")
+                new Chapter(1, TimeSpan.Zero, "Intro", "0"),
+                new Chapter(2, TimeSpan.FromSeconds(10), "Middle", "240"),
+                new Chapter(3, TimeSpan.FromSeconds(20), "End", "480")
             ]
         };
 

@@ -5,9 +5,17 @@ public sealed record Chapter(
     TimeSpan Time,
     string Name,
     string FramesInfo = "",
-    TimeSpan? End = null)
+    TimeSpan? End = null,
+    FrameAccuracy FrameAccuracy = FrameAccuracy.Neutral)
 {
     public static readonly TimeSpan SeparatorTime = TimeSpan.MinValue;
 
     public bool IsSeparator => Time == SeparatorTime;
+}
+
+public enum FrameAccuracy
+{
+    Neutral,
+    Accurate,
+    Inexact
 }

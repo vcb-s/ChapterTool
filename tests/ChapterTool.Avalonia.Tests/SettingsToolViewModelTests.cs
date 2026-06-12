@@ -25,7 +25,8 @@ public sealed class SettingsToolViewModelTests
             FfprobePath: "ffprobe",
             FfmpegPath: "ffmpeg",
             DefaultSaveFormat: "Xml",
-            DefaultXmlLanguage: "ja"));
+            DefaultXmlLanguage: "ja",
+            FrameAccuracyTolerance: 0.02m));
         var themeStore = new FakeThemeSettingsStore(ThemeColorSettings.Default);
         var owner = CreateOwner(appStore);
         var viewModel = new SettingsToolViewModel(owner, appStore, themeStore, new AppLocalizationManager("en-US"));
@@ -39,6 +40,7 @@ public sealed class SettingsToolViewModelTests
         viewModel.FfmpegPath = "new-ffmpeg";
         viewModel.DefaultSaveFormatIndex = viewModel.SaveFormatOptions.ToList().IndexOf("Json");
         viewModel.DefaultXmlLanguageIndex = viewModel.XmlLanguageOptions.ToList().IndexOf("jpn");
+        viewModel.FrameAccuracyTolerance = 0.2m;
         viewModel.ColorSlots[0].Value = "#010203";
 
         await viewModel.SaveCommand.ExecuteAsync();
@@ -51,11 +53,82 @@ public sealed class SettingsToolViewModelTests
         Assert.Equal("new-ffmpeg", appStore.Current.FfmpegPath);
         Assert.Equal("Json", appStore.Current.DefaultSaveFormat);
         Assert.Equal("jpn", appStore.Current.DefaultXmlLanguage);
+        Assert.Equal(0.2m, appStore.Current.FrameAccuracyTolerance);
         Assert.Equal(ChapterExportFormat.Json, owner.SaveFormat);
         Assert.Equal("jpn", owner.XmlLanguage);
+        Assert.Equal(0.2m, owner.FrameAccuracyTolerance);
         Assert.Equal("new-out", owner.SaveDirectory);
         Assert.Equal("ja-JP", owner.UiLanguage);
         Assert.Equal("#010203", themeStore.Current.BackChange);
+    }
+
+    [Fact]
+    public async Task FrameAccuracyToleranceIsNormalizedBeforeSave()
+    {
+        var appStore = new FakeAppSettingsStore(new AppSettings(FrameAccuracyTolerance: -1m));
+        var owner = CreateOwner(appStore);
+        var viewModel = new SettingsToolViewModel(owner, appStore, new FakeThemeSettingsStore(ThemeColorSettings.Default), new AppLocalizationManager("en-US"));
+        await viewModel.LoadAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(0.15m, viewModel.FrameAccuracyTolerance);
+
+        viewModel.FrameAccuracyTolerance = 2m;
+        await viewModel.SaveCommand.ExecuteAsync();
+
+        Assert.Equal(0.30m, appStore.Current.FrameAccuracyTolerance);
+        Assert.Equal(0.30m, owner.FrameAccuracyTolerance);
+    }
+
+    [Fact]
+    public async Task FrameAccuracyToleranceSliderUsesContinuousBoundedValueAndDisplayText()
+    {
+        var appStore = new FakeAppSettingsStore(new AppSettings(FrameAccuracyTolerance: 0.10m));
+        var owner = CreateOwner(appStore);
+        var viewModel = new SettingsToolViewModel(owner, appStore, new FakeThemeSettingsStore(ThemeColorSettings.Default), new AppLocalizationManager("en-US"));
+        await viewModel.LoadAsync(TestContext.Current.CancellationToken);
+
+        viewModel.FrameAccuracyToleranceSliderValue = 0.173;
+
+        Assert.Equal(0.173m, viewModel.FrameAccuracyTolerance);
+        Assert.Equal("0.173", viewModel.FrameAccuracyToleranceDisplayText);
+
+        viewModel.FrameAccuracyToleranceSliderValue = 0.001;
+
+        Assert.Equal(0.01m, viewModel.FrameAccuracyTolerance);
+        Assert.Equal("0.01", viewModel.FrameAccuracyToleranceDisplayText);
+    }
+
+    [Fact]
+    public async Task FrameAccuracyToleranceSliderSnapsNearRecommendedValues()
+    {
+        var appStore = new FakeAppSettingsStore(new AppSettings(FrameAccuracyTolerance: 0.15m));
+        var owner = CreateOwner(appStore);
+        var viewModel = new SettingsToolViewModel(owner, appStore, new FakeThemeSettingsStore(ThemeColorSettings.Default), new AppLocalizationManager("en-US"));
+        await viewModel.LoadAsync(TestContext.Current.CancellationToken);
+
+        viewModel.FrameAccuracyToleranceSliderValue = 0.141;
+
+        Assert.Equal(0.15m, viewModel.FrameAccuracyTolerance);
+        Assert.Equal("0.15", viewModel.FrameAccuracyToleranceDisplayText);
+
+        viewModel.FrameAccuracyToleranceSliderValue = 0.173;
+
+        Assert.Equal(0.173m, viewModel.FrameAccuracyTolerance);
+        Assert.Equal("0.173", viewModel.FrameAccuracyToleranceDisplayText);
+    }
+
+    [Fact]
+    public void SaveFormatOptionsExposeSingleQpfileEntry()
+    {
+        var viewModel = new SettingsToolViewModel(
+            CreateOwner(),
+            null,
+            null,
+            new AppLocalizationManager("en-US"));
+
+        Assert.Contains("QPFile", viewModel.SaveFormatOptions);
+        Assert.DoesNotContain("Qpf", viewModel.SaveFormatOptions);
+        Assert.Equal(9, viewModel.SaveFormatOptions.Count);
     }
 
     [Fact]

@@ -64,7 +64,8 @@ public sealed class ToolWindowViewModelTests
         Assert.Equal(TextToolKind.Json, vm.Kind);
         Assert.True(vm.CanSelectFormat);
         Assert.False(vm.CanClear);
-        Assert.Contains(nameof(ChapterExportFormat.Chapter2Qpfile), vm.FormatOptions);
+        Assert.Contains("QPFile", vm.FormatOptions);
+        Assert.Equal(9, vm.FormatOptions.Count);
     }
 
     [Fact]

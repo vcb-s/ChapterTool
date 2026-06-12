@@ -6,4 +6,5 @@ public sealed record FrameInfoResult(
     ChapterInfo Info,
     IReadOnlyList<Chapter> Chapters,
     FrameRateOption SelectedOption,
-    decimal FramesPerSecond);
+    decimal FramesPerSecond,
+    IReadOnlyList<FrameAccuracy> Accuracy);

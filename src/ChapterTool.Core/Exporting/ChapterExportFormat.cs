@@ -4,12 +4,11 @@ public enum ChapterExportFormat
 {
     Txt,
     Xml,
-    Qpf,
+    Qpfile,
     TimeCodes,
     TsMuxerMeta,
     Cue,
     Json,
     WebVtt,
-    Celltimes,
-    Chapter2Qpfile
+    Celltimes
 }

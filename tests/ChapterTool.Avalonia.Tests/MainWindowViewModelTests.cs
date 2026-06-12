@@ -75,7 +75,8 @@ public sealed class MainWindowViewModelTests
         Assert.Equal("movie.mpls", vm.DisplayPath);
         Assert.True(vm.IsClipSelectionVisible);
         Assert.Single(vm.Rows);
-        Assert.Equal("0 K", vm.Rows[0].FramesInfo);
+        Assert.Equal("0", vm.Rows[0].FramesInfo);
+        Assert.True(vm.Rows[0].IsFrameAccurate);
         Assert.Equal(2, vm.SelectedFrameRateIndex);
         Assert.Equal("Loaded 1 chapters", vm.StatusText);
         Assert.Equal(1, vm.Progress);
@@ -196,17 +197,6 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task Chapter2QpfileIsAvailableAsPreviewOutputType()
-    {
-        var vm = CreateViewModel();
-        await vm.LoadCommand.ExecuteAsync("movie.txt");
-
-        vm.SaveFormat = ChapterExportFormat.Chapter2Qpfile;
-
-        Assert.Equal("0 I", vm.BuildPreview());
-    }
-
-    [Fact]
     public void XmlLanguageIndexUpdatesSelectedLanguage()
     {
         var vm = CreateViewModel();
@@ -269,9 +259,33 @@ public sealed class MainWindowViewModelTests
         await vm.SaveDirectoryCommand.ExecuteAsync("out");
 
         Assert.Equal("12.5", vm.Rows[0].FramesInfo);
+        Assert.True(vm.Rows[0].IsFrameNeutral);
         Assert.Equal(3, vm.SelectedFrameRateIndex);
         Assert.NotNull(save.LastInfo);
         Assert.Equal("12.5", save.LastInfo.Chapters[0].FramesInfo);
+        Assert.Equal(FrameAccuracy.Neutral, save.LastInfo.Chapters[0].FrameAccuracy);
+    }
+
+    [Fact]
+    public async Task ConfiguredFrameAccuracyToleranceControlsFrameStylingState()
+    {
+        var store = new FakeSettingsStore(new AppSettings(FrameAccuracyTolerance: 0.001m));
+        var load = new FakeLoadService(ImportResult("movie.txt", Info("OGM", "movie.txt", new Chapter(1, TimeSpan.FromSeconds(1.004), "Intro"))));
+        var vm = CreateViewModel(load, appSettingsStore: store);
+
+        await vm.LoadSettingsAsync(TestContext.Current.CancellationToken);
+        await vm.LoadCommand.ExecuteAsync("movie.txt");
+        vm.SetFrameOptions(frameRateIndex: 3, roundFrames: true);
+        await vm.RefreshCommand.ExecuteAsync();
+
+        Assert.Equal("25", vm.Rows[0].FramesInfo);
+        Assert.True(vm.Rows[0].IsFrameInexact);
+
+        store.Current = store.Current with { FrameAccuracyTolerance = 0.2m };
+        await vm.LoadSettingsAsync(TestContext.Current.CancellationToken);
+        await vm.RefreshCommand.ExecuteAsync();
+
+        Assert.True(vm.Rows[0].IsFrameAccurate);
     }
 
     [Fact]
@@ -325,7 +339,8 @@ public sealed class MainWindowViewModelTests
         await vm.ChangeFpsCommand.ExecuteAsync();
 
         Assert.Equal("00:00:04.004", vm.Rows[0].TimeText);
-        Assert.Equal("240 K", vm.Rows[0].FramesInfo);
+        Assert.Equal("240", vm.Rows[0].FramesInfo);
+        Assert.True(vm.Rows[0].IsFrameAccurate);
     }
 
     [Fact]
@@ -370,14 +385,16 @@ public sealed class MainWindowViewModelTests
         vm.Expression = "t + 1";
 
         Assert.Equal("00:00:01.000", vm.Rows[0].TimeText);
-        Assert.Equal("24 K", vm.Rows[0].FramesInfo);
+        Assert.Equal("24", vm.Rows[0].FramesInfo);
+        Assert.True(vm.Rows[0].IsFrameAccurate);
         Assert.Contains("CHAPTER01=00:00:01.000", vm.BuildPreview(), StringComparison.Ordinal);
 
         await vm.SaveDirectoryCommand.ExecuteAsync("out");
 
         Assert.NotNull(save.LastInfo);
         Assert.Equal(TimeSpan.FromSeconds(1), save.LastInfo.Chapters[0].Time);
-        Assert.Equal("24 K", save.LastInfo.Chapters[0].FramesInfo);
+        Assert.Equal("24", save.LastInfo.Chapters[0].FramesInfo);
+        Assert.Equal(FrameAccuracy.Accurate, save.LastInfo.Chapters[0].FrameAccuracy);
         Assert.NotNull(save.LastOptions);
         Assert.False(save.LastOptions.ApplyExpression);
     }
@@ -440,9 +457,9 @@ public sealed class MainWindowViewModelTests
             Info(
                 "CUE",
                 "album.cue",
-                new Chapter(1, TimeSpan.Zero, "A", "0 K"),
+                new Chapter(1, TimeSpan.Zero, "A", "0"),
                 new Chapter(-1, Chapter.SeparatorTime, ""),
-                new Chapter(2, TimeSpan.FromSeconds(7), "B", "168 K"))));
+                new Chapter(2, TimeSpan.FromSeconds(7), "B", "168"))));
         var vm = CreateViewModel(load);
         await vm.LoadCommand.ExecuteAsync("album.cue");
         vm.SaveFormat = ChapterExportFormat.Txt;
@@ -474,7 +491,7 @@ public sealed class MainWindowViewModelTests
     public async Task NegativeExpressionResultNormalizesRowsAndSavedInfoToZero()
     {
         var save = new FakeSaveService();
-        var load = new FakeLoadService(ImportResult("movie.txt", Info("OGM", "movie.txt", new Chapter(1, TimeSpan.FromSeconds(10), "Intro", "240 K"))));
+        var load = new FakeLoadService(ImportResult("movie.txt", Info("OGM", "movie.txt", new Chapter(1, TimeSpan.FromSeconds(10), "Intro", "240"))));
         var vm = CreateViewModel(load, save);
         await vm.LoadCommand.ExecuteAsync("movie.txt");
 
@@ -482,13 +499,15 @@ public sealed class MainWindowViewModelTests
         vm.Expression = "t - 10000";
 
         Assert.Equal("00:00:00.000", vm.Rows[0].TimeText);
-        Assert.Equal("0 K", vm.Rows[0].FramesInfo);
+        Assert.Equal("0", vm.Rows[0].FramesInfo);
+        Assert.True(vm.Rows[0].IsFrameAccurate);
 
         await vm.SaveDirectoryCommand.ExecuteAsync("out");
 
         Assert.NotNull(save.LastInfo);
         Assert.Equal(TimeSpan.Zero, save.LastInfo.Chapters[0].Time);
-        Assert.Equal("0 K", save.LastInfo.Chapters[0].FramesInfo);
+        Assert.Equal("0", save.LastInfo.Chapters[0].FramesInfo);
+        Assert.Equal(FrameAccuracy.Accurate, save.LastInfo.Chapters[0].FrameAccuracy);
     }
 
     [Fact]
@@ -780,7 +799,7 @@ public sealed class MainWindowViewModelTests
 
     private sealed class FakeSettingsStore(AppSettings initial) : ISettingsStore<AppSettings>
     {
-        public AppSettings Current { get; private set; } = initial;
+        public AppSettings Current { get; set; } = initial;
 
         public ValueTask<AppSettings> LoadAsync(CancellationToken cancellationToken) => ValueTask.FromResult(Current);
 

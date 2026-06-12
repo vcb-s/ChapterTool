@@ -32,9 +32,19 @@ public sealed class ChapterExportServiceTests
     }
 
     [Fact]
-    public void Qpf_export_trims_markers_and_appends_I()
+    public void Qpfile_export_calculates_frames_without_display_markers()
     {
-        var result = service.Export(Sample(), new ChapterExportOptions(ChapterExportFormat.Qpf));
+        var info = Sample() with
+        {
+            Chapters =
+            [
+                new Chapter(1, TimeSpan.Zero, "Intro", "0", FrameAccuracy: FrameAccuracy.Accurate),
+                new Chapter(2, TimeSpan.FromSeconds(10), "Middle", "240", FrameAccuracy: FrameAccuracy.Inexact),
+                new Chapter(3, TimeSpan.FromSeconds(20), "End", "stale")
+            ]
+        };
+
+        var result = service.Export(info, new ChapterExportOptions(ChapterExportFormat.Qpfile));
 
         Assert.Equal($"0 I{Environment.NewLine}240 I{Environment.NewLine}480 I", result.Content);
     }
@@ -46,24 +56,6 @@ public sealed class ChapterExportServiceTests
 
         Assert.True(result.Success);
         Assert.Equal($"0{Environment.NewLine}240{Environment.NewLine}480", result.Content);
-    }
-
-    [Fact]
-    public void Chapter2Qpfile_export_converts_chapter_times_to_qpf()
-    {
-        var info = Sample() with
-        {
-            Chapters =
-            [
-                new Chapter(1, TimeSpan.Zero, "Intro", "stale"),
-                new Chapter(2, TimeSpan.FromSeconds(10), "Middle", "stale")
-            ]
-        };
-
-        var result = service.Export(info, new ChapterExportOptions(ChapterExportFormat.Chapter2Qpfile));
-
-        Assert.True(result.Success);
-        Assert.Equal($"0 I{Environment.NewLine}240 I", result.Content);
     }
 
     [Fact]
@@ -154,9 +146,9 @@ public sealed class ChapterExportServiceTests
         {
             Chapters =
             [
-                new Chapter(1, TimeSpan.Zero, "A", "0 K"),
+                new Chapter(1, TimeSpan.Zero, "A", "0"),
                 new Chapter(-1, Chapter.SeparatorTime, ""),
-                new Chapter(2, TimeSpan.FromSeconds(7), "B", "168 K")
+                new Chapter(2, TimeSpan.FromSeconds(7), "B", "168")
             ]
         };
 
@@ -217,7 +209,7 @@ public sealed class ChapterExportServiceTests
     {
         var info = Sample() with
         {
-            Chapters = [new Chapter(1, TimeSpan.FromSeconds(10), "Middle", "240 K")]
+            Chapters = [new Chapter(1, TimeSpan.FromSeconds(10), "Middle", "240")]
         };
         var result = service.Export(
             info,
@@ -239,11 +231,11 @@ public sealed class ChapterExportServiceTests
     }
 
     [Fact]
-    public void Qpf_export_uses_expression_adjusted_frames_when_enabled()
+    public void Qpfile_export_uses_expression_adjusted_frames_when_enabled()
     {
         var result = service.Export(
             Sample(),
-            new ChapterExportOptions(ChapterExportFormat.Qpf, ApplyExpression: true, Expression: "t + 1"));
+            new ChapterExportOptions(ChapterExportFormat.Qpfile, ApplyExpression: true, Expression: "t + 1"));
 
         Assert.StartsWith("24 I", result.Content, StringComparison.Ordinal);
     }
@@ -257,8 +249,8 @@ public sealed class ChapterExportServiceTests
             24,
             TimeSpan.FromSeconds(30),
             [
-                new Chapter(1, TimeSpan.Zero, "Intro", "0 K"),
-                new Chapter(2, TimeSpan.FromSeconds(10), "Middle", "240 *"),
-                new Chapter(3, TimeSpan.FromSeconds(20), "End", "480 K")
+                new Chapter(1, TimeSpan.Zero, "Intro", "0"),
+                new Chapter(2, TimeSpan.FromSeconds(10), "Middle", "240", FrameAccuracy: FrameAccuracy.Inexact),
+                new Chapter(3, TimeSpan.FromSeconds(20), "End", "480")
             ]);
 }
