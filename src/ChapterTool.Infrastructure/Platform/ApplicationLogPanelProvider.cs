@@ -3,19 +3,16 @@ using Microsoft.Extensions.Logging;
 
 namespace ChapterTool.Infrastructure.Platform;
 
-public sealed class ApplicationLogPanelProvider : IApplicationLogService, ILoggerProvider
+public sealed class ApplicationLogPanelProvider(
+    int capacity = ApplicationLogPanelProvider.DefaultCapacity,
+    LogLevel minimumLevel = LogLevel.Information)
+    : IApplicationLogService, ILoggerProvider
 {
     private const int DefaultCapacity = 500;
-    private readonly object gate = new();
-    private readonly int capacity;
-    private readonly LogLevel minimumLevel;
+    private readonly Lock gate = new();
+    private readonly int capacity = Math.Max(1, capacity);
+    private readonly LogLevel minimumLevel = minimumLevel;
     private readonly List<ApplicationLogEntry> entries = [];
-
-    public ApplicationLogPanelProvider(int capacity = DefaultCapacity, LogLevel minimumLevel = LogLevel.Information)
-    {
-        this.capacity = Math.Max(1, capacity);
-        this.minimumLevel = minimumLevel;
-    }
 
     public IReadOnlyList<ApplicationLogEntry> Entries
     {

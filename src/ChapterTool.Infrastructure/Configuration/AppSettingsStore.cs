@@ -4,20 +4,14 @@ using ChapterTool.Core.Services;
 
 namespace ChapterTool.Infrastructure.Configuration;
 
-public sealed partial class AppSettingsStore : ISettingsStore<AppSettings>
+public sealed partial class AppSettingsStore(string settingsDirectory, IReadOnlyList<string>? legacyDirectories = null)
+    : ISettingsStore<AppSettings>
 {
     private const string CurrentFileName = "appsettings.json";
     private const string LegacyFileName = "chaptertool.json";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
-    private readonly string settingsDirectory;
-    private readonly IReadOnlyList<string> legacyDirectories;
-
-    public AppSettingsStore(string settingsDirectory, IReadOnlyList<string>? legacyDirectories = null)
-    {
-        this.settingsDirectory = settingsDirectory;
-        this.legacyDirectories = legacyDirectories ?? [settingsDirectory];
-    }
+    private readonly IReadOnlyList<string> legacyDirectories = legacyDirectories ?? [settingsDirectory];
 
     public async ValueTask<AppSettings> LoadAsync(CancellationToken cancellationToken)
     {
@@ -110,7 +104,7 @@ public sealed partial class AppSettingsStore : ISettingsStore<AppSettings>
     }
 
     private static string? Get(IReadOnlyDictionary<string, string> values, string key) =>
-        values.TryGetValue(key, out var value) ? value : null;
+        values.GetValueOrDefault(key);
 
     private static WindowLocation? ParseLocation(string? value)
     {

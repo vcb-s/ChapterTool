@@ -97,7 +97,7 @@ public sealed class XmlChapterImporter(IChapterTimeFormatter timeFormatter) : IC
                 {
                     chapters.AddRange(ParseAtom(atom, ++atomIndex));
                 }
-                else if (atom.Name == "EditionFlagDefault" && atom.InnerText == "1")
+                else if (atom is { Name: "EditionFlagDefault", InnerText: "1" })
                 {
                     isDefaultEdition = true;
                 }
@@ -135,7 +135,7 @@ public sealed class XmlChapterImporter(IChapterTimeFormatter timeFormatter) : IC
         }
 
         groups.Add(new ChapterInfoGroup(path, options, defaultOptionIndex));
-        return new ChapterImportResult(true, groups, Array.Empty<ChapterDiagnostic>());
+        return new ChapterImportResult(true, groups, []);
     }
 
     private IEnumerable<Chapter> ParseAtom(XmlNode atom, int index)

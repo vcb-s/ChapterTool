@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace ChapterTool.Core.Importing.Disc;
 
 internal sealed record MplsPlaylistFile(
@@ -153,7 +151,7 @@ internal sealed record MplsPlayItem(
 
     public byte ConnectionCondition => (byte)(FlagField & 0x0f);
 
-    public bool PlayItemRandomAccessFlag => (PlayItemFlagField >> 7) == 1;
+    public bool PlayItemRandomAccessFlag => PlayItemFlagField >> 7 == 1;
 
     public string FullName => IsMultiAngle
         ? string.Join('&', new[] { ClipName.ClipInformationFileName }.Concat(MultiAngle?.Angles.Select(angle => angle.ClipName.ClipInformationFileName) ?? []))

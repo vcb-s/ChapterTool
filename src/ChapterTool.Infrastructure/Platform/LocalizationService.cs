@@ -3,17 +3,13 @@ using ChapterTool.Core.Services;
 
 namespace ChapterTool.Infrastructure.Platform;
 
-public sealed class LocalizationService : ILocalizationService
+public sealed class LocalizationService(
+    IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? resources = null)
+    : ILocalizationService
 {
-    private readonly IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> resources;
+    private readonly IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>> resources = resources ?? new Dictionary<string, IReadOnlyDictionary<string, string>>();
 
-    public LocalizationService(IReadOnlyDictionary<string, IReadOnlyDictionary<string, string>>? resources = null)
-    {
-        this.resources = resources ?? new Dictionary<string, IReadOnlyDictionary<string, string>>();
-        CurrentLanguage = "";
-    }
-
-    public string CurrentLanguage { get; private set; }
+    public string CurrentLanguage { get; private set; } = "";
 
     public string GetString(string key)
     {

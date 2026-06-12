@@ -4,20 +4,16 @@ using ChapterTool.Core.Services;
 
 namespace ChapterTool.Infrastructure.Configuration;
 
-public sealed partial class ThemeSettingsStore : ISettingsStore<ThemeColorSettings>
+public sealed partial class ThemeSettingsStore(
+    string settingsDirectory,
+    IReadOnlyList<string>? legacyDirectories = null)
+    : ISettingsStore<ThemeColorSettings>
 {
     private const string CurrentFileName = "theme-colors.json";
     private const string LegacyFileName = "color-config.json";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
 
-    private readonly string settingsDirectory;
-    private readonly IReadOnlyList<string> legacyDirectories;
-
-    public ThemeSettingsStore(string settingsDirectory, IReadOnlyList<string>? legacyDirectories = null)
-    {
-        this.settingsDirectory = settingsDirectory;
-        this.legacyDirectories = legacyDirectories ?? [settingsDirectory];
-    }
+    private readonly IReadOnlyList<string> legacyDirectories = legacyDirectories ?? [settingsDirectory];
 
     public async ValueTask<ThemeColorSettings> LoadAsync(CancellationToken cancellationToken)
     {

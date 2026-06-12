@@ -24,7 +24,7 @@ public sealed class ChapterFpsTransformService
             Chapters = chapters
         };
 
-        return new ChangeFpsResult(true, updated, Array.Empty<ChapterDiagnostic>());
+        return new ChangeFpsResult(true, updated, []);
     }
 
     private static Chapter TransformChapter(Chapter chapter, decimal sourceFps, decimal targetFps)

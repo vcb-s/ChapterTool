@@ -19,7 +19,7 @@ public sealed class ExpressionService : IExpressionService
         ["M_LN2"] = 0.69314718055994530942m,
         ["M_LN10"] = 2.30258509299404568402m,
         ["M_SQRT2"] = 1.41421356237309504880m,
-        ["M_SQRT1_2"] = 0.70710678118654752440m,
+        ["M_SQRT1_2"] = 0.70710678118654752440m
     };
 
     private static readonly Dictionary<string, int> Functions = new(StringComparer.Ordinal)
@@ -46,7 +46,7 @@ public sealed class ExpressionService : IExpressionService
         ["sign"] = 1,
         ["pow"] = 2,
         ["max"] = 2,
-        ["min"] = 2,
+        ["min"] = 2
     };
 
     private static readonly Dictionary<string, int> Precedence = new(StringComparer.Ordinal)
@@ -63,7 +63,7 @@ public sealed class ExpressionService : IExpressionService
         ["^"] = 2,
         ["u+"] = 3,
         ["u-"] = 3,
-        ["?:"] = -2,
+        ["?:"] = -2
     };
 
     private static readonly HashSet<string> RightAssociativeOperators = new(StringComparer.Ordinal)
@@ -71,7 +71,7 @@ public sealed class ExpressionService : IExpressionService
         "^",
         "u+",
         "u-",
-        "?:",
+        "?:"
     };
 
     public ExpressionEvaluationResult EvaluateInfix(string expression, decimal timeSeconds, decimal framesPerSecond)
@@ -99,7 +99,7 @@ public sealed class ExpressionService : IExpressionService
             var values = new Dictionary<string, decimal>(StringComparer.Ordinal)
             {
                 ["t"] = timeSeconds,
-                ["fps"] = framesPerSecond,
+                ["fps"] = framesPerSecond
             };
             var stack = new Stack<decimal>();
 
@@ -140,7 +140,7 @@ public sealed class ExpressionService : IExpressionService
                 throw new InvalidOperationException("Expression did not reduce to one value.");
             }
 
-            return new ExpressionEvaluationResult(true, stack.Pop(), Array.Empty<ChapterDiagnostic>());
+            return new ExpressionEvaluationResult(true, stack.Pop(), []);
         }
         catch (Exception exception) when (exception is InvalidOperationException or DivideByZeroException)
         {
@@ -152,10 +152,9 @@ public sealed class ExpressionService : IExpressionService
         new(
             false,
             fallback,
-            new[]
-            {
+            [
                 new ChapterDiagnostic(DiagnosticSeverity.Warning, "InvalidExpression", message)
-            });
+            ]);
 
     private static IReadOnlyList<string> Tokenize(string expression)
     {
@@ -198,7 +197,7 @@ public sealed class ExpressionService : IExpressionService
                 continue;
             }
 
-            if ((c == '>' || c == '<') && i + 1 < expression.Length && expression[i + 1] == '=')
+            if (c is '>' or '<' && i + 1 < expression.Length && expression[i + 1] == '=')
             {
                 tokens.Add(expression.Substring(i, 2));
                 i += 2;
@@ -251,146 +250,144 @@ public sealed class ExpressionService : IExpressionService
 
                 operators.Push(token);
             }
-            else if (token == ",")
+            else switch (token)
             {
-                if (previous.Length == 0 ||
-                    previous == "(" ||
-                    previous == "," ||
-                    Precedence.ContainsKey(previous) ||
-                    Functions.ContainsKey(previous) ||
-                    previous == "?")
-                {
+                case "," when previous.Length == 0 ||
+                              previous == "(" ||
+                              previous == "," ||
+                              Precedence.ContainsKey(previous) ||
+                              Functions.ContainsKey(previous) ||
+                              previous == "?":
                     throw new InvalidOperationException("Misplaced comma.");
-                }
+                case ",":
+                {
+                    while (operators.Count > 0 && operators.Peek() != "(")
+                    {
+                        output.Add(operators.Pop());
+                    }
 
-                while (operators.Count > 0 && operators.Peek() != "(")
-                {
-                    output.Add(operators.Pop());
-                }
+                    if (operators.Count == 0)
+                    {
+                        throw new InvalidOperationException("Misplaced comma.");
+                    }
 
-                if (operators.Count == 0)
-                {
-                    throw new InvalidOperationException("Misplaced comma.");
+                    break;
                 }
-            }
-            else if (token == "(")
-            {
-                if (previous.Length > 0 &&
-                    previous != "(" &&
-                    previous != "," &&
-                    previous != "?" &&
-                    previous != ":" &&
-                    !Precedence.ContainsKey(previous) &&
-                    !Functions.ContainsKey(previous))
-                {
+                case "(" when previous.Length > 0 &&
+                              previous != "(" &&
+                              previous != "," &&
+                              previous != "?" &&
+                              previous != ":" &&
+                              !Precedence.ContainsKey(previous) &&
+                              !Functions.ContainsKey(previous):
                     throw new InvalidOperationException("Missing operator before '('.");
-                }
-
-                operators.Push(token);
-            }
-            else if (token == ")")
-            {
-                if (previous.Length == 0 ||
-                    previous == "(" ||
-                    previous == "," ||
-                    Precedence.ContainsKey(previous) ||
-                    Functions.ContainsKey(previous) ||
-                    previous == "?")
-                {
+                case "(":
+                    operators.Push(token);
+                    break;
+                case ")" when previous.Length == 0 ||
+                              previous == "(" ||
+                              previous == "," ||
+                              Precedence.ContainsKey(previous) ||
+                              Functions.ContainsKey(previous) ||
+                              previous == "?":
                     throw new InvalidOperationException("Missing operand before ')'.");
-                }
+                case ")":
+                {
+                    while (operators.Count > 0 && operators.Peek() != "(")
+                    {
+                        output.Add(operators.Pop());
+                    }
 
-                while (operators.Count > 0 && operators.Peek() != "(")
-                {
-                    output.Add(operators.Pop());
-                }
+                    if (operators.Count == 0)
+                    {
+                        throw new InvalidOperationException("Unbalanced parentheses.");
+                    }
 
-                if (operators.Count == 0)
-                {
-                    throw new InvalidOperationException("Unbalanced parentheses.");
-                }
+                    operators.Pop();
+                    if (operators.Count > 0 && Functions.ContainsKey(operators.Peek()))
+                    {
+                        output.Add(operators.Pop());
+                    }
 
-                operators.Pop();
-                if (operators.Count > 0 && Functions.ContainsKey(operators.Peek()))
-                {
-                    output.Add(operators.Pop());
+                    break;
                 }
-            }
-            else if (token == "?")
-            {
-                if (previous.Length == 0 ||
-                    previous == "(" ||
-                    previous == "," ||
-                    previous == "?" ||
-                    Precedence.ContainsKey(previous) ||
-                    Functions.ContainsKey(previous))
-                {
+                case "?" when previous.Length == 0 ||
+                              previous == "(" ||
+                              previous == "," ||
+                              previous == "?" ||
+                              Precedence.ContainsKey(previous) ||
+                              Functions.ContainsKey(previous):
                     throw new InvalidOperationException("Operator '?' requires a condition.");
-                }
-
-                while (operators.Count > 0 && Precedence.TryGetValue(operators.Peek(), out var lastPrecedence) &&
-                       ShouldPopOperator(lastPrecedence, "?:"))
+                case "?":
                 {
-                    output.Add(operators.Pop());
-                }
+                    while (operators.Count > 0 && Precedence.TryGetValue(operators.Peek(), out var lastPrecedence) &&
+                           ShouldPopOperator(lastPrecedence, "?:"))
+                    {
+                        output.Add(operators.Pop());
+                    }
 
-                operators.Push(token);
-            }
-            else if (token == ":")
-            {
-                if (previous.Length == 0 ||
-                    previous == "(" ||
-                    previous == "," ||
-                    previous == "?" ||
-                    Precedence.ContainsKey(previous) ||
-                    Functions.ContainsKey(previous))
-                {
+                    operators.Push(token);
+                    break;
+                }
+                case ":" when previous.Length == 0 ||
+                              previous == "(" ||
+                              previous == "," ||
+                              previous == "?" ||
+                              Precedence.ContainsKey(previous) ||
+                              Functions.ContainsKey(previous):
                     throw new InvalidOperationException("Operator ':' requires a true expression.");
-                }
-
-                while (operators.Count > 0 && operators.Peek() != "?" && operators.Peek() != "(")
+                case ":":
                 {
-                    output.Add(operators.Pop());
-                }
+                    while (operators.Count > 0 && operators.Peek() != "?" && operators.Peek() != "(")
+                    {
+                        output.Add(operators.Pop());
+                    }
 
-                if (operators.Count == 0 || operators.Peek() != "?")
+                    if (operators.Count == 0 || operators.Peek() != "?")
+                    {
+                        throw new InvalidOperationException("Operator ':' requires a matching '?'.");
+                    }
+
+                    operators.Pop();
+
+                    while (operators.Count > 0 && Precedence.TryGetValue(operators.Peek(), out var lastPrecedence) &&
+                           ShouldPopOperator(lastPrecedence, "?:"))
+                    {
+                        output.Add(operators.Pop());
+                    }
+
+                    operators.Push("?:");
+                    break;
+                }
+                default:
                 {
-                    throw new InvalidOperationException("Operator ':' requires a matching '?'.");
+                    if (Precedence.ContainsKey(token))
+                    {
+                        var isUnarySign = token is "-" or "+" &&
+                                          (previous.Length == 0 || previous is "(" or "," or "?" or ":" || Precedence.ContainsKey(previous));
+                        var operatorToken = isUnarySign ? $"u{token}" : token;
+
+                        if (!isUnarySign &&
+                            (previous.Length == 0 || previous == "(" || previous == "," || previous == "?" || Precedence.ContainsKey(previous)))
+                        {
+                            throw new InvalidOperationException($"Operator '{token}' requires a left operand.");
+                        }
+
+                        while (operators.Count > 0 && Precedence.TryGetValue(operators.Peek(), out var lastPrecedence) &&
+                               ShouldPopOperator(lastPrecedence, operatorToken))
+                        {
+                            output.Add(operators.Pop());
+                        }
+
+                        operators.Push(operatorToken);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Unsupported token '{token}'.");
+                    }
+
+                    break;
                 }
-
-                operators.Pop();
-
-                while (operators.Count > 0 && Precedence.TryGetValue(operators.Peek(), out var lastPrecedence) &&
-                       ShouldPopOperator(lastPrecedence, "?:"))
-                {
-                    output.Add(operators.Pop());
-                }
-
-                operators.Push("?:");
-            }
-            else if (Precedence.ContainsKey(token))
-            {
-                var isUnarySign = token is "-" or "+" &&
-                    (previous.Length == 0 || previous is "(" or "," or "?" or ":" || Precedence.ContainsKey(previous));
-                var operatorToken = isUnarySign ? $"u{token}" : token;
-
-                if (!isUnarySign &&
-                    (previous.Length == 0 || previous == "(" || previous == "," || previous == "?" || Precedence.ContainsKey(previous)))
-                {
-                    throw new InvalidOperationException($"Operator '{token}' requires a left operand.");
-                }
-
-                while (operators.Count > 0 && Precedence.TryGetValue(operators.Peek(), out var lastPrecedence) &&
-                       ShouldPopOperator(lastPrecedence, operatorToken))
-                {
-                    output.Add(operators.Pop());
-                }
-
-                operators.Push(operatorToken);
-            }
-            else
-            {
-                throw new InvalidOperationException($"Unsupported token '{token}'.");
             }
 
             previous = token;
@@ -399,7 +396,7 @@ public sealed class ExpressionService : IExpressionService
         while (operators.Count > 0)
         {
             var token = operators.Pop();
-            if (token == "(" || token == "?")
+            if (token is "(" or "?")
             {
                 throw new InvalidOperationException(token == "(" ? "Unbalanced parentheses." : "Operator '?' requires a matching ':'.");
             }
@@ -418,20 +415,22 @@ public sealed class ExpressionService : IExpressionService
 
     private static void ApplyOperator(string op, Stack<decimal> stack)
     {
-        if (op is "u+" or "u-")
+        switch (op)
         {
-            var value = Pop(stack, op);
-            stack.Push(op == "u-" ? -value : value);
-            return;
-        }
-
-        if (op == "?:")
-        {
-            var falseValue = Pop(stack, op);
-            var trueValue = Pop(stack, op);
-            var condition = Pop(stack, op);
-            stack.Push(condition == 0 ? falseValue : trueValue);
-            return;
+            case "u+" or "u-":
+            {
+                var value = Pop(stack, op);
+                stack.Push(op == "u-" ? -value : value);
+                return;
+            }
+            case "?:":
+            {
+                var falseValue = Pop(stack, op);
+                var trueValue = Pop(stack, op);
+                var condition = Pop(stack, op);
+                stack.Push(condition == 0 ? falseValue : trueValue);
+                return;
+            }
         }
 
         var rhs = Pop(stack, op);
@@ -454,14 +453,6 @@ public sealed class ExpressionService : IExpressionService
 
     private static void ApplyFunction(string function, Stack<decimal> stack)
     {
-        decimal Unary(Func<double, double> func) => (decimal)func((double)Pop(stack, function));
-        decimal Binary(Func<double, double, double> func)
-        {
-            var rhs = Pop(stack, function);
-            var lhs = Pop(stack, function);
-            return (decimal)func((double)lhs, (double)rhs);
-        }
-
         stack.Push(function switch
         {
             "abs" => Math.Abs(Pop(stack, function)),
@@ -489,6 +480,16 @@ public sealed class ExpressionService : IExpressionService
             "min" => Min(PopPair(stack, function)),
             _ => throw new InvalidOperationException($"Unsupported function '{function}'.")
         });
+        return;
+
+        decimal Binary(Func<double, double, double> func)
+        {
+            var rhs = Pop(stack, function);
+            var lhs = Pop(stack, function);
+            return (decimal)func((double)lhs, (double)rhs);
+        }
+
+        decimal Unary(Func<double, double> func) => (decimal)func((double)Pop(stack, function));
     }
 
     private static decimal Max((decimal Left, decimal Right) pair) => Math.Max(pair.Left, pair.Right);

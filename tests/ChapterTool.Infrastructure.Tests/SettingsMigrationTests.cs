@@ -28,8 +28,8 @@ public sealed class SettingsMigrationTests
         Assert.Equal("D:\\Output", settings.SavingPath);
         Assert.Equal("en-US", settings.Language);
         Assert.Equal(new WindowLocation(12, 34), settings.MainWindowLocation);
-        Assert.Equal("C:\\Tools\\MKVToolNix", settings.MkvToolnixPath);
-        Assert.Equal("C:\\Tools\\eac3to\\eac3to.exe", settings.Eac3toPath);
+        Assert.Equal(@"C:\Tools\MKVToolNix", settings.MkvToolnixPath);
+        Assert.Equal(@"C:\Tools\eac3to\eac3to.exe", settings.Eac3toPath);
         Assert.Equal("Txt", settings.DefaultSaveFormat);
         Assert.Equal("und", settings.DefaultXmlLanguage);
     }

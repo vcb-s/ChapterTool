@@ -10,14 +10,14 @@ public sealed class SampleChapterNameTemplateTests
     public void ChapterNameSampleAppliesUtf8TemplateInOrder()
     {
         var service = new ChapterEditingService(new ChapterTimeFormatter());
-        var template = """
-            Avant
-            OP
-            A Part
-            B Part
-            ED
-            C Part
-            """;
+        const string template = """
+                                Avant
+                                OP
+                                A Part
+                                B Part
+                                ED
+                                C Part
+                                """;
 
         var result = service.ApplyTemplate(Sample(), template);
 

@@ -13,28 +13,28 @@ public sealed class TextImporterTests
     public async Task OgmImporterReadsExistingSampleLeniently()
     {
         var importer = new OgmChapterImporter(formatter);
-        var ogmText = """
+        const string ogmText = """
 
 
 
 
-            CHAPTER01 = 00:00:00.000
-            CHAPTER01NAME=	Chapter 01
+                               CHAPTER01 = 00:00:00.000
+                               CHAPTER01NAME=	Chapter 01
 
-            CHAPTER02=00:00:41.041
-            CHAPTER02NAME=Chapter 02
-            CHAPTER03=00:02:12.799
-            CHAPTER03NAME=Chapter 03
-            CHAPTER04=00:03:36.258
+                               CHAPTER02=00:00:41.041
+                               CHAPTER02NAME=Chapter 02
+                               CHAPTER03=00:02:12.799
+                               CHAPTER03NAME=Chapter 03
+                               CHAPTER04=00:03:36.258
 
-            CHAPTER04NAME=Chapter 04
-            CHAPTER05=00:04:37.944
-            CHAPTER05NAME=Chapter 05
-            CHAPTER06=00:05:44.928
-            CHAPTER06NAME=Chapter 06
+                               CHAPTER04NAME=Chapter 04
+                               CHAPTER05=00:04:37.944
+                               CHAPTER05NAME=Chapter 05
+                               CHAPTER06=00:05:44.928
+                               CHAPTER06NAME=Chapter 06
 
-            CHAPTER07=00:08:59.247
-            """;
+                               CHAPTER07=00:08:59.247
+                               """;
         var result = importer.ImportText(ogmText);
 
         Assert.True(result.Success);
@@ -111,37 +111,37 @@ public sealed class TextImporterTests
     public async Task WebVttImporterReadsExistingSample()
     {
         var importer = new WebVttChapterImporter();
-        var vttText = """
-            WEBVTT
+        const string vttText = """
+                               WEBVTT
 
-            chapter-1
-            00:00:00.000 --> 00:00:26.000
-            Introduction
+                               chapter-1
+                               00:00:00.000 --> 00:00:26.000
+                               Introduction
 
-            chapter-2
-            00:00:28.206 --> 00:01:02.000
-            Watch out!
+                               chapter-2
+                               00:00:28.206 --> 00:01:02.000
+                               Watch out!
 
-            chapter-3
-            00:01:02.034 --> 00:03:10.000
-            Let's go
+                               chapter-3
+                               00:01:02.034 --> 00:03:10.000
+                               Let's go
 
-            chapter-4
-            00:03:10.014 --> 00:05:40.000
-            The machine
+                               chapter-4
+                               00:03:10.014 --> 00:05:40.000
+                               The machine
 
-            chapter-5
-            00:05:41.208 --> 00:07:26.000
-            Close your eyes
+                               chapter-5
+                               00:05:41.208 --> 00:07:26.000
+                               Close your eyes
 
-            chapter-6
-            00:07:27.125 --> 00:08:12.000
-            There's nothing there
+                               chapter-6
+                               00:07:27.125 --> 00:08:12.000
+                               There's nothing there
 
-            chapter-7
-            00:08:13.000 --> 00:09:07.500
-            The Colossus of Rhodes
-            """;
+                               chapter-7
+                               00:08:13.000 --> 00:09:07.500
+                               The Colossus of Rhodes
+                               """;
         var result = importer.ImportText(vttText);
 
         Assert.True(result.Success);
@@ -312,58 +312,58 @@ public sealed class TextImporterTests
     public async Task XmlHiddenChapterSampleImportsBothEditionsWithEndTimes()
     {
         var importer = new XmlChapterImporter(formatter);
-        var xmlText = """
-            <?xml version="1.0" encoding="ISO-8859-1"?>
+        const string xmlText = """
+                               <?xml version="1.0" encoding="ISO-8859-1"?>
 
-            <!DOCTYPE Chapters SYSTEM "matroskachapters.dtd">
+                               <!DOCTYPE Chapters SYSTEM "matroskachapters.dtd">
 
-            <Chapters>
-              <EditionEntry>
-                <ChapterAtom>
-                  <ChapterTimeStart>00:00:00.000</ChapterTimeStart>
-                  <ChapterDisplay>
-                    <ChapterString>Intro</ChapterString>
-                    <ChapterLanguage>eng</ChapterLanguage>
-                  </ChapterDisplay>
-                </ChapterAtom>
-                <ChapterAtom>
-                  <ChapterTimeStart>00:01:00.000</ChapterTimeStart>
-                  <ChapterDisplay>
-                    <ChapterString>Act 1</ChapterString>
-                    <ChapterLanguage>eng</ChapterLanguage>
-                  </ChapterDisplay>
-                </ChapterAtom>
-                <ChapterAtom>
-                  <ChapterTimeStart>00:05:30.000</ChapterTimeStart>
-                  <ChapterDisplay>
-                    <ChapterString>Act 2</ChapterString>
-                    <ChapterLanguage>eng</ChapterLanguage>
-                  </ChapterDisplay>
-                </ChapterAtom>
-                <ChapterAtom>
-                  <ChapterTimeStart>00:12:20.000</ChapterTimeStart>
-                  <ChapterTimeEnd>00:12:55.000</ChapterTimeEnd>
-                  <ChapterDisplay>
-                    <ChapterString>Credits</ChapterString>
-                    <ChapterLanguage>eng</ChapterLanguage>
-                  </ChapterDisplay>
-                </ChapterAtom>
-              </EditionEntry>
+                               <Chapters>
+                                 <EditionEntry>
+                                   <ChapterAtom>
+                                     <ChapterTimeStart>00:00:00.000</ChapterTimeStart>
+                                     <ChapterDisplay>
+                                       <ChapterString>Intro</ChapterString>
+                                       <ChapterLanguage>eng</ChapterLanguage>
+                                     </ChapterDisplay>
+                                   </ChapterAtom>
+                                   <ChapterAtom>
+                                     <ChapterTimeStart>00:01:00.000</ChapterTimeStart>
+                                     <ChapterDisplay>
+                                       <ChapterString>Act 1</ChapterString>
+                                       <ChapterLanguage>eng</ChapterLanguage>
+                                     </ChapterDisplay>
+                                   </ChapterAtom>
+                                   <ChapterAtom>
+                                     <ChapterTimeStart>00:05:30.000</ChapterTimeStart>
+                                     <ChapterDisplay>
+                                       <ChapterString>Act 2</ChapterString>
+                                       <ChapterLanguage>eng</ChapterLanguage>
+                                     </ChapterDisplay>
+                                   </ChapterAtom>
+                                   <ChapterAtom>
+                                     <ChapterTimeStart>00:12:20.000</ChapterTimeStart>
+                                     <ChapterTimeEnd>00:12:55.000</ChapterTimeEnd>
+                                     <ChapterDisplay>
+                                       <ChapterString>Credits</ChapterString>
+                                       <ChapterLanguage>eng</ChapterLanguage>
+                                     </ChapterDisplay>
+                                   </ChapterAtom>
+                                 </EditionEntry>
 
-              <EditionEntry>
-                <ChapterAtom>
-                  <ChapterTimeStart>00:02:00.000</ChapterTimeStart>
-                  <ChapterTimeEnd>00:04:00.000</ChapterTimeEnd>
-                  <ChapterDisplay>
-                    <ChapterString>A hidden and not enabled chapter.</ChapterString>
-                    <ChapterLanguage>eng</ChapterLanguage>
-                  </ChapterDisplay>
-                  <ChapterFlagHidden>1</ChapterFlagHidden>
-                  <ChapterFlagEnabled>0</ChapterFlagEnabled>
-                </ChapterAtom>
-              </EditionEntry>
-            </Chapters>
-            """;
+                                 <EditionEntry>
+                                   <ChapterAtom>
+                                     <ChapterTimeStart>00:02:00.000</ChapterTimeStart>
+                                     <ChapterTimeEnd>00:04:00.000</ChapterTimeEnd>
+                                     <ChapterDisplay>
+                                       <ChapterString>A hidden and not enabled chapter.</ChapterString>
+                                       <ChapterLanguage>eng</ChapterLanguage>
+                                     </ChapterDisplay>
+                                     <ChapterFlagHidden>1</ChapterFlagHidden>
+                                     <ChapterFlagEnabled>0</ChapterFlagEnabled>
+                                   </ChapterAtom>
+                                 </EditionEntry>
+                               </Chapters>
+                               """;
 
         var result = importer.ImportText(xmlText);
 
@@ -484,14 +484,15 @@ public sealed class TextImporterTests
         }
     }
 
-    public static TheoryData<XmlSampleExpectation> XmlSampleExpectations() => new()
-    {
+    public static TheoryData<XmlSampleExpectation> XmlSampleExpectations() =>
+    [
         XmlSample("[philosophy-raws][Hatsune Miku Magical Mirai 2014 in OSAKA][Live].xml",
         [
             new(30, Ms(6789383), "01 High-energy Particle", TimeSpan.Zero, "End Roll", Ms(6789383))
         ]),
+
         XmlSample("Angel Beats! - NCOP_Ordered_Chapter.xml", AngelBeatsEditions())
-    };
+    ];
 
     public sealed record XmlSampleExpectation(string FileName, XmlOptionExpectation[] Options);
 

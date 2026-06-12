@@ -54,10 +54,10 @@ public sealed class ChapterOutputProjectionService(IExpressionService expression
 
     private static IReadOnlyList<string> TemplateNames(string templateText) =>
         string.IsNullOrWhiteSpace(templateText)
-            ? Array.Empty<string>()
+            ? []
             : templateText
                 .Trim(' ', '\r', '\n')
-                .Split('\n', StringSplitOptions.None)
+                .Split('\n')
                 .Select(static line => line.TrimEnd('\r'))
                 .Where(static line => line.Length > 0)
                 .ToArray();

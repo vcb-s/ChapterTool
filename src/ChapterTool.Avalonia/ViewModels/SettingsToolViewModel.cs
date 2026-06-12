@@ -31,18 +31,8 @@ public sealed class SettingsToolViewModel : ObservableViewModel
     private readonly ISettingsPickerService? picker;
     private readonly IExternalToolLocator? externalToolLocator;
     private string selectedLanguage;
-    private string? saveDirectory;
-    private string? mkvToolnixPath;
-    private string? eac3toPath;
-    private string? ffprobePath;
-    private string? ffmpegPath;
     private int defaultSaveFormatIndex;
     private int defaultXmlLanguageIndex;
-    private string statusText = string.Empty;
-    private string mkvToolnixStatus = string.Empty;
-    private string eac3toStatus = string.Empty;
-    private string ffprobeStatus = string.Empty;
-    private string ffmpegStatus = string.Empty;
 
     public SettingsToolViewModel(
         MainWindowViewModel owner,
@@ -132,16 +122,16 @@ public sealed class SettingsToolViewModel : ObservableViewModel
 
     public string? SaveDirectory
     {
-        get => saveDirectory;
-        set => SetProperty(ref saveDirectory, CleanPath(value));
+        get;
+        set => SetProperty(ref field, CleanPath(value));
     }
 
     public string? MkvToolnixPath
     {
-        get => mkvToolnixPath;
+        get;
         set
         {
-            if (SetProperty(ref mkvToolnixPath, CleanPath(value)))
+            if (SetProperty(ref field, CleanPath(value)))
             {
                 MkvToolnixStatus = FormatToolStatus(ValidateTool(value, "mkvextract"));
             }
@@ -150,10 +140,10 @@ public sealed class SettingsToolViewModel : ObservableViewModel
 
     public string? Eac3toPath
     {
-        get => eac3toPath;
+        get;
         set
         {
-            if (SetProperty(ref eac3toPath, CleanPath(value)))
+            if (SetProperty(ref field, CleanPath(value)))
             {
                 Eac3toStatus = FormatToolStatus(ValidateTool(value, "eac3to"));
             }
@@ -162,10 +152,10 @@ public sealed class SettingsToolViewModel : ObservableViewModel
 
     public string? FfprobePath
     {
-        get => ffprobePath;
+        get;
         set
         {
-            if (SetProperty(ref ffprobePath, CleanPath(value)))
+            if (SetProperty(ref field, CleanPath(value)))
             {
                 FfprobeStatus = FormatToolStatus(ValidateTool(value, "ffprobe"));
             }
@@ -174,10 +164,10 @@ public sealed class SettingsToolViewModel : ObservableViewModel
 
     public string? FfmpegPath
     {
-        get => ffmpegPath;
+        get;
         set
         {
-            if (SetProperty(ref ffmpegPath, CleanPath(value)))
+            if (SetProperty(ref field, CleanPath(value)))
             {
                 FfmpegStatus = FormatToolStatus(ValidateTool(value, "ffprobe"));
             }
@@ -198,33 +188,33 @@ public sealed class SettingsToolViewModel : ObservableViewModel
 
     public string StatusText
     {
-        get => statusText;
-        private set => SetProperty(ref statusText, value);
-    }
+        get;
+        private set => SetProperty(ref field, value);
+    } = string.Empty;
 
     public string MkvToolnixStatus
     {
-        get => mkvToolnixStatus;
-        private set => SetProperty(ref mkvToolnixStatus, value);
-    }
+        get;
+        private set => SetProperty(ref field, value);
+    } = string.Empty;
 
     public string Eac3toStatus
     {
-        get => eac3toStatus;
-        private set => SetProperty(ref eac3toStatus, value);
-    }
+        get;
+        private set => SetProperty(ref field, value);
+    } = string.Empty;
 
     public string FfprobeStatus
     {
-        get => ffprobeStatus;
-        private set => SetProperty(ref ffprobeStatus, value);
-    }
+        get;
+        private set => SetProperty(ref field, value);
+    } = string.Empty;
 
     public string FfmpegStatus
     {
-        get => ffmpegStatus;
-        private set => SetProperty(ref ffmpegStatus, value);
-    }
+        get;
+        private set => SetProperty(ref field, value);
+    } = string.Empty;
 
     public UiCommand SaveCommand { get; }
 
@@ -470,7 +460,7 @@ public sealed class SettingsToolViewModel : ObservableViewModel
         }
 
         var text = value.Trim();
-        return text.Length == 7 && text[0] == '#' && text.Skip(1).All(Uri.IsHexDigit)
+        return text is ['#', _, _, _, _, _, _] && text.Skip(1).All(Uri.IsHexDigit)
             ? text.ToUpperInvariant()
             : fallback;
     }

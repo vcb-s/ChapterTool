@@ -10,7 +10,7 @@ public sealed class ChapterExpressionService(IExpressionService expressionServic
     {
         if (!applyExpression)
         {
-            return new ChapterExpressionResult(info, Array.Empty<ChapterDiagnostic>());
+            return new ChapterExpressionResult(info, []);
         }
 
         var diagnostics = new List<ChapterDiagnostic>();

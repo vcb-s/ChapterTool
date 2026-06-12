@@ -3,24 +3,19 @@ using ChapterTool.Core.Transform;
 
 namespace ChapterTool.Avalonia.ViewModels;
 
-public sealed class ChapterRowViewModel
+public sealed class ChapterRowViewModel(
+    Chapter chapter,
+    IChapterTimeFormatter formatter,
+    int? number = null,
+    string? name = null)
 {
-    public ChapterRowViewModel(Chapter chapter, IChapterTimeFormatter formatter, int? number = null, string? name = null)
-    {
-        Chapter = chapter;
-        TimeText = chapter.IsSeparator ? string.Empty : formatter.Format(chapter.Time);
-        Number = number ?? chapter.Number;
-        Name = name ?? chapter.Name;
-        FramesInfo = chapter.FramesInfo;
-    }
+    public Chapter Chapter { get; } = chapter;
 
-    public Chapter Chapter { get; }
+    public int Number { get; } = number ?? chapter.Number;
 
-    public int Number { get; }
+    public string TimeText { get; set; } = chapter.IsSeparator ? string.Empty : formatter.Format(chapter.Time);
 
-    public string TimeText { get; set; }
+    public string Name { get; set; } = name ?? chapter.Name;
 
-    public string Name { get; set; }
-
-    public string FramesInfo { get; set; }
+    public string FramesInfo { get; set; } = chapter.FramesInfo;
 }

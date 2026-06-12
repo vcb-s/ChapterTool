@@ -17,7 +17,7 @@ public sealed class ChapterExportService(
     {
         var projection = options.ProjectOutput
             ? new ChapterOutputProjectionService(expressionService).Project(info, options)
-            : new ChapterOutputProjectionResult(info, Array.Empty<ChapterDiagnostic>());
+            : new ChapterOutputProjectionResult(info, []);
         info = projection.Info;
         var outputInfo = info with { Chapters = projection.OutputChapters };
         var result = options.Format switch
@@ -118,7 +118,7 @@ public sealed class ChapterExportService(
         return Success(builder.ToString(), ".cue");
     }
 
-    private ChapterExportResult WebVtt(ChapterInfo info, ChapterExportOptions options)
+    private static ChapterExportResult WebVtt(ChapterInfo info, ChapterExportOptions options)
     {
         var builder = new StringBuilder();
         builder.AppendLine("WEBVTT");
@@ -150,7 +150,7 @@ public sealed class ChapterExportService(
         return $"{hours:D2}:{minutes:D2}:{seconds:D2}.{milliseconds:D3}";
     }
 
-    private ChapterExportResult Json(ChapterInfo info, ChapterExportOptions options)
+    private static ChapterExportResult Json(ChapterInfo info, ChapterExportOptions options)
     {
         var entries = new List<JsonChapter>();
         var baseTime = TimeSpan.Zero;
@@ -176,7 +176,7 @@ public sealed class ChapterExportService(
         return Success(JsonSerializer.Serialize(payload, JsonOptions), ".json");
     }
 
-    private ChapterExportResult Lines(string extension, IEnumerable<string> lines) =>
+    private static ChapterExportResult Lines(string extension, IEnumerable<string> lines) =>
         Success(string.Join(Environment.NewLine, lines), extension);
 
     private static bool NotSeparator(Chapter chapter) => !chapter.IsSeparator;
@@ -188,7 +188,7 @@ public sealed class ChapterExportService(
     private static int NextUid(Random random) => random.Next(1, int.MaxValue);
 
     private static ChapterExportResult Success(string content, string extension) =>
-        new(true, content, extension, Array.Empty<ChapterDiagnostic>());
+        new(true, content, extension, []);
 
     private static ChapterExportResult Failure(string code, string message) =>
         new(false, string.Empty, string.Empty, [new ChapterDiagnostic(DiagnosticSeverity.Error, code, message)]);

@@ -4,5 +4,5 @@ public enum FrameRateConfidence
 {
     Low,
     Medium,
-    High,
+    High
 }

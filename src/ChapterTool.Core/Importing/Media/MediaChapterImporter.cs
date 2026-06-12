@@ -69,7 +69,7 @@ public sealed class MediaChapterImporter(
         var options = CreateOptions(request.Path, normalized);
         return new ChapterImportResult(
             true,
-            [new ChapterInfoGroup(request.Path, options, 0)],
+            [new ChapterInfoGroup(request.Path, options)],
             diagnostics);
     }
 

@@ -3,18 +3,12 @@ using System.ComponentModel;
 
 namespace ChapterTool.Avalonia.ViewModels;
 
-public sealed class UiCommand : ICommand, INotifyPropertyChanged
+public sealed class UiCommand(
+    Func<object?, CancellationToken, ValueTask> execute,
+    Func<object?, bool>? canExecute = null)
+    : ICommand, INotifyPropertyChanged
 {
-    private readonly Func<object?, CancellationToken, ValueTask> execute;
-    private readonly Func<object?, bool> canExecute;
-    private bool isExecuting;
-    private Exception? executionError;
-
-    public UiCommand(Func<object?, CancellationToken, ValueTask> execute, Func<object?, bool>? canExecute = null)
-    {
-        this.execute = execute;
-        this.canExecute = canExecute ?? (_ => true);
-    }
+    private readonly Func<object?, bool> canExecute = canExecute ?? (_ => true);
 
     public UiCommand(Func<object?, ValueTask> execute, Func<object?, bool>? canExecute = null)
         : this((parameter, _) => execute(parameter), canExecute)
@@ -27,15 +21,15 @@ public sealed class UiCommand : ICommand, INotifyPropertyChanged
 
     public bool IsExecuting
     {
-        get => isExecuting;
+        get;
         private set
         {
-            if (isExecuting == value)
+            if (field == value)
             {
                 return;
             }
 
-            isExecuting = value;
+            field = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsExecuting)));
             RaiseCanExecuteChanged();
         }
@@ -43,15 +37,15 @@ public sealed class UiCommand : ICommand, INotifyPropertyChanged
 
     public Exception? ExecutionError
     {
-        get => executionError;
+        get;
         private set
         {
-            if (ReferenceEquals(executionError, value))
+            if (ReferenceEquals(field, value))
             {
                 return;
             }
 
-            executionError = value;
+            field = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(ExecutionError)));
         }
     }

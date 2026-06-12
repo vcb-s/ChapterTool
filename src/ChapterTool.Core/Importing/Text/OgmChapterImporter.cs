@@ -110,7 +110,7 @@ public sealed partial class OgmChapterImporter(IChapterTimeFormatter timeFormatt
             chapters[^1].Time,
             chapters);
         var option = new ChapterSourceOption("default", "OGM Chapters", info);
-        var group = new ChapterInfoGroup(path, [option], 0);
+        var group = new ChapterInfoGroup(path, [option]);
         return new ChapterImportResult(true, [group], diagnostics, isPartial);
     }
 

@@ -15,6 +15,7 @@ using ChapterTool.Infrastructure.Tools;
 using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Events;
+using ILogger = Serilog.ILogger;
 
 namespace ChapterTool.Avalonia.Composition;
 
@@ -29,7 +30,6 @@ public sealed class AppCompositionRoot : IDisposable
     private readonly AppSettingsStore appSettingsStore;
     private readonly ThemeSettingsStore themeSettingsStore;
     private readonly ILoggerFactory loggerFactory;
-    private readonly Serilog.ILogger serilogLogger;
     private bool disposed;
 
     public AppCompositionRoot(string? startupPath = null, string? settingsDirectory = null)
@@ -38,7 +38,7 @@ public sealed class AppCompositionRoot : IDisposable
         var resolvedSettingsDirectory = settingsDirectory ?? SettingsDirectory();
         appSettingsStore = new AppSettingsStore(resolvedSettingsDirectory);
         themeSettingsStore = new ThemeSettingsStore(resolvedSettingsDirectory);
-        serilogLogger = CreateSerilogLogger(resolvedSettingsDirectory);
+        var serilogLogger = CreateSerilogLogger(resolvedSettingsDirectory);
         loggerFactory = LoggerFactory.Create(builder =>
         {
             builder.SetMinimumLevel(LogLevel.Debug);
@@ -130,7 +130,7 @@ public sealed class AppCompositionRoot : IDisposable
         loggerFactory.Dispose();
     }
 
-    private static Serilog.ILogger CreateSerilogLogger(string settingsDirectory)
+    private static ILogger CreateSerilogLogger(string settingsDirectory)
     {
         var logDirectory = Path.Combine(settingsDirectory, "logs");
         Directory.CreateDirectory(logDirectory);

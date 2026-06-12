@@ -6,13 +6,13 @@ using ChapterTool.Core.Transform;
 
 namespace ChapterTool.Infrastructure.Importing.Matroska;
 
-public sealed class MatroskaChapterImporter : IChapterImporter
+public sealed class MatroskaChapterImporter(
+    IExternalToolLocator toolLocator,
+    IProcessRunner processRunner,
+    XmlChapterImporter xmlImporter)
+    : IChapterImporter
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(60);
-
-    private readonly IExternalToolLocator toolLocator;
-    private readonly IProcessRunner processRunner;
-    private readonly XmlChapterImporter xmlImporter;
 
     public MatroskaChapterImporter(
         IExternalToolLocator toolLocator,
@@ -20,16 +20,6 @@ public sealed class MatroskaChapterImporter : IChapterImporter
         IChapterTimeFormatter timeFormatter)
         : this(toolLocator, processRunner, new XmlChapterImporter(timeFormatter))
     {
-    }
-
-    public MatroskaChapterImporter(
-        IExternalToolLocator toolLocator,
-        IProcessRunner processRunner,
-        XmlChapterImporter xmlImporter)
-    {
-        this.toolLocator = toolLocator;
-        this.processRunner = processRunner;
-        this.xmlImporter = xmlImporter;
     }
 
     public string Id => "matroska";

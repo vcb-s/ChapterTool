@@ -545,8 +545,7 @@ public sealed class MainWindowViewModelTests
         Assert.Contains("CHAPTER01=", vm.BuildPreview(), StringComparison.Ordinal);
         Assert.Contains("Loaded 1 chapters", vm.LogText(), StringComparison.Ordinal);
         Assert.Contains(log.Entries, entry =>
-            entry.Level == LogLevel.Information &&
-            entry.MessageKey == "Log.LoadingSource" &&
+            entry is { Level: LogLevel.Information, MessageKey: "Log.LoadingSource" } &&
             string.Equals(entry.Category, typeof(MainWindowViewModel).FullName, StringComparison.Ordinal));
 
         vm.ClearLog();
@@ -563,7 +562,7 @@ public sealed class MainWindowViewModelTests
         var shell = new FakeShellService();
         var info = Info("MPLS", "movie", new Chapter(1, TimeSpan.Zero, "A"));
         var option = new ChapterSourceOption("clip-0", "movie__1", info, MediaReferences: [new SourceMediaReference("movie.m2ts", "movie.m2ts")]);
-        var load = new FakeLoadService(new ChapterImportResult(true, [new ChapterInfoGroup(Path.Combine(root, "movie.mpls"), [option], 0)], []));
+        var load = new FakeLoadService(new ChapterImportResult(true, [new ChapterInfoGroup(Path.Combine(root, "movie.mpls"), [option])], []));
         var vm = CreateViewModel(load, shellService: shell);
 
         try
@@ -705,7 +704,7 @@ public sealed class MainWindowViewModelTests
     private static ChapterImportResult ImportResult(string path, params ChapterInfo[] infos)
     {
         var options = infos.Select((info, index) => new ChapterSourceOption($"option-{index}", info.SourceName ?? info.Title, info)).ToArray();
-        return new ChapterImportResult(true, [new ChapterInfoGroup(path, options, 0)], Array.Empty<ChapterDiagnostic>());
+        return new ChapterImportResult(true, [new ChapterInfoGroup(path, options)], []);
     }
 
     private static string RepositoryRoot()
@@ -724,14 +723,9 @@ public sealed class MainWindowViewModelTests
         throw new DirectoryNotFoundException("Could not locate repository root from test output directory.");
     }
 
-    private sealed class FakeLoadService : IChapterLoadService
+    private sealed class FakeLoadService(params ChapterImportResult[] results) : IChapterLoadService
     {
-        private readonly Queue<ChapterImportResult> results;
-
-        public FakeLoadService(params ChapterImportResult[] results)
-        {
-            this.results = new Queue<ChapterImportResult>(results);
-        }
+        private readonly Queue<ChapterImportResult> results = new(results);
 
         public ValueTask<ChapterImportResult> LoadAsync(string path, CancellationToken cancellationToken)
         {
@@ -756,7 +750,7 @@ public sealed class MainWindowViewModelTests
             LastInfo = info;
             LastOptions = options;
             LastDirectory = directory;
-            return ValueTask.FromResult(new ChapterExportResult(true, "ok", ".txt", Array.Empty<ChapterDiagnostic>()));
+            return ValueTask.FromResult(new ChapterExportResult(true, "ok", ".txt", []));
         }
     }
 

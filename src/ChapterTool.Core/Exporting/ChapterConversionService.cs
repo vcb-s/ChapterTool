@@ -98,7 +98,7 @@ public sealed class ChapterConversionService(IChapterTimeFormatter timeFormatter
     }
 
     private static ChapterConversionResult Success(string content, string extension) =>
-        new(true, content, extension, Array.Empty<ChapterDiagnostic>());
+        new(true, content, extension, []);
 
     private static ChapterConversionResult Failure(string code, string message) =>
         new(false, string.Empty, string.Empty, [new ChapterDiagnostic(DiagnosticSeverity.Error, code, message)]);

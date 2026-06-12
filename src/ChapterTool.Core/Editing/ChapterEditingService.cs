@@ -41,7 +41,7 @@ public sealed partial class ChapterEditingService(IChapterTimeFormatter timeForm
         var frame = decimal.Parse(match.Value, CultureInfo.InvariantCulture);
         var seconds = frame / framesPerSecond;
         chapters[index] = chapter with { Time = TimeSpan.FromSeconds((double)seconds), FramesInfo = $"{frame:0} K" };
-        return new ChapterEditResult(info with { Chapters = Renumber(chapters) }, Array.Empty<ChapterDiagnostic>());
+        return new ChapterEditResult(info with { Chapters = Renumber(chapters) }, []);
     }
 
     public ChapterEditResult Rename(ChapterInfo info, int index, string name)
@@ -53,7 +53,7 @@ public sealed partial class ChapterEditingService(IChapterTimeFormatter timeForm
         }
 
         chapters[index] = chapter with { Name = name };
-        return new ChapterEditResult(info with { Chapters = chapters }, Array.Empty<ChapterDiagnostic>());
+        return new ChapterEditResult(info with { Chapters = chapters }, []);
     }
 
     public ChapterEditResult Delete(ChapterInfo info, IReadOnlySet<int> indexes)
@@ -65,7 +65,7 @@ public sealed partial class ChapterEditingService(IChapterTimeFormatter timeForm
             chapters = chapters.Select(chapter => chapter.IsSeparator ? chapter : chapter with { Time = chapter.Time - shift }).ToArray();
         }
 
-        return new ChapterEditResult(info with { Chapters = Renumber(chapters) }, Array.Empty<ChapterDiagnostic>());
+        return new ChapterEditResult(info with { Chapters = Renumber(chapters) }, []);
     }
 
     public ChapterEditResult InsertBefore(ChapterInfo info, int index)
@@ -77,7 +77,7 @@ public sealed partial class ChapterEditingService(IChapterTimeFormatter timeForm
 
         var chapters = info.Chapters.ToList();
         chapters.Insert(index, new Chapter(0, TimeSpan.Zero, "New Chapter"));
-        return new ChapterEditResult(info with { Chapters = Renumber(chapters) }, Array.Empty<ChapterDiagnostic>());
+        return new ChapterEditResult(info with { Chapters = Renumber(chapters) }, []);
     }
 
     public ChapterEditResult ApplyOrderShift(ChapterInfo info, int shift)
@@ -103,13 +103,13 @@ public sealed partial class ChapterEditingService(IChapterTimeFormatter timeForm
     {
         var names = templateText
             .Trim(' ', '\r', '\n')
-            .Split('\n', StringSplitOptions.None)
+            .Split('\n')
             .Select(static line => line.TrimEnd('\r'))
             .ToArray();
         var chapters = info.Chapters
             .Select((chapter, index) => index < names.Length && names[index].Length > 0 ? chapter with { Name = names[index] } : chapter)
             .ToArray();
-        return new ChapterEditResult(info with { Chapters = chapters }, Array.Empty<ChapterDiagnostic>());
+        return new ChapterEditResult(info with { Chapters = chapters }, []);
     }
 
     public ChapterEditResult ShiftFramesForward(ChapterInfo info, int frames, decimal framesPerSecond)
@@ -127,7 +127,7 @@ public sealed partial class ChapterEditingService(IChapterTimeFormatter timeForm
             .Where(static chapter => chapter.IsSeparator || chapter.Time >= TimeSpan.Zero)
             .ToArray();
 
-        return new ChapterEditResult(info with { Chapters = Renumber(chapters) }, Array.Empty<ChapterDiagnostic>());
+        return new ChapterEditResult(info with { Chapters = Renumber(chapters) }, []);
     }
 
     public ChapterZonesResult CreateZones(ChapterInfo info, IReadOnlySet<int> indexes, decimal framesPerSecond)
@@ -170,7 +170,7 @@ public sealed partial class ChapterEditingService(IChapterTimeFormatter timeForm
         }
 
         var zones = "--zones " + string.Join("/", ranges.OrderBy(static range => range.Begin).Select(static range => $"{range.Begin},{range.End},"));
-        return new ChapterZonesResult(zones, Array.Empty<ChapterDiagnostic>());
+        return new ChapterZonesResult(zones, []);
     }
 
     private static IReadOnlyList<Chapter> Renumber(IEnumerable<Chapter> chapters)

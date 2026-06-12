@@ -31,7 +31,7 @@ public sealed class MplsChapterImporter : IChapterImporter
         {
             var parsed = MplsPlaylistFile.Read(stream);
             var options = parsed.PlayList.PlayItems.Select((playItem, index) => ToOption(request.Path, playItem, parsed.PlayListMark.Marks, index)).ToArray();
-            return new ChapterImportResult(true, [new ChapterInfoGroup(request.Path, options, 0)], Array.Empty<ChapterDiagnostic>());
+            return new ChapterImportResult(true, [new ChapterInfoGroup(request.Path, options)], []);
         }
         catch (Exception exception) when (exception is InvalidDataException or EndOfStreamException or IOException)
         {
@@ -113,7 +113,7 @@ public sealed class MplsChapterImporter : IChapterImporter
     {
         if (playItems.Count == 0)
         {
-            return Array.Empty<Chapter>();
+            return [];
         }
 
         var playItemStartPts = new ulong[playItems.Count];

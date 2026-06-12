@@ -89,7 +89,6 @@ public sealed partial class CueSheetParser
                 }
 
                 chapters.Add(new Chapter(currentNumber, ParseCueTime(indexMatch), currentName));
-                continue;
             }
         }
 
@@ -115,7 +114,7 @@ public sealed partial class CueSheetParser
             Tag: text,
             TagType: typeof(string).FullName);
         var option = new ChapterSourceOption("default", "CUE Chapters", info);
-        return new ChapterImportResult(true, [new ChapterInfoGroup(path, [option], 0)], Array.Empty<ChapterDiagnostic>());
+        return new ChapterImportResult(true, [new ChapterInfoGroup(path, [option])], []);
     }
 
     private static TimeSpan ParseCueTime(Match match)

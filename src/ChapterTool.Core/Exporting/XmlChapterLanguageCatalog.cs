@@ -39,7 +39,7 @@ public static class XmlChapterLanguageCatalog
                 new XmlChapterLanguage(culture.TwoLetterISOLanguageName, $"{culture.TwoLetterISOLanguageName} - {culture.EnglishName}"),
                 new XmlChapterLanguage(culture.ThreeLetterISOLanguageName, $"{culture.ThreeLetterISOLanguageName} - {culture.EnglishName}")
             })
-            .Where(static language => (language.Code.Length == 2 || language.Code.Length == 3) && language.Code != "iv" && language.Code != "ivl")
+            .Where(static language => language.Code.Length is 2 or 3 && language.Code != "iv" && language.Code != "ivl")
             .GroupBy(static language => language.Code, StringComparer.OrdinalIgnoreCase)
             .Select(static group => group.First())
             .OrderBy(static language => language.Code, StringComparer.OrdinalIgnoreCase);

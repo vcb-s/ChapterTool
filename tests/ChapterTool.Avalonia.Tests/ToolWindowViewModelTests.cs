@@ -55,9 +55,10 @@ public sealed class ToolWindowViewModelTests
     public void TextToolFormatSelectorUpdatesOwnerAndRefreshesPreviewKind()
     {
         var owner = CreateOwner();
-        var vm = new TextToolViewModel(owner.BuildPreview, new TextToolOptions { FormatSelector = new TextToolFormatSelector(owner) });
-
-        vm.SelectedFormatIndex = (int)ChapterExportFormat.Json;
+        var vm = new TextToolViewModel(owner.BuildPreview, new TextToolOptions { FormatSelector = new TextToolFormatSelector(owner) })
+            {
+                SelectedFormatIndex = (int)ChapterExportFormat.Json
+            };
 
         Assert.Equal(ChapterExportFormat.Json, owner.SaveFormat);
         Assert.Equal(TextToolKind.Json, vm.Kind);
@@ -107,7 +108,7 @@ public sealed class ToolWindowViewModelTests
         return new MainWindowViewModel(
             new FakeLoadService(new ChapterImportResult(
                 true,
-                [new ChapterInfoGroup("movie.txt", [new ChapterSourceOption("0", "movie", new ChapterInfo("movie.txt", "movie.txt", 0, "OGM", 24, TimeSpan.FromSeconds(10), [new Chapter(1, TimeSpan.FromSeconds(5), "Intro")]))], 0)],
+                [new ChapterInfoGroup("movie.txt", [new ChapterSourceOption("0", "movie", new ChapterInfo("movie.txt", "movie.txt", 0, "OGM", 24, TimeSpan.FromSeconds(10), [new Chapter(1, TimeSpan.FromSeconds(5), "Intro")]))])],
                 [])),
             new FakeSaveService(),
             new ChapterEditingService(formatter),

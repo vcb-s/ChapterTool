@@ -209,7 +209,7 @@ public sealed class ChapterImporterRegistryTests
             LastRequest = request;
             var info = new ChapterInfo("title", request.Path, 0, "TEST", 24, TimeSpan.Zero, []);
             var option = new ChapterSourceOption("0", "test", info);
-            return ValueTask.FromResult(new ChapterImportResult(true, [new ChapterInfoGroup(request.Path, [option], 0)], []));
+            return ValueTask.FromResult(new ChapterImportResult(true, [new ChapterInfoGroup(request.Path, [option])], []));
         }
     }
 

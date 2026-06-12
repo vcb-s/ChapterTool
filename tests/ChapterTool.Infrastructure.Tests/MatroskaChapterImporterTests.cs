@@ -151,7 +151,7 @@ public sealed class MatroskaChapterImporterTests
     {
         var runner = new FakeProcessRunner(Successful(ValidXml));
         var importer = NewImporter(runner: runner);
-        var path = @"C:\media\movie with spaces.mkv";
+        const string path = @"C:\media\movie with spaces.mkv";
 
         await importer.ImportAsync(new ChapterImportRequest(path), TestContext.Current.CancellationToken);
 

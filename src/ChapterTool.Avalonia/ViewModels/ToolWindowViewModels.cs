@@ -14,7 +14,7 @@ public sealed class TextToolViewModel : ObservableViewModel
     private readonly TextToolOptions options;
     private string text;
     private TextToolKind kind;
-    private IReadOnlyList<TextToolLineViewModel> lines = Array.Empty<TextToolLineViewModel>();
+    private IReadOnlyList<TextToolLineViewModel> lines;
 
     public TextToolViewModel(Func<string> refreshText, TextToolOptions? options = null)
     {
@@ -64,7 +64,7 @@ public sealed class TextToolViewModel : ObservableViewModel
 
     public bool CanSelectFormat => options.FormatSelector is not null;
 
-    public IReadOnlyList<string> FormatOptions => options.FormatSelector?.Labels ?? Array.Empty<string>();
+    public IReadOnlyList<string> FormatOptions => options.FormatSelector?.Labels ?? [];
 
     public int SelectedFormatIndex
     {
@@ -127,7 +127,7 @@ public sealed class TextToolViewModel : ObservableViewModel
     {
         if (text.Length == 0)
         {
-            return Array.Empty<TextToolLineViewModel>();
+            return [];
         }
 
         return text.ReplaceLineEndings("\n")
@@ -281,7 +281,7 @@ public sealed class TextToolOptions
     public TextToolFormatSelector? FormatSelector { get; init; }
 }
 
-public sealed class TextToolFormatSelector
+public sealed class TextToolFormatSelector(MainWindowViewModel owner)
 {
     private static readonly ChapterExportFormat[] Formats =
     [
@@ -297,29 +297,21 @@ public sealed class TextToolFormatSelector
         ChapterExportFormat.Chapter2Qpfile
     ];
 
-    private int selectedIndex;
-
-    public TextToolFormatSelector(MainWindowViewModel owner)
-    {
-        Owner = owner;
-        selectedIndex = Math.Clamp(owner.SaveFormatIndex, 0, Formats.Length - 1);
-    }
-
-    private MainWindowViewModel Owner { get; }
+    private MainWindowViewModel Owner { get; } = owner;
 
     public IReadOnlyList<string> Labels { get; } = Formats.Select(static format => format.ToString()).ToArray();
 
     public int SelectedIndex
     {
-        get => selectedIndex;
-        set => selectedIndex = Math.Clamp(value, 0, Formats.Length - 1);
-    }
+        get;
+        set => field = Math.Clamp(value, 0, Formats.Length - 1);
+    } = Math.Clamp(owner.SaveFormatIndex, 0, Formats.Length - 1);
 
     public TextToolKind Kind => KindFor(Formats[SelectedIndex]);
 
-    public void Apply(int selectedIndex)
+    public void Apply(int index)
     {
-        SelectedIndex = selectedIndex;
+        SelectedIndex = index;
         Owner.SaveFormatIndex = SelectedIndex;
     }
 
@@ -391,7 +383,7 @@ public sealed class ColorSettingsViewModel : ObservableViewModel
         }
 
         var text = value.Trim();
-        return text.Length == 7 && text[0] == '#' && text.Skip(1).All(Uri.IsHexDigit)
+        return text is ['#', _, _, _, _, _, _] && text.Skip(1).All(Uri.IsHexDigit)
             ? text.ToUpperInvariant()
             : fallback;
     }
@@ -399,15 +391,13 @@ public sealed class ColorSettingsViewModel : ObservableViewModel
 
 public sealed class ColorSlotViewModel(string name, string value) : ObservableViewModel
 {
-    private string value = value;
-
     public string Name { get; } = name;
 
     public string Value
     {
-        get => value;
-        set => SetProperty(ref this.value, value);
-    }
+        get;
+        set => SetProperty(ref field, value);
+    } = value;
 }
 
 public sealed class LanguageToolViewModel : ObservableViewModel
@@ -482,20 +472,17 @@ public sealed record LanguageOptionViewModel(string CultureName, string DisplayN
 
 public sealed class ExpressionToolViewModel(MainWindowViewModel owner) : ObservableViewModel
 {
-    private string expression = owner.Expression;
-    private bool applyExpression = owner.ApplyExpression;
-
     public string Expression
     {
-        get => expression;
-        set => SetProperty(ref expression, value);
-    }
+        get;
+        set => SetProperty(ref field, value);
+    } = owner.Expression;
 
     public bool ApplyExpression
     {
-        get => applyExpression;
-        set => SetProperty(ref applyExpression, value);
-    }
+        get;
+        set => SetProperty(ref field, value);
+    } = owner.ApplyExpression;
 
     public UiCommand ApplyCommand { get; } = new((parameter, _) =>
     {
@@ -511,13 +498,11 @@ public sealed class ExpressionToolViewModel(MainWindowViewModel owner) : Observa
 
 public sealed class TemplateNamesToolViewModel(MainWindowViewModel owner) : ObservableViewModel
 {
-    private bool useTemplateNames = owner.UseTemplateNames;
-
     public bool UseTemplateNames
     {
-        get => useTemplateNames;
-        set => SetProperty(ref useTemplateNames, value);
-    }
+        get;
+        set => SetProperty(ref field, value);
+    } = owner.UseTemplateNames;
 
     public UiCommand ApplyCommand { get; } = new((parameter, _) =>
     {
@@ -533,12 +518,10 @@ public sealed class TemplateNamesToolViewModel(MainWindowViewModel owner) : Obse
 
 public sealed class ForwardShiftToolViewModel(MainWindowViewModel owner) : ObservableViewModel
 {
-    private decimal frames;
-
     public decimal Frames
     {
-        get => frames;
-        set => SetProperty(ref frames, value);
+        get;
+        set => SetProperty(ref field, value);
     }
 
     public UiCommand ApplyCommand { get; } = new((parameter, _) =>

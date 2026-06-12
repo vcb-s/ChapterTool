@@ -47,7 +47,7 @@ public sealed class SettingsToolHeadlessTests
                 Directory.CreateDirectory(Path.GetDirectoryName(artifactPath)!);
                 var bitmap = window.CaptureRenderedFrame()
                     ?? throw new InvalidOperationException($"Settings panel frame '{name}' was not rendered.");
-                using (var stream = File.Create(artifactPath))
+                await using (var stream = File.Create(artifactPath))
                 {
                     bitmap.Save(stream);
                 }

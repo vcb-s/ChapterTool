@@ -344,7 +344,7 @@ public sealed partial class MainWindow : Window
         Refresh();
     }
 
-    private string? Gesture(KeyEventArgs args)
+    private static string? Gesture(KeyEventArgs args)
     {
         var control = args.KeyModifiers.HasFlag(KeyModifiers.Control);
         var alt = args.KeyModifiers.HasFlag(KeyModifiers.Alt);
@@ -496,10 +496,7 @@ public sealed partial class MainWindow : Window
 
     private void OnOrderShiftValueChanged(object? sender, NumericUpDownValueChangedEventArgs args)
     {
-        if (OrderShiftBox.Value is null)
-        {
-            OrderShiftBox.Value = 0;
-        }
+        OrderShiftBox.Value ??= 0;
     }
 
     private int NormalizedOrderShiftValue()
@@ -595,7 +592,7 @@ public sealed partial class MainWindow : Window
     {
         return comboBox.SelectedItem switch
         {
-            ComboBoxItem item when item.Content is not null => item.Content.ToString() ?? fallback,
+            ComboBoxItem { Content: not null } item => item.Content.ToString() ?? fallback,
             string text when !string.IsNullOrWhiteSpace(text) => text,
             _ => fallback
         };

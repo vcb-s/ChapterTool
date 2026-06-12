@@ -5,7 +5,6 @@ using ChapterTool.Avalonia.Localization;
 using ChapterTool.Avalonia.Services;
 using ChapterTool.Avalonia.ViewModels;
 using ChapterTool.Avalonia.Views;
-using ChapterTool.Core.Diagnostics;
 using ChapterTool.Core.Editing;
 using ChapterTool.Core.Exporting;
 using ChapterTool.Core.Importing;
@@ -54,7 +53,7 @@ internal sealed class MainWindowHeadlessTestHost : IDisposable
     public FakeFilePickerService FilePickerService { get; }
 
     public static ChapterImportResult ImportResult(string path, params ChapterSourceOption[] options) =>
-        new(true, [new ChapterInfoGroup(path, options, 0)], Array.Empty<ChapterDiagnostic>());
+        new(true, [new ChapterInfoGroup(path, options)], []);
 
     public static ChapterSourceOption Option(string sourceType, string sourceName, params string[] chapterNames)
     {
@@ -124,7 +123,7 @@ internal sealed class MainWindowHeadlessTestHost : IDisposable
 
     public string DescribeRenderedTexts(Control scope) =>
         RenderedTexts(scope)
-            .Aggregate(string.Empty, static (current, text) => string.IsNullOrEmpty(current) ? text! : current + Environment.NewLine + text);
+            .Aggregate(string.Empty, static (current, text) => string.IsNullOrEmpty(current) ? text : current + Environment.NewLine + text);
 
     public void Dispose() => Window.Close();
 
@@ -141,7 +140,7 @@ internal sealed class MainWindowHeadlessTestHost : IDisposable
             ChapterExportOptions options,
             string? directory,
             CancellationToken cancellationToken) =>
-            ValueTask.FromResult(new ChapterExportResult(true, "ok", ".txt", Array.Empty<ChapterDiagnostic>()));
+            ValueTask.FromResult(new ChapterExportResult(true, "ok", ".txt", []));
     }
 
     internal sealed class FakeWindowService : IWindowService

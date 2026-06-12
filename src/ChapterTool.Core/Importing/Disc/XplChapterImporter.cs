@@ -37,7 +37,7 @@ public sealed class XplChapterImporter : IChapterImporter
                 return ChapterImportResult.Failed(Error("XplNoChapters", "No HD-DVD chapters were parsed."));
             }
 
-            return new ChapterImportResult(true, [new ChapterInfoGroup(request.Path, options, 0)], Array.Empty<ChapterDiagnostic>());
+            return new ChapterImportResult(true, [new ChapterInfoGroup(request.Path, options)], []);
         }
         catch (Exception exception) when (exception is FormatException or InvalidDataException or InvalidOperationException or System.Xml.XmlException)
         {

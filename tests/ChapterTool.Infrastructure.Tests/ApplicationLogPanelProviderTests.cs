@@ -49,7 +49,7 @@ public sealed class ApplicationLogPanelProviderTests
         Assert.Equal("Load", entry.Arguments?["operation"]);
         Assert.Equal("FfprobeProcessFailed", entry.Arguments?["code"]);
         Assert.Equal("exitCode=1 stderr=failed", entry.TechnicalDetail);
-        Assert.DoesNotContain(entry.Arguments!, pair => pair.Key == "MessageKey" || pair.Key == "TechnicalDetail");
+        Assert.DoesNotContain(entry.Arguments!, pair => pair.Key is "MessageKey" or "TechnicalDetail");
     }
 
     [Fact]
