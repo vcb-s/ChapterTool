@@ -25,7 +25,7 @@ public sealed class RuntimeChapterSaveServiceTests
 
         try
         {
-            var result = await service.SaveAsync(info, new ChapterExportOptions(ChapterExportFormat.Cue), directory, CancellationToken.None);
+            var result = await service.SaveAsync(info, new ChapterExportOptions(ChapterExportFormat.Cue), directory, TestContext.Current.CancellationToken);
 
             Assert.True(result.Success);
             var path = Path.Combine(directory, "audio.cue");
@@ -62,7 +62,7 @@ public sealed class RuntimeChapterSaveServiceTests
                 info,
                 new ChapterExportOptions(ChapterExportFormat.Xml, ProjectOutput: true, OrderShift: -5),
                 directory,
-                CancellationToken.None);
+                TestContext.Current.CancellationToken);
 
             Assert.True(result.Success);
             Assert.True(result.Diagnostics.Count >= 2, $"Expected at least 2 diagnostics but got {result.Diagnostics.Count}");

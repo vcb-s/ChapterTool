@@ -1,12 +1,10 @@
+using Microsoft.Extensions.Logging;
+
 namespace ChapterTool.Core.Services;
 
 public interface IApplicationLogService
 {
     IReadOnlyList<ApplicationLogEntry> Entries { get; }
-
-    void Add(string message);
-
-    void Add(string key, IReadOnlyDictionary<string, object?> arguments, string? technicalDetail = null);
 
     string Format(Func<ApplicationLogEntry, string>? formatter = null);
 
@@ -15,7 +13,13 @@ public interface IApplicationLogService
 
 public sealed record ApplicationLogEntry(
     DateTimeOffset Timestamp,
+    LogLevel Level,
     string Message,
     string? MessageKey = null,
     IReadOnlyDictionary<string, object?>? Arguments = null,
-    string? TechnicalDetail = null);
+    string? TechnicalDetail = null,
+    string? Category = null,
+    int EventId = 0,
+    string? EventName = null,
+    string? ExceptionText = null,
+    IReadOnlyDictionary<string, object?>? StructuredState = null);

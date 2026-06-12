@@ -6,6 +6,7 @@ using ChapterTool.Core.Models;
 using ChapterTool.Core.Services;
 using ChapterTool.Core.Transform;
 using ChapterTool.Infrastructure.Configuration;
+using ChapterTool.Infrastructure.Platform;
 
 namespace ChapterTool.Avalonia.Tests;
 
@@ -101,6 +102,7 @@ public sealed class ToolWindowViewModelTests
     private static MainWindowViewModel CreateOwner()
     {
         var formatter = new ChapterTimeFormatter();
+        var logService = new ApplicationLogPanelProvider();
         return new MainWindowViewModel(
             new FakeLoadService(new ChapterImportResult(
                 true,
@@ -110,7 +112,9 @@ public sealed class ToolWindowViewModelTests
             new ChapterEditingService(formatter),
             new ChapterSegmentService(),
             new FakeWindowService(),
-            formatter);
+            formatter,
+            logService,
+            TestApplicationLogger.Create<MainWindowViewModel>(logService));
     }
 
     private sealed class FakeThemeSettingsStore : ISettingsStore<ThemeColorSettings>

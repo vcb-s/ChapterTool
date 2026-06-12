@@ -10,7 +10,7 @@ using ChapterTool.Core.Models;
 using ChapterTool.Core.Services;
 using ChapterTool.Core.Transform;
 using ChapterTool.Infrastructure.Configuration;
-using ChapterTool.Infrastructure.Platform;
+using Microsoft.Extensions.Logging;
 
 namespace ChapterTool.Avalonia.ViewModels;
 
@@ -25,6 +25,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
     private readonly IFrameRateService frameRateService;
     private readonly ChapterOutputProjectionService outputProjectionService;
     private readonly IApplicationLogService logService;
+    private readonly ILogger<MainWindowViewModel> logger;
     private readonly IAppLocalizer localizer;
     private readonly IShellService? shellService;
     private readonly ISettingsStore<AppSettings>? appSettingsStore;
@@ -62,7 +63,8 @@ public sealed class MainWindowViewModel : ObservableViewModel
         ChapterSegmentService segmentService,
         IWindowService windowService,
         IChapterTimeFormatter formatter,
-        IApplicationLogService? logService = null,
+        IApplicationLogService logService,
+        ILogger<MainWindowViewModel> logger,
         IShellService? shellService = null,
         ISettingsStore<AppSettings>? appSettingsStore = null,
         IFrameRateService? frameRateService = null,
@@ -76,7 +78,9 @@ public sealed class MainWindowViewModel : ObservableViewModel
         this.formatter = formatter;
         this.frameRateService = frameRateService ?? new FrameRateService();
         outputProjectionService = new ChapterOutputProjectionService(new ExpressionService());
-        this.logService = logService ?? new InMemoryApplicationLogService();
+        this.logService = logService;
+        this.logger = logger;
+
         this.localizer = localizer ?? new AppLocalizationManager();
         this.shellService = shellService;
         this.appSettingsStore = appSettingsStore;
@@ -145,6 +149,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
 
         PreviewCommand = WindowCommand("preview");
         LogCommand = WindowCommand("log");
+        SettingsCommand = WindowCommand("settings");
         ColorSettingsCommand = WindowCommand("color-settings");
         LanguageCommand = WindowCommand("language");
         ExpressionCommand = WindowCommand("expression");
@@ -421,6 +426,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
     public UiCommand InsertCommand { get; }
     public UiCommand PreviewCommand { get; }
     public UiCommand LogCommand { get; }
+    public UiCommand SettingsCommand { get; }
     public UiCommand ColorSettingsCommand { get; }
     public UiCommand LanguageCommand { get; }
     public UiCommand ExpressionCommand { get; }
@@ -455,12 +461,26 @@ public sealed class MainWindowViewModel : ObservableViewModel
         }
 
         var settings = await appSettingsStore.LoadAsync(cancellationToken);
-        SaveDirectory = settings.SavingPath;
-        UiLanguage = AppLanguage.Normalize(settings.Language);
-        localizer.SetCulture(UiLanguage);
+        ApplySettings(settings);
         Log("Log.SettingsLoaded",
             ("savingPath", SaveDirectory ?? string.Empty),
             ("language", UiLanguage));
+        NotifyStateChanged();
+    }
+
+    public void ApplySettings(AppSettings settings)
+    {
+        SaveDirectory = settings.SavingPath;
+        UiLanguage = AppLanguage.Normalize(settings.Language);
+        localizer.SetCulture(UiLanguage);
+        if (Enum.TryParse<ChapterExportFormat>(settings.DefaultSaveFormat, ignoreCase: true, out var format))
+        {
+            SaveFormat = format;
+        }
+
+        XmlLanguage = string.IsNullOrWhiteSpace(settings.DefaultXmlLanguage)
+            ? "und"
+            : settings.DefaultXmlLanguage;
         NotifyStateChanged();
     }
 
@@ -890,6 +910,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
         OpenRelatedMediaCommand.RaiseCanExecuteChanged();
         PreviewCommand.RaiseCanExecuteChanged();
         LogCommand.RaiseCanExecuteChanged();
+        SettingsCommand.RaiseCanExecuteChanged();
         ColorSettingsCommand.RaiseCanExecuteChanged();
         LanguageCommand.RaiseCanExecuteChanged();
         ExpressionCommand.RaiseCanExecuteChanged();
@@ -938,7 +959,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
         if (shellService is null)
         {
             SetStatus("Status.ShellUnavailable");
-            LogStatus();
+            LogStatus(LogLevel.Warning);
             NotifyStateChanged();
             return;
         }
@@ -954,7 +975,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
         if (string.IsNullOrWhiteSpace(target) || !File.Exists(target))
         {
             SetStatus("Status.RelatedMediaNotFound");
-            Log("Log.RelatedMediaNotFound",
+            Log(LogLevel.Warning, "Log.RelatedMediaNotFound",
                 ("status", StatusText),
                 ("reference", reference?.RelativePath ?? string.Empty),
                 ("resolved", target ?? string.Empty));
@@ -998,14 +1019,45 @@ public sealed class MainWindowViewModel : ObservableViewModel
             : diagnostic.Message;
     }
 
-    private void LogStatus() => Log("Log.Status", ("status", StatusText));
+    private void LogStatus(LogLevel level = LogLevel.Information) => Log(level, "Log.Status", ("status", StatusText));
 
-    private void Log(string message) => logService.Add(message);
+    private void Log(string message)
+    {
+        if (!string.IsNullOrWhiteSpace(message))
+        {
+            logger.LogInformation("{Message}", message.Trim());
+        }
+    }
 
     private void Log(string key, params (string Name, object? Value)[] arguments) =>
-        logService.Add(
-            key,
-            arguments.ToDictionary(static item => item.Name, static item => item.Value, StringComparer.Ordinal));
+        Log(LogLevel.Information, key, technicalDetail: null, arguments);
+
+    private void Log(LogLevel level, string key, params (string Name, object? Value)[] arguments)
+    {
+        Log(level, key, technicalDetail: null, arguments);
+    }
+
+    private void Log(LogLevel level, string key, string? technicalDetail, params (string Name, object? Value)[] arguments)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return;
+        }
+
+        var state = arguments.ToDictionary(static item => item.Name, static item => item.Value, StringComparer.Ordinal);
+        state["MessageKey"] = key.Trim();
+        if (!string.IsNullOrWhiteSpace(technicalDetail))
+        {
+            state["TechnicalDetail"] = technicalDetail;
+        }
+
+        logger.Log(
+            level,
+            new EventId(0, key.Trim()),
+            state,
+            exception: null,
+            static (values, _) => values.TryGetValue("MessageKey", out var value) ? value?.ToString() ?? string.Empty : string.Empty);
+    }
 
     private string FormatLogEntry(ApplicationLogEntry entry)
     {
@@ -1039,7 +1091,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
         var chapterCount = result.Groups
             .SelectMany(static group => group.Options)
             .Sum(static option => option.ChapterInfo.Chapters.Count);
-        Log("Log.ImportSummary",
+        Log(result.Success ? LogLevel.Information : LogLevel.Error, "Log.ImportSummary",
             ("operation", operation),
             ("success", result.Success),
             ("partial", result.IsPartial),
@@ -1085,7 +1137,8 @@ public sealed class MainWindowViewModel : ObservableViewModel
         {
             var location = string.IsNullOrWhiteSpace(diagnostic.Location) ? string.Empty : $" location='{diagnostic.Location}'";
             var details = string.IsNullOrWhiteSpace(diagnostic.Details) ? string.Empty : $" details='{diagnostic.Details}'";
-            Log("Log.Diagnostic",
+            Log(LogLevelFor(diagnostic.Severity), "Log.Diagnostic",
+                diagnostic.Details,
                 ("operation", operation),
                 ("severity", diagnostic.Severity),
                 ("code", diagnostic.Code),
@@ -1094,6 +1147,14 @@ public sealed class MainWindowViewModel : ObservableViewModel
                 ("details", details));
         }
     }
+
+    private static LogLevel LogLevelFor(DiagnosticSeverity severity) =>
+        severity switch
+        {
+            DiagnosticSeverity.Error => LogLevel.Error,
+            DiagnosticSeverity.Warning => LogLevel.Warning,
+            _ => LogLevel.Information
+        };
 
     private enum EditKind
     {

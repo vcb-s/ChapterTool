@@ -1,0 +1,156 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ChapterTool.Avalonia.ViewModels"
+             x:Class="ChapterTool.Avalonia.Views.Tools.SettingsToolView"
+             x:DataType="vm:SettingsToolViewModel"
+             x:CompileBindings="True">
+  <UserControl.Styles>
+    <Style Selector="TextBlock.sectionTitle">
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBlock.status">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="#586069" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBox, ComboBox">
+      <Setter Property="MinHeight" Value="32" />
+    </Style>
+    <Style Selector="Button.compact">
+      <Setter Property="MinWidth" Value="42" />
+      <Setter Property="MinHeight" Value="30" />
+      <Setter Property="Padding" Value="8,3" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid RowDefinitions="*,Auto" Margin="16" RowSpacing="12">
+    <TabControl Grid.Row="0">
+      <TabItem Header="{DynamicResource Settings.General}">
+        <ScrollViewer>
+          <StackPanel Spacing="12" Margin="4,12,12,4">
+            <TextBlock Classes="sectionTitle" Text="{DynamicResource Settings.General}" />
+            <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto" RowSpacing="10" ColumnSpacing="12">
+              <TextBlock Grid.Row="0" Grid.Column="0" Classes="label" Text="{DynamicResource Settings.UiLanguage}" />
+              <ComboBox Grid.Row="0"
+                        Grid.Column="1"
+                        ItemsSource="{Binding Languages}"
+                        SelectedIndex="{Binding SelectedLanguageIndex}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate DataType="vm:LanguageOptionViewModel">
+                    <TextBlock Text="{Binding DisplayName}" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+
+              <TextBlock Grid.Row="1" Grid.Column="0" Classes="label" Text="{DynamicResource Settings.SaveDirectory}" />
+              <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                <TextBox Grid.Column="0" Text="{Binding SaveDirectory, Mode=TwoWay}" PlaceholderText="{DynamicResource Settings.EmptyUsesSource}" />
+                <Button Grid.Column="1" Classes="compact" Content="..." Command="{Binding BrowseSaveDirectoryCommand}" />
+                <Button Grid.Column="2" Classes="compact" Content="{DynamicResource Common.Clear}" Command="{Binding ClearSaveDirectoryCommand}" />
+              </Grid>
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="{DynamicResource Settings.ExternalTools}">
+        <ScrollViewer>
+          <StackPanel Spacing="12" Margin="4,12,12,4">
+            <TextBlock Classes="sectionTitle" Text="{DynamicResource Settings.ExternalTools}" />
+            <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="10" ColumnSpacing="12">
+              <TextBlock Grid.Row="0" Grid.Column="0" Classes="label" Text="{DynamicResource Settings.MkvToolnixPath}" />
+              <Grid Grid.Row="0" Grid.Column="1" RowDefinitions="Auto,Auto" RowSpacing="3">
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                  <TextBox Grid.Column="0" Text="{Binding MkvToolnixPath, Mode=TwoWay}" />
+                  <Button Grid.Column="1" Classes="compact" Content="..." Command="{Binding BrowseMkvToolnixCommand}" />
+                  <Button Grid.Column="2" Classes="compact" Content="{DynamicResource Common.Clear}" Command="{Binding ClearMkvToolnixCommand}" />
+                </Grid>
+                <TextBlock Grid.Row="1" Classes="status" Text="{Binding MkvToolnixStatus}" />
+              </Grid>
+
+              <TextBlock Grid.Row="1" Grid.Column="0" Classes="label" Text="{DynamicResource Settings.Eac3toPath}" />
+              <Grid Grid.Row="1" Grid.Column="1" RowDefinitions="Auto,Auto" RowSpacing="3">
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                  <TextBox Grid.Column="0" Text="{Binding Eac3toPath, Mode=TwoWay}" />
+                  <Button Grid.Column="1" Classes="compact" Content="..." Command="{Binding BrowseEac3toCommand}" />
+                  <Button Grid.Column="2" Classes="compact" Content="{DynamicResource Common.Clear}" Command="{Binding ClearEac3toCommand}" />
+                </Grid>
+                <TextBlock Grid.Row="1" Classes="status" Text="{Binding Eac3toStatus}" />
+              </Grid>
+
+              <TextBlock Grid.Row="2" Grid.Column="0" Classes="label" Text="{DynamicResource Settings.FfprobePath}" />
+              <Grid Grid.Row="2" Grid.Column="1" RowDefinitions="Auto,Auto" RowSpacing="3">
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                  <TextBox Grid.Column="0" Text="{Binding FfprobePath, Mode=TwoWay}" />
+                  <Button Grid.Column="1" Classes="compact" Content="..." Command="{Binding BrowseFfprobeCommand}" />
+                  <Button Grid.Column="2" Classes="compact" Content="{DynamicResource Common.Clear}" Command="{Binding ClearFfprobeCommand}" />
+                </Grid>
+                <TextBlock Grid.Row="1" Classes="status" Text="{Binding FfprobeStatus}" />
+              </Grid>
+
+              <TextBlock Grid.Row="3" Grid.Column="0" Classes="label" Text="{DynamicResource Settings.FfmpegPath}" />
+              <Grid Grid.Row="3" Grid.Column="1" RowDefinitions="Auto,Auto" RowSpacing="3">
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                  <TextBox Grid.Column="0" Text="{Binding FfmpegPath, Mode=TwoWay}" />
+                  <Button Grid.Column="1" Classes="compact" Content="..." Command="{Binding BrowseFfmpegCommand}" />
+                  <Button Grid.Column="2" Classes="compact" Content="{DynamicResource Common.Clear}" Command="{Binding ClearFfmpegCommand}" />
+                </Grid>
+                <TextBlock Grid.Row="1" Classes="status" Text="{Binding FfmpegStatus}" />
+              </Grid>
+            </Grid>
+            <Button Content="{DynamicResource Settings.ValidateTools}" HorizontalAlignment="Left" Command="{Binding ValidateToolsCommand}" />
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="{DynamicResource Settings.OutputDefaults}">
+        <StackPanel Spacing="12" Margin="4,12,12,4">
+          <TextBlock Classes="sectionTitle" Text="{DynamicResource Settings.OutputDefaults}" />
+          <Grid ColumnDefinitions="150,*" RowDefinitions="Auto,Auto" RowSpacing="10" ColumnSpacing="12">
+            <TextBlock Grid.Row="0" Grid.Column="0" Classes="label" Text="{DynamicResource Settings.DefaultSaveFormat}" />
+            <ComboBox Grid.Row="0" Grid.Column="1" ItemsSource="{Binding SaveFormatOptions}" SelectedIndex="{Binding DefaultSaveFormatIndex}" />
+            <TextBlock Grid.Row="1" Grid.Column="0" Classes="label" Text="{DynamicResource Settings.DefaultXmlLanguage}" />
+            <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding XmlLanguageOptions}" SelectedIndex="{Binding DefaultXmlLanguageIndex}" />
+          </Grid>
+        </StackPanel>
+      </TabItem>
+
+      <TabItem Header="{DynamicResource Settings.Appearance}">
+        <ScrollViewer>
+          <StackPanel Spacing="12" Margin="4,12,12,4">
+            <TextBlock Classes="sectionTitle" Text="{DynamicResource Settings.Appearance}" />
+            <ItemsControl ItemsSource="{Binding ColorSlots}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="vm:ColorSlotViewModel">
+                  <Grid ColumnDefinitions="150,*" ColumnSpacing="12" Margin="0,0,0,8">
+                    <TextBlock Grid.Column="0" Classes="label" Text="{Binding Name}" />
+                    <TextBox Grid.Column="1" Text="{Binding Value}" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="{DynamicResource Settings.Platform}">
+        <StackPanel Spacing="12" Margin="4,12,12,4">
+          <TextBlock Classes="sectionTitle" Text="{DynamicResource Settings.Platform}" />
+          <TextBlock Text="{DynamicResource Prompt.FileAssociationUnsupported}" TextWrapping="Wrap" />
+        </StackPanel>
+      </TabItem>
+    </TabControl>
+
+    <Grid Grid.Row="1" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+      <TextBlock Grid.Column="0" Classes="status" VerticalAlignment="Center" Text="{Binding StatusText}" />
+      <Button Grid.Column="1" Content="{DynamicResource Settings.ResetDefaults}" Command="{Binding ResetCommand}" />
+      <Button Grid.Column="2" Content="{DynamicResource Common.Save}" Command="{Binding SaveCommand}" />
+    </Grid>
+  </Grid>
+</UserControl>

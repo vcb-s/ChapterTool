@@ -47,6 +47,36 @@ public sealed class MplsChapterImporter : IChapterImporter
         return new TimeSpan(0, 0, 0, (int)seconds, (int)milliseconds);
     }
 
+    public static ChapterInfo ReadPlaylistInfo(
+        string path,
+        string title = "",
+        string? sourceName = null,
+        int sourceIndex = 0,
+        string sourceType = "MPLS",
+        TimeSpan? duration = null)
+    {
+        using var stream = File.OpenRead(path);
+        var parsed = MplsPlaylistFile.Read(stream);
+        var playItems = parsed.PlayList.PlayItems;
+        var chapters = PlaylistChapters(playItems, parsed.PlayListMark.Marks);
+        var frameRateCode = playItems
+            .SelectMany(static item => item.STNTable.PrimaryVideoStreamEntries)
+            .Select(static entry => entry.StreamAttributes.FrameRate ?? 0)
+            .FirstOrDefault();
+        var totalPts = playItems.Aggregate(0UL, static (sum, item) => sum + item.OUTTime - item.INTime);
+
+        return new ChapterInfo(
+            title,
+            sourceName ?? string.Join("+", playItems.Select(static item => item.FullName)),
+            sourceIndex,
+            sourceType,
+            frameRateCode < FrameRates.Length ? FrameRates[frameRateCode] : 0,
+            duration ?? PtsToTime(checked((uint)Math.Min(totalPts, uint.MaxValue))),
+            chapters,
+            Tag: path,
+            TagType: sourceType);
+    }
+
     private static ChapterSourceOption ToOption(string path, MplsPlayItem playItem, IReadOnlyList<MplsMark> marks, int playItemIndex)
     {
         var matchingMarks = marks
@@ -77,5 +107,42 @@ public sealed class MplsChapterImporter : IChapterImporter
             .Select(clip => new SourceMediaReference($"{clip}.m2ts", Path.Combine("..", "STREAM", $"{clip}.m2ts")))
             .ToArray();
         return new ChapterSourceOption($"clip-{playItemIndex}", $"{playItem.FullName}__{chapters.Length}", info, CanCombine: true, MediaReferences: refs);
+    }
+
+    private static IReadOnlyList<Chapter> PlaylistChapters(IReadOnlyList<MplsPlayItem> playItems, IReadOnlyList<MplsMark> marks)
+    {
+        if (playItems.Count == 0)
+        {
+            return Array.Empty<Chapter>();
+        }
+
+        var playItemStartPts = new ulong[playItems.Count];
+        var cursor = 0UL;
+        for (var i = 0; i < playItems.Count; i++)
+        {
+            playItemStartPts[i] = cursor;
+            cursor += playItems[i].OUTTime - playItems[i].INTime;
+        }
+
+        var chapters = marks
+            .Where(static mark => mark.MarkType == 0x01)
+            .Where(mark => mark.RefToPlayItemID < playItems.Count)
+            .Select(mark =>
+            {
+                var playItem = playItems[mark.RefToPlayItemID];
+                var relativePts = mark.MarkTimeStamp > playItem.INTime ? mark.MarkTimeStamp - playItem.INTime : 0;
+                return playItemStartPts[mark.RefToPlayItemID] + relativePts;
+            })
+            .Distinct()
+            .Order()
+            .Select((pts, index) => new Chapter(
+                index + 1,
+                PtsToTime(checked((uint)Math.Min(pts, uint.MaxValue))),
+                $"Chapter {index + 1:D2}"))
+            .ToArray();
+
+        return chapters.Length == 0
+            ? [new Chapter(1, TimeSpan.Zero, "Chapter 01")]
+            : chapters;
     }
 }

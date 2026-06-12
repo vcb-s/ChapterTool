@@ -13,7 +13,7 @@ public sealed class MediaChapterImporterTests
     {
         var importer = CreateImporter("ffprobe_chapters_single_edition.json");
 
-        var result = await importer.ImportAsync(new ChapterImportRequest("movie.mp4"), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest("movie.mp4"), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, Diagnostics(result));
         var info = result.Groups.Single().Options.Single().ChapterInfo;
@@ -30,7 +30,7 @@ public sealed class MediaChapterImporterTests
     {
         var importer = CreateImporter("ffprobe_chapters_time_base_fallback.json");
 
-        var result = await importer.ImportAsync(new ChapterImportRequest("audio.ogg"), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest("audio.ogg"), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, Diagnostics(result));
         var chapters = result.Groups.Single().Options.Single().ChapterInfo.Chapters;
@@ -43,7 +43,7 @@ public sealed class MediaChapterImporterTests
     {
         var importer = CreateImporter("ffprobe_chapters_non_contiguous.json");
 
-        var result = await importer.ImportAsync(new ChapterImportRequest("movie.nut"), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest("movie.nut"), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, Diagnostics(result));
         var chapters = result.Groups.Single().Options.Single().ChapterInfo.Chapters;
@@ -59,7 +59,7 @@ public sealed class MediaChapterImporterTests
     {
         var importer = CreateImporter("ffprobe_chapters_empty.json");
 
-        var result = await importer.ImportAsync(new ChapterImportRequest("empty.wav"), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest("empty.wav"), TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains(result.Diagnostics, static diagnostic => diagnostic.Code == "NoChaptersFound");
@@ -70,7 +70,7 @@ public sealed class MediaChapterImporterTests
     {
         var importer = CreateImporter("ffprobe_chapters_invalid_timestamps.json");
 
-        var result = await importer.ImportAsync(new ChapterImportRequest("bad.mp3"), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest("bad.mp3"), TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains(result.Diagnostics, static diagnostic => diagnostic.Code == "InvalidChapterTimestamp");
@@ -81,7 +81,7 @@ public sealed class MediaChapterImporterTests
     {
         var importer = CreateImporter("ffprobe_chapters_mixed_edition.json");
 
-        var result = await importer.ImportAsync(new ChapterImportRequest("movie.mkv"), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest("movie.mkv"), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, Diagnostics(result));
         var options = result.Groups.Single().Options;

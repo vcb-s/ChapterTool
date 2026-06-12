@@ -42,7 +42,7 @@ public sealed class CueImporterTests
                 INDEX 01 32:12:13
             """;
         using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(cueText));
-        var result = await importer.ImportAsync(new ChapterImportRequest("ARCHIVES 2.cue", stream), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest("ARCHIVES 2.cue", stream), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         var info = result.Groups.Single().Options.Single().ChapterInfo;
@@ -60,7 +60,7 @@ public sealed class CueImporterTests
         var importer = new CueChapterImporter();
         var result = await importer.ImportAsync(
             new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Cue", "のんのんびより りぴーと オリジナルサウンドトラック.cue")),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Contains("のんのんバイオリン", result.Groups.Single().Options.Single().ChapterInfo.Chapters[0].Name, StringComparison.Ordinal);
@@ -72,7 +72,7 @@ public sealed class CueImporterTests
         var importer = new CueChapterImporter();
         var result = await importer.ImportAsync(
             new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Cue", "example-cue-sheet-1.cue")),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         var info = result.Groups.Single().Options.Single().ChapterInfo;
@@ -91,7 +91,7 @@ public sealed class CueImporterTests
         var importer = new CueChapterImporter();
         using var stream = new MemoryStream(bytes);
 
-        var result = await importer.ImportAsync(new ChapterImportRequest("encoded.cue", stream), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest("encoded.cue", stream), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal("Track 1", result.Groups.Single().Options.Single().ChapterInfo.Chapters.Single().Name);
@@ -134,7 +134,7 @@ public sealed class CueImporterTests
     {
         var result = await new FlacCueImporter().ImportAsync(
             new ChapterImportRequest("bad.flac", new MemoryStream("bad!"u8.ToArray())),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "InvalidContainerHeader");
@@ -146,7 +146,7 @@ public sealed class CueImporterTests
         var cue = MinimalCue();
         using var stream = new MemoryStream(CreateFlac(cue, includeNativeCueSheetBlock: true));
 
-        var result = await new FlacCueImporter().ImportAsync(new ChapterImportRequest("music.flac", stream), CancellationToken.None);
+        var result = await new FlacCueImporter().ImportAsync(new ChapterImportRequest("music.flac", stream), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal("Track 1", result.Groups.Single().Options.Single().ChapterInfo.Chapters.Single().Name);
@@ -158,7 +158,7 @@ public sealed class CueImporterTests
         var cue = MinimalCue();
         using var stream = new MemoryStream(CreateFlac(cue, includeNativeCueSheetBlock: false, cueKey: "CUESHEET"));
 
-        var result = await new FlacCueImporter().ImportAsync(new ChapterImportRequest("music.flac", stream), CancellationToken.None);
+        var result = await new FlacCueImporter().ImportAsync(new ChapterImportRequest("music.flac", stream), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal("Track 1", result.Groups.Single().Options.Single().ChapterInfo.Chapters.Single().Name);
@@ -169,7 +169,7 @@ public sealed class CueImporterTests
     {
         using var stream = new MemoryStream(CreateFlac(cue: null, includeNativeCueSheetBlock: false));
 
-        var result = await new FlacCueImporter().ImportAsync(new ChapterImportRequest("music.flac", stream), CancellationToken.None);
+        var result = await new FlacCueImporter().ImportAsync(new ChapterImportRequest("music.flac", stream), TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "FlacEmbeddedCueNotFound");
@@ -180,7 +180,7 @@ public sealed class CueImporterTests
     {
         var result = await new TakCueImporter().ImportAsync(
             new ChapterImportRequest("bad.tak", new MemoryStream("bad!"u8.ToArray())),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "InvalidContainerHeader");
@@ -193,7 +193,7 @@ public sealed class CueImporterTests
         var bytes = Encoding.UTF8.GetBytes("tBaKpaddingCUESHEET=" + cue + "\0\0\0\0\0\0trailer");
         using var stream = new MemoryStream(bytes);
 
-        var result = await new TakCueImporter().ImportAsync(new ChapterImportRequest("music.tak", stream), CancellationToken.None);
+        var result = await new TakCueImporter().ImportAsync(new ChapterImportRequest("music.tak", stream), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal("Track 1", result.Groups.Single().Options.Single().ChapterInfo.Chapters.Single().Name);
@@ -206,7 +206,7 @@ public sealed class CueImporterTests
         var bytes = Encoding.UTF8.GetBytes("tBaK填充CUESHEET=" + cue + "\0\0\0\0\0\0trailer");
         using var stream = new MemoryStream(bytes);
 
-        var result = await new TakCueImporter().ImportAsync(new ChapterImportRequest("music.tak", stream), CancellationToken.None);
+        var result = await new TakCueImporter().ImportAsync(new ChapterImportRequest("music.tak", stream), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal("Track 1", result.Groups.Single().Options.Single().ChapterInfo.Chapters.Single().Name);
@@ -218,7 +218,7 @@ public sealed class CueImporterTests
         var bytes = Encoding.UTF8.GetBytes("tBaKsmall");
         using var stream = new MemoryStream(bytes);
 
-        var result = await new TakCueImporter().ImportAsync(new ChapterImportRequest("music.tak", stream), CancellationToken.None);
+        var result = await new TakCueImporter().ImportAsync(new ChapterImportRequest("music.tak", stream), TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "EmbeddedCueNotFound");

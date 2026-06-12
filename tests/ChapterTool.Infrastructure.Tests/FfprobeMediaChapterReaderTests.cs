@@ -29,7 +29,7 @@ public sealed class FfprobeMediaChapterReaderTests
             """));
         var reader = new FfprobeMediaChapterReader(new FakeToolLocator(new ExternalToolLocation(true, "/tools/ffprobe")), runner);
 
-        var result = await reader.ReadAsync("/media/movie with spaces.mkv", CancellationToken.None);
+        var result = await reader.ReadAsync("/media/movie with spaces.mkv", TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, result.Message);
         Assert.NotNull(runner.LastRequest);
@@ -55,7 +55,7 @@ public sealed class FfprobeMediaChapterReaderTests
             new FakeToolLocator(new ExternalToolLocation(false, null, "MissingDependency", "ffprobe missing")),
             new FakeProcessRunner(SuccessfulJson("""{"chapters":[]}""")));
 
-        var result = await reader.ReadAsync("movie.mp4", CancellationToken.None);
+        var result = await reader.ReadAsync("movie.mp4", TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Equal("FfprobeMissingDependency", result.DiagnosticCode);
@@ -68,7 +68,7 @@ public sealed class FfprobeMediaChapterReaderTests
             new FakeToolLocator(new ExternalToolLocation(true, "ffprobe")),
             new ThrowingProcessRunner(new InvalidOperationException("start failed")));
 
-        var result = await reader.ReadAsync("movie.mp4", CancellationToken.None);
+        var result = await reader.ReadAsync("movie.mp4", TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Equal("FfprobeCannotStart", result.DiagnosticCode);
@@ -83,7 +83,7 @@ public sealed class FfprobeMediaChapterReaderTests
             new FakeToolLocator(new ExternalToolLocation(true, "ffprobe")),
             new FakeProcessRunner(new ProcessRunResult(null, "", "", timedOut, cancelled, "ffprobe", [], null)));
 
-        var result = await reader.ReadAsync("movie.mp4", CancellationToken.None);
+        var result = await reader.ReadAsync("movie.mp4", TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Equal(expectedCode, result.DiagnosticCode);
@@ -96,7 +96,7 @@ public sealed class FfprobeMediaChapterReaderTests
             new FakeToolLocator(new ExternalToolLocation(true, "ffprobe")),
             new FakeProcessRunner(new ProcessRunResult(1, "", "错误", false, false, "ffprobe", [], null)));
 
-        var result = await reader.ReadAsync("movie.mp4", CancellationToken.None);
+        var result = await reader.ReadAsync("movie.mp4", TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Equal("FfprobeProcessFailed", result.DiagnosticCode);
@@ -113,7 +113,7 @@ public sealed class FfprobeMediaChapterReaderTests
             new FakeToolLocator(new ExternalToolLocation(true, "ffprobe")),
             new FakeProcessRunner(SuccessfulJson(stdout)));
 
-        var result = await reader.ReadAsync("movie.mp4", CancellationToken.None);
+        var result = await reader.ReadAsync("movie.mp4", TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Equal(expectedCode, result.DiagnosticCode);

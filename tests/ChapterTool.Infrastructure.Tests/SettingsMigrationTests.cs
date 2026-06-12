@@ -23,13 +23,15 @@ public sealed class SettingsMigrationTests
 
         var store = new AppSettingsStore(root, [root]);
 
-        var settings = await store.LoadAsync(CancellationToken.None);
+        var settings = await store.LoadAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("D:\\Output", settings.SavingPath);
         Assert.Equal("en-US", settings.Language);
         Assert.Equal(new WindowLocation(12, 34), settings.MainWindowLocation);
         Assert.Equal("C:\\Tools\\MKVToolNix", settings.MkvToolnixPath);
         Assert.Equal("C:\\Tools\\eac3to\\eac3to.exe", settings.Eac3toPath);
+        Assert.Equal("Txt", settings.DefaultSaveFormat);
+        Assert.Equal("und", settings.DefaultXmlLanguage);
     }
 
     [Fact]
@@ -42,13 +44,15 @@ public sealed class SettingsMigrationTests
 
         var store = new AppSettingsStore(root, [root]);
         await store.SaveAsync(
-            new AppSettings(Language: "", SavingPath: "E:\\Saved"),
-            CancellationToken.None);
+            new AppSettings(Language: "", SavingPath: "E:\\Saved", DefaultSaveFormat: "Xml", DefaultXmlLanguage: "ja"),
+            TestContext.Current.CancellationToken);
 
-        var settings = await store.LoadAsync(CancellationToken.None);
+        var settings = await store.LoadAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("", settings.Language);
         Assert.Equal("E:\\Saved", settings.SavingPath);
+        Assert.Equal("Xml", settings.DefaultSaveFormat);
+        Assert.Equal("ja", settings.DefaultXmlLanguage);
     }
 
     [Fact]
@@ -61,7 +65,7 @@ public sealed class SettingsMigrationTests
 
         var store = new ThemeSettingsStore(root, [root]);
 
-        var theme = await store.LoadAsync(CancellationToken.None);
+        var theme = await store.LoadAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("#010203", theme.BackChange);
         Assert.Equal("#111213", theme.TextBack);
@@ -84,7 +88,7 @@ public sealed class SettingsMigrationTests
 
         var store = new ThemeSettingsStore(root, [root]);
 
-        var theme = await store.LoadAsync(CancellationToken.None);
+        var theme = await store.LoadAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(ThemeColorSettings.Default.TextBack, theme.TextBack);
         Assert.Equal("#212223", theme.MouseOverColor);

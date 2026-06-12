@@ -135,3 +135,190 @@ Auxiliary UI tools SHALL be implemented as dedicated Avalonia views with ViewMod
 - **WHEN** a secondary window is opened, closed, and reopened
 - **THEN** it SHALL preserve the documented reusable, modal, or result-returning behavior for that tool
 
+### Requirement: Avalonia localization resources are complete
+The application SHALL package complete Simplified Chinese, English, and Japanese localization resources for Avalonia UI, prompts, and user-facing message formatting.
+
+#### Scenario: Supported cultures have matching keys
+- **WHEN** localization resources are validated by tests
+- **THEN** the Simplified Chinese, English, and Japanese resource sets SHALL contain the same required keys
+
+#### Scenario: Localized format strings accept required arguments
+- **WHEN** a localized message key defines formatting arguments
+- **THEN** every supported culture SHALL provide a compatible format string for those arguments
+
+#### Scenario: UTF-8 resources remain valid
+- **WHEN** localized Chinese or Japanese resources are read, built, or packaged
+- **THEN** visible text SHALL remain valid UTF-8 and SHALL NOT contain mojibake such as `杞藉叆` or `淇濆瓨`
+
+### Requirement: Localization is an Avalonia presentation service
+The application SHALL use an Avalonia-facing localization manager for UI resource selection and code-side message lookup instead of relying on the historical Core `ILocalizationService` implementation.
+
+#### Scenario: Composition provides one localization manager
+- **WHEN** the Avalonia application composition root constructs the main window and auxiliary windows
+- **THEN** they SHALL share a single localization manager instance for current culture, resource lookup, formatting, and culture-change notifications
+
+#### Scenario: Core remains presentation-language independent
+- **WHEN** Core services import, transform, edit, or export chapters
+- **THEN** they SHALL NOT depend on Avalonia localization resources or current UI culture to perform domain operations
+
+#### Scenario: Historical localization service is removed or isolated
+- **WHEN** the Avalonia app is built after localization migration
+- **THEN** the historical dictionary-based `ILocalizationService` path SHALL NOT be required for Avalonia UI text, status text, or application log rendering
+
+### Requirement: Application logs are localizable structured entries
+The application log service SHALL store user-facing log events as structured message keys with arguments and optional technical details.
+
+#### Scenario: Log window formats entries in active language
+- **WHEN** the log window displays log entries
+- **THEN** each user-facing log message SHALL be formatted using the active UI language resource set at display time
+
+#### Scenario: Existing log entries refresh after language switch
+- **WHEN** log entries already exist and the user changes the UI language
+- **THEN** the log window SHALL display those entries in the newly active language while preserving timestamps and technical details
+
+#### Scenario: Technical details remain available
+- **WHEN** a log event includes paths, external process output, exception text, diagnostic messages, or other troubleshooting details
+- **THEN** the localized log message SHALL retain those details without translating or discarding them
+
+### Requirement: User prompts are localizable messages
+The application SHALL format user-facing prompts through localization resources and SHALL keep prompt metadata separate from rendered text where practical.
+
+#### Scenario: Dialog request text is localized
+- **WHEN** a dialog request is created for confirmation, input, warning, or error display
+- **THEN** its visible title, message, and action captions SHALL be resolved from the active UI language resource set
+
+#### Scenario: Unsupported feature prompts are localized
+- **WHEN** a platform-gated or unavailable feature is shown to the user
+- **THEN** the visible unsupported-feature prompt SHALL be localized while retaining any technical platform detail separately
+
+#### Scenario: Prompt text refreshes after language switch
+- **WHEN** a prompt-producing ViewModel action runs after the user changes UI language
+- **THEN** newly produced prompt text SHALL use the newly active language
+
+### Requirement: Language settings migrate to explicit culture tags
+The application SHALL persist supported UI languages as explicit culture tags while preserving legacy blank/default settings behavior.
+
+#### Scenario: Blank legacy language uses Simplified Chinese
+- **WHEN** settings contain a blank language value
+- **THEN** localization SHALL treat it as Simplified Chinese for resource selection
+
+#### Scenario: Saved language is explicit
+- **WHEN** the user saves a UI language selection
+- **THEN** settings SHALL store one of `zh-CN`, `en-US`, or `ja-JP`
+
+#### Scenario: Unsupported saved language falls back safely
+- **WHEN** settings contain an unsupported language tag
+- **THEN** localization SHALL fall back to Simplified Chinese and SHALL keep the application usable
+
+### Requirement: Typed settings cover editable application preferences
+The settings system SHALL persist all settings exposed by the unified settings panel through typed cross-platform stores while preserving legacy migration behavior.
+
+#### Scenario: Existing settings still load
+- **WHEN** existing `appsettings.json` files or migrated `chaptertool.json` files omit newly added settings fields
+- **THEN** the settings store SHALL load successfully and use defaults matching the current application startup behavior
+
+#### Scenario: Workflow defaults persist
+- **WHEN** the user saves default save format or default XML language from the settings panel
+- **THEN** those defaults SHALL be written to typed settings and applied when a new main window ViewModel loads settings
+
+#### Scenario: Theme colors remain compatible
+- **WHEN** appearance settings are saved from the settings panel
+- **THEN** the six theme color slots SHALL continue using the existing theme settings store and legacy color slot order
+
+### Requirement: External tool settings are editable and verifiable
+The application SHALL allow users to configure, clear, and verify external tool paths used by current import workflows.
+
+#### Scenario: Configured paths preserve locator precedence
+- **WHEN** MKVToolNix/mkvextract, eac3to, ffprobe, or ffmpeg path settings are saved
+- **THEN** the external tool locator SHALL use those configured values before environment or platform discovery according to the existing precedence rules
+
+#### Scenario: Cleared paths restore discovery
+- **WHEN** a configured external tool path is cleared in settings
+- **THEN** the external tool locator SHALL fall back to environment and platform discovery rather than retaining the old override
+
+#### Scenario: Directory values resolve executable names
+- **WHEN** a configured tool setting points to a directory supported by the locator
+- **THEN** validation and runtime lookup SHALL resolve the platform-appropriate executable name from that directory
+
+#### Scenario: Tool validation returns structured status
+- **WHEN** the settings panel tests an external tool setting
+- **THEN** the validation result SHALL indicate found, missing, invalid path, or unsupported status without showing a Core-layer UI dialog
+
+### Requirement: Settings panel services are injectable
+Settings-related UI behavior SHALL use injectable services for settings stores, file and directory picking, localization, tool location, platform support, and shell operations.
+
+#### Scenario: Settings ViewModel is testable
+- **WHEN** tests construct the settings panel ViewModel
+- **THEN** settings stores, picker behavior, tool locator, localizer, and platform capability checks SHALL be replaceable with fakes
+
+#### Scenario: Browsing uses platform abstractions
+- **WHEN** the user browses for a save directory or external tool path
+- **THEN** the settings panel SHALL use Avalonia/platform file picker abstractions rather than direct WinForms or registry APIs
+
+#### Scenario: Settings status is localizable
+- **WHEN** settings validation, save, reset, or unsupported-platform feedback is displayed
+- **THEN** visible messages SHALL be formatted through the active localization resources
+
+### Requirement: Application diagnostics use standard logging middleware
+The application SHALL route diagnostic logging through standard .NET logging abstractions backed by a structured logging provider instead of using a hand-written in-memory list as the primary logging mechanism.
+
+#### Scenario: Services log through injectable logging abstractions
+- **WHEN** Avalonia, Infrastructure, or platform services need to record diagnostic information
+- **THEN** they SHALL use injectable logging abstractions or adapters backed by `Microsoft.Extensions.Logging`
+
+#### Scenario: Logging backend is configured in composition
+- **WHEN** the Avalonia application starts normally
+- **THEN** the composition root SHALL configure the logging backend, providers, minimum levels, and lifecycle ownership in one place
+
+#### Scenario: Core remains logging-backend independent
+- **WHEN** Core services are built or tested
+- **THEN** they SHALL NOT depend on Serilog, Avalonia, file-system log sinks, or another concrete logging backend
+
+### Requirement: Application logs are severity-classified structured events
+Application log entries SHALL include severity level, category, timestamp, structured message state, and optional technical detail so troubleshooting can distinguish routine workflow events from warnings and failures.
+
+#### Scenario: Routine workflow events use information level
+- **WHEN** a source is loaded, chapters are saved, a source option is selected, or frame information is updated successfully
+- **THEN** the event SHALL be recorded at `Information` level with concise structured context
+
+#### Scenario: Recoverable diagnostics use warning level
+- **WHEN** an import, export, external dependency, or media lookup produces a recoverable diagnostic
+- **THEN** the event SHALL be recorded at `Warning` level with the diagnostic code, message, location, and relevant technical detail
+
+#### Scenario: Failures use error level
+- **WHEN** an operation fails, an exception is observed, or an external process cannot be invoked successfully
+- **THEN** the event SHALL be recorded at `Error` level with exception or failure detail sufficient for debugging
+
+#### Scenario: Verbose implementation detail is filtered
+- **WHEN** an event is only useful for developer-level tracing
+- **THEN** it SHALL be recorded at `Debug` or `Trace` level and SHALL NOT appear in the default user-facing log window unless configured to do so
+
+### Requirement: Log window is backed by a bounded logging sink
+The log window SHALL display recent application log events captured from the standard logging pipeline while preserving clear, copy, localization, and refresh behavior.
+
+#### Scenario: Log window receives captured events
+- **WHEN** a log event passes the configured UI sink filter
+- **THEN** the log service SHALL expose it to the log window with timestamp, severity, message key or rendered message, arguments, category, and technical detail
+
+#### Scenario: Log window clear does not disable logging
+- **WHEN** the user clears the log window
+- **THEN** recent in-memory entries SHALL be removed while the logging backend continues recording subsequent events
+
+#### Scenario: In-memory entries are bounded
+- **WHEN** many log events are recorded during a session
+- **THEN** the UI log sink SHALL retain only a bounded recent set to avoid unbounded memory growth
+
+### Requirement: Diagnostic logs are persisted locally
+The Avalonia application SHALL write structured diagnostic logs to a local rolling file sink suitable for troubleshooting after the application exits.
+
+#### Scenario: File logs survive application exit
+- **WHEN** the application records workflow events, warnings, or errors and then exits
+- **THEN** those events SHALL be available in local log files under the application's user data or settings area
+
+#### Scenario: File logs are bounded by retention
+- **WHEN** log files roll across multiple runs
+- **THEN** the logging backend SHALL enforce retention or size limits so logs do not grow without bound
+
+#### Scenario: Sensitive transport is not introduced
+- **WHEN** logs are recorded
+- **THEN** the application SHALL NOT upload logs or send telemetry to remote services as part of this change

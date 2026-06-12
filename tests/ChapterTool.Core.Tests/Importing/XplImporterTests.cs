@@ -13,7 +13,7 @@ public sealed class XplImporterTests
 
         var result = await importer.ImportAsync(
             new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Disc", "Xpl", sample.FileName)),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, Diagnostics(result));
         var options = result.Groups.Single().Options;
@@ -42,7 +42,7 @@ public sealed class XplImporterTests
 
         var xplResult = await xpl.ImportAsync(
             new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Disc", "Xpl", "VPLST000.XPL")),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.True(xplResult.Success, Diagnostics(xplResult));
         var expectedTimes = new[]
@@ -87,7 +87,7 @@ public sealed class XplImporterTests
             """;
         using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(xmlText));
 
-        var result = await importer.ImportAsync(new ChapterImportRequest("test.xml", stream), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest("test.xml", stream), TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "XplParseFailed");
@@ -98,18 +98,18 @@ public sealed class XplImporterTests
 
     public static TheoryData<SampleExpectation> SampleExpectations() => new()
     {
-        new("VPLST000.XPL",
+        Sample("VPLST000.XPL",
         [
             new("MM", "file:///dvddisc/HVDVD_TS/PEVOB2.MAP", 1, Ms(60041), TimeSpan.Zero, string.Empty, TimeSpan.Zero, string.Empty),
             new("feature", "file:///dvddisc/HVDVD_TS/PEVOB3.MAP", 16, Ms(3486000), TimeSpan.Zero, "Chapter 1", Ms(3226000), "Chapter 16"),
             new("card", "file:///dvddisc/HVDVD_TS/PEVOB4.MAP", 1, Ms(10000), TimeSpan.Zero, string.Empty, TimeSpan.Zero, string.Empty),
             new("logo", "file:///dvddisc/HVDVD_TS/PEVOB5.MAP", 1, Ms(20000), TimeSpan.Zero, string.Empty, TimeSpan.Zero, string.Empty)
         ]),
-        new("VPLST001.XPL", [new("Feature Presentation", "file:///dvddisc/HVDVD_TS/PEVOB_1.MAP", 29, Ms(6170933), TimeSpan.Zero, "Chapter 1", Ms(6018000), "Chapter 29")]),
-        new("VPLST002.XPL", [new("Main Movie", "file:///dvddisc/HVDVD_TS/FEATURE_1.MAP", 10, Ms(6234000), TimeSpan.Zero, "Chapter  1", Ms(5761500), "Chapter 10")]),
-        new("VPLST003.XPL", [new("Main Movie", "file:///dvddisc/HVDVD_TS/FEATURE_1.MAP", 19, Ms(7516916), TimeSpan.Zero, "Count To Ten", Ms(7041958), "Mission: Honeymoon")]),
-        new("VPLST004.XPL", [new("Feature Presentation", "file:///dvddisc/HVDVD_TS/PEVOB_1.MAP", 29, Ms(9440200), TimeSpan.Zero, "The Riddle House", Ms(8620000), "End Credits")]),
-        new("VPLST005.XPL", [new("mainMovie", "file:///dvddisc/HVDVD_TS/L0_mainMovie.MAP", 20, Ms(9012000), TimeSpan.Zero, "mainMovie_ch1", Ms(8197958), "mainMovie_ch20")])
+        Sample("VPLST001.XPL", [new("Feature Presentation", "file:///dvddisc/HVDVD_TS/PEVOB_1.MAP", 29, Ms(6170933), TimeSpan.Zero, "Chapter 1", Ms(6018000), "Chapter 29")]),
+        Sample("VPLST002.XPL", [new("Main Movie", "file:///dvddisc/HVDVD_TS/FEATURE_1.MAP", 10, Ms(6234000), TimeSpan.Zero, "Chapter  1", Ms(5761500), "Chapter 10")]),
+        Sample("VPLST003.XPL", [new("Main Movie", "file:///dvddisc/HVDVD_TS/FEATURE_1.MAP", 19, Ms(7516916), TimeSpan.Zero, "Count To Ten", Ms(7041958), "Mission: Honeymoon")]),
+        Sample("VPLST004.XPL", [new("Feature Presentation", "file:///dvddisc/HVDVD_TS/PEVOB_1.MAP", 29, Ms(9440200), TimeSpan.Zero, "The Riddle House", Ms(8620000), "End Credits")]),
+        Sample("VPLST005.XPL", [new("mainMovie", "file:///dvddisc/HVDVD_TS/L0_mainMovie.MAP", 20, Ms(9012000), TimeSpan.Zero, "mainMovie_ch1", Ms(8197958), "mainMovie_ch20")])
     };
 
     public sealed record SampleExpectation(string FileName, OptionExpectation[] Options);
@@ -123,6 +123,9 @@ public sealed class XplImporterTests
         string FirstName,
         TimeSpan LastTime,
         string LastName);
+
+    private static SampleExpectation Sample(string fileName, OptionExpectation[] options) =>
+        new(fileName, options);
 
     private static TimeSpan Ms(int milliseconds) => TimeSpan.FromMilliseconds(milliseconds);
 

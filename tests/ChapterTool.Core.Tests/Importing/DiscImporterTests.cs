@@ -83,7 +83,7 @@ public sealed class DiscImporterTests
         var importer = new MplsChapterImporter();
         var result = await importer.ImportAsync(
             new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Disc", "Mpls", "00011_24_Eva.mpls")),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
         var option = result.Groups.Single().Options.Single();
@@ -110,7 +110,7 @@ public sealed class DiscImporterTests
         var importer = new MplsChapterImporter();
         var result = await importer.ImportAsync(
             new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Disc", "Mpls", "00001_fch.mpls")),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
         var info = result.Groups.Single().Options.Single().ChapterInfo;
@@ -126,7 +126,7 @@ public sealed class DiscImporterTests
         var importer = new MplsChapterImporter();
         var result = await importer.ImportAsync(
             new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Disc", "Mpls", "00002_tanji.mpls")),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
         var infos = result.Groups.Single().Options.Select(option => option.ChapterInfo).ToArray();
@@ -144,7 +144,7 @@ public sealed class DiscImporterTests
         var importer = new MplsChapterImporter();
         using var stream = new MemoryStream("BAD!"u8.ToArray());
 
-        var result = await importer.ImportAsync(new ChapterImportRequest("bad.mpls", stream), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest("bad.mpls", stream), TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "InvalidMpls");
@@ -156,7 +156,7 @@ public sealed class DiscImporterTests
         var importer = new IfoChapterImporter();
         var result = await importer.ImportAsync(
             new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Disc", "Ifo", "VTS_05_0.IFO")),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
         var option = result.Groups.Single().Options.Single();
@@ -240,7 +240,7 @@ public sealed class DiscImporterTests
 
         try
         {
-            var result = await importer.ImportAsync(new ChapterImportRequest(path), CancellationToken.None);
+            var result = await importer.ImportAsync(new ChapterImportRequest(path), TestContext.Current.CancellationToken);
             Assert.False(result.Success);
             Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "InvalidIfo");
         }
@@ -269,7 +269,7 @@ public sealed class DiscImporterTests
             </Playlist>
             """));
 
-        var result = await importer.ImportAsync(new ChapterImportRequest("movie.xpl", stream), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest("movie.xpl", stream), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         var info = result.Groups.Single().Options.Single().ChapterInfo;
@@ -303,7 +303,7 @@ public sealed class DiscImporterTests
             </Playlist>
             """));
 
-        var result = await importer.ImportAsync(new ChapterImportRequest("movie.xpl", stream), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest("movie.xpl", stream), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         var infos = result.Groups.Single().Options.Select(option => option.ChapterInfo).ToArray();
@@ -326,7 +326,7 @@ public sealed class DiscImporterTests
         var importer = new XplChapterImporter();
         using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(xml));
 
-        var result = await importer.ImportAsync(new ChapterImportRequest("bad.xpl", stream), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest("bad.xpl", stream), TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code is "XplParseFailed" or "XplNoChapters");
@@ -345,7 +345,7 @@ public sealed class DiscImporterTests
             new Mp4ChapterClip("Chapter 04", TimeSpan.FromSeconds(10)))));
         var path = Path.ChangeExtension(Path.Combine(Path.GetTempPath(), "Chapter"), extension);
 
-        var result = await importer.ImportAsync(new ChapterImportRequest(path), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest(path), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal([TimeSpan.Zero, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(20), TimeSpan.FromSeconds(30)], result.Groups.Single().Options.Single().ChapterInfo.Chapters.Select(chapter => chapter.Time));
@@ -357,7 +357,7 @@ public sealed class DiscImporterTests
     {
         var importer = new Mp4ChapterImporter(new FakeMp4Reader(Mp4ChapterReadResult.Succeeded()));
 
-        var result = await importer.ImportAsync(new ChapterImportRequest("movie.mp4"), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest("movie.mp4"), TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "NoChaptersFound");
@@ -370,7 +370,7 @@ public sealed class DiscImporterTests
     {
         var importer = new Mp4ChapterImporter(new FakeMp4Reader(Mp4ChapterReadResult.Failed(code, "reader failed")));
 
-        var result = await importer.ImportAsync(new ChapterImportRequest("movie.mp4"), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest("movie.mp4"), TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == code);

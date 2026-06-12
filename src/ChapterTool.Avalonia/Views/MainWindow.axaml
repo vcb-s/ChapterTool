@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:ChapterTool.Avalonia.ViewModels"
+        xmlns:models="using:ChapterTool.Core.Models"
         x:Class="ChapterTool.Avalonia.Views.MainWindow"
         x:Name="RootWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -163,10 +164,20 @@
                   HorizontalAlignment="Left"
                   VerticalAlignment="Bottom"
                   ItemsSource="{Binding ClipOptions}"
-                  SelectedIndex="{Binding SelectedClipIndex}"
+                  SelectedIndex="{Binding SelectedClipIndex, Mode=OneWay}"
                   IsVisible="{Binding IsClipSelectionVisible}"
                   SelectionChanged="OnClipSelectionChanged"
                   AutomationProperties.AutomationId="ClipSelector">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="models:ChapterSourceOption">
+              <TextBlock Text="{Binding DisplayName}" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+          <ComboBox.SelectionBoxItemTemplate>
+            <DataTemplate x:DataType="models:ChapterSourceOption">
+              <TextBlock Text="{Binding DisplayName}" />
+            </DataTemplate>
+          </ComboBox.SelectionBoxItemTemplate>
           <ComboBox.ContextMenu>
             <ContextMenu>
               <MenuItem x:Name="ClipCombineMenuItem" Header="{DynamicResource Main.Combine}" IsEnabled="{Binding CanCombine}" Command="{Binding #RootWindow.CombineCommand}" />
@@ -195,6 +206,11 @@
                     Content="{DynamicResource Common.Refresh}"
                     IsEnabled="{Binding CanRefreshRows}"
                     Command="{Binding #RootWindow.RefreshRowsCommand}" />
+            <Button x:Name="SettingsButton"
+                    Classes="iconAction"
+                    AutomationProperties.AutomationId="SettingsWindow"
+                    Content="{DynamicResource Main.SettingsShort}"
+                    Command="{Binding SettingsCommand}" />
           </StackPanel>
           <ComboBox x:Name="FrameRateBox"
                     Grid.Row="1"

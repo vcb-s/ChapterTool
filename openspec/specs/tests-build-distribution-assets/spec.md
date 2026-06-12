@@ -15,7 +15,12 @@ The rewrite SHALL provide an SDK-style .NET 10 solution with separated Core, Inf
 - **THEN** Core SHALL NOT reference Avalonia, WinForms, System.Drawing UI APIs, or Windows-only platform APIs
 
 ### Requirement: xUnit test migration
-The rewrite SHALL migrate and strengthen existing MSTest coverage into .NET 10 tests.
+The rewrite SHALL migrate and strengthen existing MSTest coverage into .NET 10 tests that run on xUnit v3.
+
+#### Scenario: Test projects reference xUnit v3
+- **WHEN** test project package references are inspected
+- **THEN** Core, Infrastructure, and Avalonia test projects SHALL use xUnit v3 framework packages and a compatible xUnit v3 Visual Studio runner
+- **AND** they SHALL NOT retain xUnit v2 framework package references
 
 #### Scenario: Existing parser tests are preserved
 - **WHEN** tests are migrated
@@ -44,6 +49,42 @@ The rewrite SHALL migrate and strengthen existing MSTest coverage into .NET 10 t
 #### Scenario: Tests are split by responsibility
 - **WHEN** tests are organized
 - **THEN** Core behavior SHALL live in Core tests, process/native/filesystem behavior SHALL live in Infrastructure tests, and ViewModel commands SHALL live in Avalonia or ViewModel tests
+
+#### Scenario: xUnit v3 test suite runs through dotnet test
+- **WHEN** `dotnet test ChapterTool.Avalonia.slnx --no-restore` runs after restore
+- **THEN** Core, Infrastructure, and Avalonia test assemblies SHALL execute under xUnit v3 without framework discovery failures
+
+### Requirement: Avalonia Headless UI test coverage
+The Avalonia test project SHALL provide a headless Avalonia runtime for rendered UI tests that run in CI without launching the desktop application.
+
+#### Scenario: Headless runtime initializes without desktop lifetime
+- **WHEN** Avalonia UI tests start
+- **THEN** they SHALL initialize an Avalonia Headless AppBuilder compatible with the app's Avalonia major version
+- **AND** they SHALL NOT call `StartWithClassicDesktopLifetime` or require a platform desktop session
+
+#### Scenario: Main window renders under headless backend
+- **WHEN** a headless test constructs the main window with test services
+- **THEN** the window SHALL load compiled XAML, apply localization resources, bind to the supplied ViewModel, and complete layout without throwing
+
+#### Scenario: XML edition switching displays chapter names
+- **WHEN** a headless main-window test loads an XML source with multiple edition options and selects a non-default edition through the visible clip/edition selector
+- **THEN** the rendered chapter grid SHALL display the selected edition's chapter names in the name column
+- **AND** the names SHALL NOT be blank, stale from the previous edition, or hidden by layout/binding failure
+
+#### Scenario: IFO edition switching displays chapter names
+- **WHEN** a headless main-window test loads an IFO source with multiple program-chain or title options and selects a non-default option through the visible clip/edition selector
+- **THEN** the rendered chapter grid SHALL display the selected option's chapter names in the name column
+- **AND** the names SHALL NOT be blank, stale from the previous option, or hidden by layout/binding failure
+
+#### Scenario: MPLS clip switching displays chapter names
+- **WHEN** a headless main-window test loads an MPLS source with multiple playlist or clip options and selects another option through the visible clip selector
+- **THEN** the rendered chapter grid SHALL display the selected option's chapter names in the name column
+- **AND** the names SHALL NOT be blank, stale from the previous option, or hidden by layout/binding failure
+
+#### Scenario: Headless UI tests stay deterministic
+- **WHEN** headless UI tests exercise XML, IFO, or MPLS switching
+- **THEN** they SHALL use in-process deterministic fixtures or fake load services
+- **AND** they SHALL NOT require external media tools, installed desktop applications, registry state, or machine-specific file paths
 
 ### Requirement: Fixture preservation
 The rewrite SHALL preserve existing sample fixtures as deterministic test assets.

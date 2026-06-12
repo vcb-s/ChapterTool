@@ -11,27 +11,28 @@ public sealed class BdmvChapterImporterTests
     public async Task ImportAsyncReadsMetadataTitleAndParsesEac3toChapterText()
     {
         var root = CreateBdmvRoot(writeMeta: true);
+        var playlistDirectory = Path.Combine(root, "BDMV", "PLAYLIST");
+        File.Copy(
+            Path.Combine(FixtureResolver.RepositoryRoot, "tests", "ChapterTool.Core.Tests", "Fixtures", "Importing", "Disc", "Mpls", "00001_fch.mpls"),
+            Path.Combine(playlistDirectory, "00001.mpls"));
         var runner = new FakeRunner([
-            Success("1) 00001.mpls, 00:01:00, 00001.m2ts"),
             Success("""
-                CHAPTER01=00:00:00.000
-                CHAPTER01NAME=Intro
-                CHAPTER02=00:00:10.000
-                CHAPTER02NAME=Middle
+                1) 00001.mpls, 00001.m2ts, 01:00:20
+                   - Chapters, 9 chapters
                 """)
         ]);
         var importer = NewImporter(runner);
 
-        var result = await importer.ImportAsync(new ChapterImportRequest(root), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest(root), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         var info = result.Groups.Single().Options.Single().ChapterInfo;
         Assert.Equal("Disc Title", info.Title);
         Assert.Equal("BDMV", info.SourceType);
         Assert.Equal("00001.m2ts", info.SourceName);
-        Assert.Equal(2, info.Chapters.Count);
-        Assert.Equal([root], runner.Requests[0].Arguments);
-        Assert.Equal([root, "1)", "chapters.txt"], runner.Requests[1].Arguments);
+        Assert.Equal(9, info.Chapters.Count);
+        Assert.Equal([root, "-showall"], runner.Requests[0].Arguments);
+        Assert.Single(runner.Requests);
     }
 
     [Fact]
@@ -39,7 +40,7 @@ public sealed class BdmvChapterImporterTests
     {
         var importer = new BdmvChapterImporter(new FakeLocator(new ExternalToolLocation(false, null, "MissingDependency", "missing")), new FakeRunner([]), new ChapterTimeFormatter());
 
-        var result = await importer.ImportAsync(new ChapterImportRequest(CreateBdmvRoot()), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest(CreateBdmvRoot()), TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "MissingDependency");
@@ -55,7 +56,7 @@ public sealed class BdmvChapterImporterTests
             : new ProcessRunResult(0, "", stderr, false, false, "eac3to", [], null);
         var importer = NewImporter(new FakeRunner([resultToReturn]));
 
-        var result = await importer.ImportAsync(new ChapterImportRequest(CreateBdmvRoot()), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest(CreateBdmvRoot()), TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == code);
@@ -87,6 +88,24 @@ public sealed class BdmvChapterImporterTests
             ValueTask.FromResult(location);
     }
 
+    private sealed class PathToolLocator : IExternalToolLocator
+    {
+        public ValueTask<ExternalToolLocation> LocateAsync(string toolId, CancellationToken cancellationToken)
+        {
+            var path = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+            foreach (var directory in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                var candidate = Path.Combine(directory, OperatingSystem.IsWindows() ? $"{toolId}.exe" : toolId);
+                if (File.Exists(candidate))
+                {
+                    return ValueTask.FromResult(new ExternalToolLocation(true, candidate));
+                }
+            }
+
+            return ValueTask.FromResult(new ExternalToolLocation(false, null, "MissingDependency", $"{toolId} was not found."));
+        }
+    }
+
     private sealed class FakeRunner(IReadOnlyList<ProcessRunResult> results) : IProcessRunner
     {
         private int index;
@@ -96,7 +115,8 @@ public sealed class BdmvChapterImporterTests
         public ValueTask<ProcessRunResult> RunAsync(ProcessRunRequest request, CancellationToken cancellationToken)
         {
             Requests.Add(request);
-            var result = results[index++];
+            var result = results[Math.Min(index, results.Count - 1)];
+            index++;
             return ValueTask.FromResult(result with
             {
                 FileName = request.FileName,

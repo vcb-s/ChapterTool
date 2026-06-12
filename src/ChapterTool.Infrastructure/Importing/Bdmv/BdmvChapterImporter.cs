@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using ChapterTool.Core.Diagnostics;
+using ChapterTool.Core.Importing.Disc;
 using ChapterTool.Core.Importing;
-using ChapterTool.Core.Importing.Text;
 using ChapterTool.Core.Models;
 using ChapterTool.Core.Services;
 using ChapterTool.Core.Transform;
@@ -12,13 +12,11 @@ public sealed partial class BdmvChapterImporter : IChapterImporter
 {
     private readonly IExternalToolLocator toolLocator;
     private readonly IProcessRunner processRunner;
-    private readonly OgmChapterImporter ogmImporter;
 
     public BdmvChapterImporter(IExternalToolLocator toolLocator, IProcessRunner processRunner, IChapterTimeFormatter formatter)
     {
         this.toolLocator = toolLocator;
         this.processRunner = processRunner;
-        ogmImporter = new OgmChapterImporter(formatter);
     }
 
     public string Id => "bdmv";
@@ -42,7 +40,7 @@ public sealed partial class BdmvChapterImporter : IChapterImporter
             return ChapterImportResult.Failed(Error("MissingDependency", location.Message ?? "eac3to was not found."));
         }
 
-        var listResult = await RunAsync(location.Path, request.Path, [request.Path], cancellationToken);
+        var listResult = await RunAsync(location.Path, request.Path, [request.Path, "-showall"], cancellationToken);
         if (!listResult.Success)
         {
             return listResult;
@@ -57,27 +55,33 @@ public sealed partial class BdmvChapterImporter : IChapterImporter
         var options = new List<ChapterSourceOption>();
         foreach (var candidate in candidates)
         {
-            var chapterResult = await RunAsync(location.Path, request.Path, [request.Path, $"{candidate.Index})", "chapters.txt"], cancellationToken);
-            if (!chapterResult.Success)
-            {
-                return chapterResult;
-            }
-
-            var text = chapterResult.Diagnostics.SingleOrDefault()?.Message ?? string.Empty;
-            var parsed = ogmImporter.ImportText(text, request.Path);
-            if (!parsed.Success)
+            if (!candidate.HasChapters)
             {
                 continue;
             }
 
-            var info = parsed.Groups.Single().Options.Single().ChapterInfo with
+            var playlistPath = Path.Combine(playlistDirectory, candidate.MplsName);
+            if (!File.Exists(playlistPath))
             {
-                Title = ReadDiscTitle(request.Path),
-                SourceName = candidate.SourceName,
-                SourceIndex = candidate.Index,
-                SourceType = "BDMV",
-                Duration = candidate.Duration
-            };
+                continue;
+            }
+
+            ChapterInfo info;
+            try
+            {
+                info = MplsChapterImporter.ReadPlaylistInfo(
+                    playlistPath,
+                    ReadDiscTitle(request.Path),
+                    candidate.SourceName,
+                    candidate.Index,
+                    "BDMV",
+                    candidate.Duration);
+            }
+            catch (Exception exception) when (exception is InvalidDataException or EndOfStreamException or IOException)
+            {
+                continue;
+            }
+
             options.Add(new ChapterSourceOption($"playlist-{candidate.Index}", $"{candidate.SourceName}__{info.Chapters.Count}", info));
         }
 
@@ -113,22 +117,61 @@ public sealed partial class BdmvChapterImporter : IChapterImporter
     private static IReadOnlyList<PlaylistCandidate> ParsePlaylistList(string text)
     {
         var candidates = new List<PlaylistCandidate>();
-        foreach (var line in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        foreach (var block in PlaylistBlocks(text))
         {
-            var match = PlaylistLineRegex().Match(line);
+            var match = PlaylistLineRegex().Match(block[0]);
             if (!match.Success)
             {
                 continue;
             }
 
             var duration = TimeSpan.TryParse(match.Groups["Duration"].Value, out var parsedDuration) ? parsedDuration : TimeSpan.Zero;
+            var sourceName = match.Groups["Source"].Value.Trim();
+            if (string.IsNullOrWhiteSpace(sourceName))
+            {
+                sourceName = block
+                    .Skip(1)
+                    .Select(static line => line.Trim())
+                    .FirstOrDefault(static line => line.Contains(".m2ts", StringComparison.OrdinalIgnoreCase))
+                    ?? match.Groups["Mpls"].Value;
+            }
+
             candidates.Add(new PlaylistCandidate(
                 int.Parse(match.Groups["Index"].Value),
-                match.Groups["Source"].Value,
-                duration));
+                match.Groups["Mpls"].Value,
+                sourceName,
+                duration,
+                block.Any(static line => line.Contains("- Chapters", StringComparison.OrdinalIgnoreCase))));
         }
 
         return candidates;
+    }
+
+    private static IEnumerable<IReadOnlyList<string>> PlaylistBlocks(string text)
+    {
+        var current = new List<string>();
+        foreach (var rawLine in text.Split('\n'))
+        {
+            var line = rawLine.TrimEnd('\r');
+            if (PlaylistHeaderRegex().IsMatch(line))
+            {
+                if (current.Count > 0)
+                {
+                    yield return current.ToArray();
+                    current.Clear();
+                }
+            }
+
+            if (current.Count > 0 || PlaylistHeaderRegex().IsMatch(line))
+            {
+                current.Add(line);
+            }
+        }
+
+        if (current.Count > 0)
+        {
+            yield return current.ToArray();
+        }
     }
 
     private static string ReadDiscTitle(string root)
@@ -153,9 +196,12 @@ public sealed partial class BdmvChapterImporter : IChapterImporter
     private static ChapterDiagnostic Error(string code, string message) =>
         new(DiagnosticSeverity.Error, code, message);
 
-    private sealed record PlaylistCandidate(int Index, string SourceName, TimeSpan Duration);
+    private sealed record PlaylistCandidate(int Index, string MplsName, string SourceName, TimeSpan Duration, bool HasChapters);
 
-    [GeneratedRegex(@"^\s*(?<Index>\d+)\)\s+.*?\.mpls.*?(?<Duration>\d{1,2}:\d{2}:\d{2}).*?(?<Source>\d+\.m2ts)", RegexOptions.IgnoreCase)]
+    [GeneratedRegex(@"^\s*\d+\)\s+")]
+    private static partial Regex PlaylistHeaderRegex();
+
+    [GeneratedRegex(@"^\s*(?<Index>\d+)\)\s+(?<Mpls>.+?\.mpls)(?:\s+\([^)]+\))?,\s+(?:(?<Source>.*?\.m2ts(?:\+.*?\.m2ts)*)\s*,\s*)?(?<Duration>\d{1,2}:\d{2}:\d{2})", RegexOptions.IgnoreCase)]
     private static partial Regex PlaylistLineRegex();
 
     [GeneratedRegex(@"<di:name>\s*(?<Title>.*?)\s*</di:name>", RegexOptions.IgnoreCase | RegexOptions.Singleline)]

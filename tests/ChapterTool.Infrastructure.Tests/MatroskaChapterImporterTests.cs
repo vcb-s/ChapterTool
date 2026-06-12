@@ -40,7 +40,7 @@ public sealed class MatroskaChapterImporterTests
     {
         var importer = NewImporter(location: new ExternalToolLocation(false, null, "MissingDependency", "mkvextract missing"));
 
-        var result = await importer.ImportAsync(new ChapterImportRequest(@"C:\media\movie.mkv"), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest(@"C:\media\movie.mkv"), TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "MatroskaMissingDependency");
@@ -51,7 +51,7 @@ public sealed class MatroskaChapterImporterTests
     {
         var importer = NewImporter(result: Successful(ValidXml));
 
-        var result = await importer.ImportAsync(new ChapterImportRequest(@"C:\media\movie.mkv"), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest(@"C:\media\movie.mkv"), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(2, result.Groups.Single().Options.Count);
@@ -63,7 +63,7 @@ public sealed class MatroskaChapterImporterTests
     {
         var importer = NewImporter(result: Successful(UnicodeXml));
 
-        var result = await importer.ImportAsync(new ChapterImportRequest("/media/movie.mkv"), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest("/media/movie.mkv"), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(static diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
         Assert.Equal("序章", result.Groups.Single().Options.Single().ChapterInfo.Chapters.Single().Name);
@@ -76,7 +76,7 @@ public sealed class MatroskaChapterImporterTests
     {
         var importer = NewImporter(result: Successful(stdout, stderr));
 
-        var result = await importer.ImportAsync(new ChapterImportRequest(@"C:\media\movie.mkv"), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest(@"C:\media\movie.mkv"), TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == code);
@@ -95,7 +95,7 @@ public sealed class MatroskaChapterImporterTests
             ["chapters", @"C:\media\movie.mkv"],
             @"C:\media"));
 
-        var result = await importer.ImportAsync(new ChapterImportRequest(@"C:\media\movie.mkv"), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest(@"C:\media\movie.mkv"), TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         var diagnostic = Assert.Single(result.Diagnostics);
@@ -116,7 +116,7 @@ public sealed class MatroskaChapterImporterTests
             ["chapters", "/media/movie.mkv"],
             "/media"));
 
-        var result = await importer.ImportAsync(new ChapterImportRequest("/media/movie.mkv"), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest("/media/movie.mkv"), TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         var diagnostic = Assert.Single(result.Diagnostics);
@@ -129,7 +129,7 @@ public sealed class MatroskaChapterImporterTests
     {
         var importer = NewImporter(result: new ProcessRunResult(null, "", "", true, false, "mkvextract", ["chapters", "movie.mkv"], null));
 
-        var result = await importer.ImportAsync(new ChapterImportRequest("movie.mkv"), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest("movie.mkv"), TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "MatroskaProcessTimedOut");
@@ -140,7 +140,7 @@ public sealed class MatroskaChapterImporterTests
     {
         var importer = NewImporter(result: new ProcessRunResult(null, "", "", false, true, "mkvextract", ["chapters", "movie.mkv"], null));
 
-        var result = await importer.ImportAsync(new ChapterImportRequest("movie.mkv"), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest("movie.mkv"), TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "MatroskaProcessCancelled");
@@ -153,7 +153,7 @@ public sealed class MatroskaChapterImporterTests
         var importer = NewImporter(runner: runner);
         var path = @"C:\media\movie with spaces.mkv";
 
-        await importer.ImportAsync(new ChapterImportRequest(path), CancellationToken.None);
+        await importer.ImportAsync(new ChapterImportRequest(path), TestContext.Current.CancellationToken);
 
         Assert.NotNull(runner.LastRequest);
         Assert.Equal(["chapters", path], runner.LastRequest.Arguments);

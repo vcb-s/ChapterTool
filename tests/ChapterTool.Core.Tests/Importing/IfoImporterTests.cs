@@ -15,7 +15,7 @@ public sealed class IfoImporterTests
 
         var result = await importer.ImportAsync(
             new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Disc", "Ifo", "VTS_05_0.IFO")),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, Diagnostics(result));
         var info = result.Groups.Single().Options.Select(static option => option.ChapterInfo).First();
@@ -41,7 +41,7 @@ public sealed class IfoImporterTests
 
         var result = await importer.ImportAsync(
             new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Disc", "Ifo", "VTS_33_0.IFO")),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, Diagnostics(result));
         var infos = result.Groups.Single().Options.Select(static option => option.ChapterInfo).ToArray();
@@ -67,7 +67,7 @@ public sealed class IfoImporterTests
 
         var result = await importer.ImportAsync(
             new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Disc", "Ifo", fileName)),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == expectedCode);

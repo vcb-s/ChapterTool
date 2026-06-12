@@ -21,10 +21,10 @@ public sealed class ExternalToolLocatorTests
         var settingsStore = new AppSettingsStore(root, [root]);
         await settingsStore.SaveAsync(
             new AppSettings(MkvToolnixPath: configuredDirectory),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
         var locator = new ExternalToolLocator(settingsStore, [searchDirectory], new FakeMkvToolNixInstallProbe(Path.Combine(root, "probe")));
 
-        var location = await locator.LocateAsync("mkvextract", CancellationToken.None);
+        var location = await locator.LocateAsync("mkvextract", TestContext.Current.CancellationToken);
 
         Assert.True(location.Found);
         Assert.Equal(expectedToolPath, location.Path);
@@ -44,10 +44,10 @@ public sealed class ExternalToolLocatorTests
         var settingsStore = new AppSettingsStore(root, [root]);
         await settingsStore.SaveAsync(
             new AppSettings(MkvToolnixPath: configuredExecutable),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
         var locator = new ExternalToolLocator(settingsStore, [searchDirectory], new FakeMkvToolNixInstallProbe(Path.Combine(root, "probe")));
 
-        var location = await locator.LocateAsync("mkvextract", CancellationToken.None);
+        var location = await locator.LocateAsync("mkvextract", TestContext.Current.CancellationToken);
 
         Assert.True(location.Found);
         Assert.Equal(configuredExecutable, location.Path);
@@ -70,7 +70,7 @@ public sealed class ExternalToolLocatorTests
             [searchDirectory],
             new FakeMkvToolNixInstallProbe(platformToolPath));
 
-        var location = await locator.LocateAsync("mkvextract", CancellationToken.None);
+        var location = await locator.LocateAsync("mkvextract", TestContext.Current.CancellationToken);
 
         Assert.True(location.Found);
         Assert.Equal(expectedToolPath, location.Path);
@@ -89,7 +89,7 @@ public sealed class ExternalToolLocatorTests
             [],
             new FakeMkvToolNixInstallProbe(platformToolPath));
 
-        var location = await locator.LocateAsync("mkvextract", CancellationToken.None);
+        var location = await locator.LocateAsync("mkvextract", TestContext.Current.CancellationToken);
 
         Assert.True(location.Found);
         Assert.Equal(platformToolPath, location.Path);
@@ -108,7 +108,7 @@ public sealed class ExternalToolLocatorTests
             [],
             new FakeMkvToolNixInstallProbe(platformToolPath));
 
-        var location = await locator.LocateAsync("eac3to", CancellationToken.None);
+        var location = await locator.LocateAsync("eac3to", TestContext.Current.CancellationToken);
 
         Assert.False(location.Found);
         Assert.Null(location.Path);
@@ -122,7 +122,7 @@ public sealed class ExternalToolLocatorTests
         var settingsStore = new AppSettingsStore(root, [root]);
         var locator = new ExternalToolLocator(settingsStore, [root], new FakeMkvToolNixInstallProbe());
 
-        var location = await locator.LocateAsync("eac3to", CancellationToken.None);
+        var location = await locator.LocateAsync("eac3to", TestContext.Current.CancellationToken);
 
         Assert.False(location.Found);
         Assert.Null(location.Path);
@@ -145,13 +145,35 @@ public sealed class ExternalToolLocatorTests
         var settingsStore = new AppSettingsStore(root, [root]);
         await settingsStore.SaveAsync(
             new AppSettings(FfprobePath: configuredExecutable, FfmpegPath: ffmpegDirectory),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
         var locator = new ExternalToolLocator(settingsStore, [searchDirectory], new FakeMkvToolNixInstallProbe());
 
-        var location = await locator.LocateAsync("ffprobe", CancellationToken.None);
+        var location = await locator.LocateAsync("ffprobe", TestContext.Current.CancellationToken);
 
         Assert.True(location.Found);
         Assert.Equal(configuredExecutable, location.Path);
+    }
+
+    [Fact]
+    public async Task LocateAsync_uses_search_path_after_configured_path_is_cleared()
+    {
+        var root = CreateTempDirectory();
+        var configuredDirectory = Path.Combine(root, "configured");
+        Directory.CreateDirectory(configuredDirectory);
+        await File.WriteAllTextAsync(Path.Combine(configuredDirectory, ToolExecutable("ffprobe")), "");
+        var searchDirectory = Path.Combine(root, "search");
+        Directory.CreateDirectory(searchDirectory);
+        var expectedToolPath = Path.Combine(searchDirectory, ToolExecutable("ffprobe"));
+        await File.WriteAllTextAsync(expectedToolPath, "");
+        var settingsStore = new AppSettingsStore(root, [root]);
+        await settingsStore.SaveAsync(new AppSettings(FfprobePath: configuredDirectory), TestContext.Current.CancellationToken);
+        await settingsStore.SaveAsync(new AppSettings(FfprobePath: null), TestContext.Current.CancellationToken);
+        var locator = new ExternalToolLocator(settingsStore, [searchDirectory], new FakeMkvToolNixInstallProbe());
+
+        var location = await locator.LocateAsync("ffprobe", TestContext.Current.CancellationToken);
+
+        Assert.True(location.Found);
+        Assert.Equal(expectedToolPath, location.Path);
     }
 
     [Fact]
@@ -166,10 +188,10 @@ public sealed class ExternalToolLocatorTests
         var settingsStore = new AppSettingsStore(root, [root]);
         await settingsStore.SaveAsync(
             new AppSettings(FfprobePath: configuredDirectory),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
         var locator = new ExternalToolLocator(settingsStore, [], new FakeMkvToolNixInstallProbe());
 
-        var location = await locator.LocateAsync("ffprobe", CancellationToken.None);
+        var location = await locator.LocateAsync("ffprobe", TestContext.Current.CancellationToken);
 
         Assert.True(location.Found);
         Assert.Equal(expectedToolPath, location.Path);
@@ -187,10 +209,10 @@ public sealed class ExternalToolLocatorTests
         var settingsStore = new AppSettingsStore(root, [root]);
         await settingsStore.SaveAsync(
             new AppSettings(FfmpegPath: ffmpegDirectory),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
         var locator = new ExternalToolLocator(settingsStore, [], new FakeMkvToolNixInstallProbe());
 
-        var location = await locator.LocateAsync("ffprobe", CancellationToken.None);
+        var location = await locator.LocateAsync("ffprobe", TestContext.Current.CancellationToken);
 
         Assert.True(location.Found);
         Assert.Equal(expectedToolPath, location.Path);
@@ -207,7 +229,7 @@ public sealed class ExternalToolLocatorTests
 
         var locator = new ExternalToolLocator(new AppSettingsStore(root, [root]), [searchDirectory], new FakeMkvToolNixInstallProbe());
 
-        var location = await locator.LocateAsync("ffprobe", CancellationToken.None);
+        var location = await locator.LocateAsync("ffprobe", TestContext.Current.CancellationToken);
 
         Assert.True(location.Found);
         Assert.Equal(expectedToolPath, location.Path);

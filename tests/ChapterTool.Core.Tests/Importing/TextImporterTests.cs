@@ -282,7 +282,7 @@ public sealed class TextImporterTests
 
         var result = await importer.ImportAsync(
             new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Text", "Xml", "[philosophy-raws][Hatsune Miku Magical Mirai 2014 in OSAKA][Live].xml")),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, Diagnostics(result));
         var chapters = result.Groups.Single().Options.Single().ChapterInfo.Chapters;
@@ -299,7 +299,7 @@ public sealed class TextImporterTests
 
         var result = await importer.ImportAsync(
             new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Text", "Xml", "XML_Chapter_25.xml")),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, Diagnostics(result));
         var chapters = result.Groups.Single().Options.Single().ChapterInfo.Chapters;
@@ -383,7 +383,7 @@ public sealed class TextImporterTests
 
         var result = await importer.ImportAsync(
             new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Text", "Xml", "example-chapters-2_sub_chapter.xml")),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, Diagnostics(result));
         var chapters = result.Groups.Single().Options.Single().ChapterInfo.Chapters;
@@ -402,7 +402,7 @@ public sealed class TextImporterTests
 
         var result = await importer.ImportAsync(
             new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Text", "Xml", "example-chapters-2_sub_chapter.xml")),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, Diagnostics(result));
         var chapters = result.Groups.Single().Options.Single().ChapterInfo.Chapters;
@@ -449,7 +449,7 @@ public sealed class TextImporterTests
 
         var result = await importer.ImportAsync(
             new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Text", "Xml", "xml (T2 - 4 Editions).xml")),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, Diagnostics(result));
         var options = result.Groups.Single().Options;
@@ -466,7 +466,7 @@ public sealed class TextImporterTests
 
         var result = await importer.ImportAsync(
             new ChapterImportRequest(FixtureResolver.Fixture("Importing", "Text", "Xml", sample.FileName)),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, Diagnostics(result));
         var options = result.Groups.Single().Options;
@@ -486,11 +486,11 @@ public sealed class TextImporterTests
 
     public static TheoryData<XmlSampleExpectation> XmlSampleExpectations() => new()
     {
-        new("[philosophy-raws][Hatsune Miku Magical Mirai 2014 in OSAKA][Live].xml",
+        XmlSample("[philosophy-raws][Hatsune Miku Magical Mirai 2014 in OSAKA][Live].xml",
         [
             new(30, Ms(6789383), "01 High-energy Particle", TimeSpan.Zero, "End Roll", Ms(6789383))
         ]),
-        new("Angel Beats! - NCOP_Ordered_Chapter.xml", AngelBeatsEditions())
+        XmlSample("Angel Beats! - NCOP_Ordered_Chapter.xml", AngelBeatsEditions())
     };
 
     public sealed record XmlSampleExpectation(string FileName, XmlOptionExpectation[] Options);
@@ -507,6 +507,9 @@ public sealed class TextImporterTests
         Enumerable.Range(0, 14)
             .Select(static _ => new XmlOptionExpectation(3, Ms(59601), "Part A", TimeSpan.Zero, "Part C", Ms(59601)))
             .ToArray();
+
+    private static XmlSampleExpectation XmlSample(string fileName, XmlOptionExpectation[] options) =>
+        new(fileName, options);
 
     private static TimeSpan Ms(int milliseconds) => TimeSpan.FromMilliseconds(milliseconds);
 

@@ -167,3 +167,112 @@ The Avalonia main window SHALL expose an `Auto` entry as the first item in the f
 - **WHEN** the user picks any non-Auto frame-rate row
 - **THEN** the ViewModel SHALL NOT overwrite `StatusText` with a `Detected` message, and SHALL apply the manually selected frame rate directly
 
+### Requirement: Avalonia UI text is localized through resources
+The Avalonia UI shell SHALL render user-facing static text through Avalonia localization resources for Simplified Chinese, English, and Japanese.
+
+#### Scenario: Main window static text uses localized resources
+- **WHEN** the main window is rendered in any supported UI language
+- **THEN** visible labels, button content, menu headers, tooltips, DataGrid headers, tab labels, and option captions SHALL come from localized resources rather than hard-coded mixed-language literals
+
+#### Scenario: Secondary tool static text uses localized resources
+- **WHEN** preview, log, color settings, language, expression, template names, zones, or forward-shift tools are opened in any supported UI language
+- **THEN** window titles, labels, buttons, placeholders, and option captions SHALL come from localized resources for the active language
+
+#### Scenario: Runtime language switch refreshes visible resources
+- **WHEN** the user changes the UI language from the language tool
+- **THEN** open Avalonia views SHALL refresh localized static text without requiring an application restart where Avalonia resource refresh is supported
+
+#### Scenario: Unsupported language falls back predictably
+- **WHEN** settings contain an unsupported or blank UI language value
+- **THEN** the UI shell SHALL use the Simplified Chinese resource set and SHALL NOT render localization keys as normal visible text
+
+### Requirement: UI prompts and state messages are localized by semantic key
+The Avalonia shell SHALL represent user-facing prompts, status, and command feedback as semantic localized messages instead of storing hard-coded English or Chinese display strings in ViewModels.
+
+#### Scenario: Load status is localized
+- **WHEN** a source is loaded successfully
+- **THEN** `StatusText` SHALL display the localized active-language equivalent of the loaded-chapter count message with the chapter count formatted into the message
+
+#### Scenario: Save status is localized
+- **WHEN** chapters are saved successfully or saving fails
+- **THEN** `StatusText` SHALL display a localized success or failure message in the active UI language
+
+#### Scenario: Dialog prompts are localized
+- **WHEN** the shell displays confirmation, error, unsupported-feature, empty-state, placeholder, or command-feedback prompts
+- **THEN** each visible prompt title, message, and action caption SHALL use the active UI language resource set
+
+#### Scenario: Frame-rate detection status is localized
+- **WHEN** auto frame-rate detection updates status text
+- **THEN** the status message SHALL be localized while preserving the detected frame-rate display name and confidence value
+
+#### Scenario: Technical diagnostics are mapped for users
+- **WHEN** a known diagnostic code reaches the Avalonia shell
+- **THEN** the shell SHALL display a localized user-facing summary for that code and retain the original diagnostic message as technical detail for logs
+
+### Requirement: Language tool supports the target languages
+The Avalonia language tool SHALL allow users to choose Simplified Chinese, English, and Japanese with localized display names.
+
+#### Scenario: Language options are complete
+- **WHEN** the language tool is opened
+- **THEN** it SHALL show Simplified Chinese, English, and Japanese options with stable culture tags `zh-CN`, `en-US`, and `ja-JP`
+
+#### Scenario: Language selection persists
+- **WHEN** the user applies a language selection
+- **THEN** the selected culture tag SHALL be persisted to settings and applied to the current application localization manager
+
+### Requirement: Unified settings command
+The Avalonia shell SHALL expose a unified Settings command that opens a settings panel for durable application, external tool, appearance, and platform preferences.
+
+#### Scenario: Settings command exists
+- **WHEN** the main window ViewModel is constructed
+- **THEN** it SHALL expose a Settings command that can be invoked by the shell and tested without creating platform UI directly
+
+#### Scenario: Settings panel opens as a secondary tool window
+- **WHEN** the user invokes Settings
+- **THEN** the window service SHALL show a dedicated settings view and ViewModel instead of building the settings UI imperatively inside the window service
+
+#### Scenario: Settings entry stays compact
+- **WHEN** the main window is rendered
+- **THEN** the Settings entry SHALL be reachable from a compact command surface without adding a large preferences section to the primary chapter workflow
+
+### Requirement: Settings panel groups durable configurable features
+The settings panel SHALL organize the durable configurable features discovered from the current app into general, external tools, output defaults, appearance, and platform integration groups.
+
+#### Scenario: General settings are editable
+- **WHEN** the settings panel is opened
+- **THEN** it SHALL expose UI language, default save directory, and main window location reset controls
+
+#### Scenario: External tool settings are editable
+- **WHEN** the settings panel is opened
+- **THEN** it SHALL expose MKVToolNix/mkvextract path, eac3to path, ffprobe path, and ffmpeg directory fallback controls with browse, clear, and validation status behavior
+
+#### Scenario: Output defaults are editable
+- **WHEN** the settings panel is opened
+- **THEN** it SHALL expose default save format and default XML chapter language rather than the current working values being edited on the main screen
+
+#### Scenario: Appearance settings are editable
+- **WHEN** the settings panel is opened
+- **THEN** it SHALL expose the six theme color slots in their legacy order
+
+#### Scenario: High-frequency main workflow controls stay on the main screen
+- **WHEN** the settings panel is opened
+- **THEN** high-frequency current working controls such as naming mode, template use, order shift, expression, frame-rate choice, and round-frames SHALL remain on the main workflow surface instead of being duplicated as settings
+
+#### Scenario: Platform integration is gated
+- **WHEN** file association or another platform-specific integration is shown in settings
+- **THEN** it SHALL be hidden, disabled, or clearly marked unsupported when the current platform cannot perform it
+
+### Requirement: Settings changes apply predictably
+The settings panel SHALL save, apply, reset, and validate changes in a way that keeps the main ViewModel and persisted settings consistent.
+
+#### Scenario: Save applies runtime-safe settings
+- **WHEN** the user saves settings that can be applied at runtime
+- **THEN** the running shell SHALL update language, save defaults, and appearance state without requiring a restart
+
+#### Scenario: Reset restores defaults
+- **WHEN** the user resets a settings group to defaults
+- **THEN** the panel SHALL restore the same defaults used by a fresh application start
+
+#### Scenario: Invalid settings are surfaced
+- **WHEN** a setting value is invalid or an external tool path cannot be resolved
+- **THEN** the settings panel SHALL show a localized validation message and SHALL NOT silently discard the user's input

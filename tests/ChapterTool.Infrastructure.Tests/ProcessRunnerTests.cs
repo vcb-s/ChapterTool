@@ -15,7 +15,7 @@ public sealed class ProcessRunnerTests
             "echo standard output && echo standard error 1>&2 && exit 7",
             workingDirectory);
 
-        var result = await runner.RunAsync(request, CancellationToken.None);
+        var result = await runner.RunAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(7, result.ExitCode);
         Assert.Contains("standard output", result.StandardOutput, StringComparison.Ordinal);
@@ -32,7 +32,7 @@ public sealed class ProcessRunnerTests
         var runner = new ProcessRunner();
         var request = ShellCommand.CreateUtf8Output("章節", "错误");
 
-        var result = await runner.RunAsync(request, CancellationToken.None);
+        var result = await runner.RunAsync(request, TestContext.Current.CancellationToken);
 
         Assert.Equal(0, result.ExitCode);
         Assert.Contains("章節", result.StandardOutput, StringComparison.Ordinal);
@@ -46,7 +46,7 @@ public sealed class ProcessRunnerTests
 
         var result = await runner.RunAsync(
             ShellCommand.CreateSleep(TimeSpan.FromSeconds(5), timeout: TimeSpan.FromMilliseconds(100)),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.Null(result.ExitCode);
         Assert.True(result.TimedOut);

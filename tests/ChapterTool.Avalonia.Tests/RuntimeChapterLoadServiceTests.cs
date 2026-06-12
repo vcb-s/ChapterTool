@@ -23,7 +23,7 @@ public sealed class RuntimeChapterLoadServiceTests
         await File.WriteAllTextAsync(path, content);
         try
         {
-            var result = await CreateService().LoadAsync(path, CancellationToken.None);
+            var result = await CreateService().LoadAsync(path, TestContext.Current.CancellationToken);
 
             Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(static diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
             Assert.Single(result.Groups.Single().Options.Single().ChapterInfo.Chapters);
@@ -53,7 +53,7 @@ public sealed class RuntimeChapterLoadServiceTests
             """);
         try
         {
-            var result = await CreateService().LoadAsync(path, CancellationToken.None);
+            var result = await CreateService().LoadAsync(path, TestContext.Current.CancellationToken);
 
             Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(static diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
             Assert.Single(result.Groups.Single().Options.Single().ChapterInfo.Chapters);
@@ -83,7 +83,7 @@ public sealed class RuntimeChapterLoadServiceTests
         File.Copy(fixturePath, path);
         try
         {
-            var result = await CreateService().LoadAsync(path, CancellationToken.None);
+            var result = await CreateService().LoadAsync(path, TestContext.Current.CancellationToken);
 
             Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(static diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
             var chapters = result.Groups.Single().Options.Single().ChapterInfo.Chapters;
@@ -103,7 +103,7 @@ public sealed class RuntimeChapterLoadServiceTests
         await File.WriteAllBytesAsync(path, [0]);
         try
         {
-            var result = await CreateService().LoadAsync(path, CancellationToken.None);
+            var result = await CreateService().LoadAsync(path, TestContext.Current.CancellationToken);
 
             Assert.False(result.Success);
             Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code is "FfprobeMissingDependency" or "FfprobeCannotStart" or "FfprobeProcessFailed" or "FfprobeParseFailed");
@@ -125,7 +125,7 @@ public sealed class RuntimeChapterLoadServiceTests
         var service = new RuntimeChapterLoadService(registry);
         try
         {
-            var result = await service.LoadAsync(path, CancellationToken.None);
+            var result = await service.LoadAsync(path, TestContext.Current.CancellationToken);
 
             Assert.True(result.Success, Diagnostics(result));
             Assert.Equal(1, primary.CallCount);
@@ -149,7 +149,7 @@ public sealed class RuntimeChapterLoadServiceTests
         var service = new RuntimeChapterLoadService(registry);
         try
         {
-            var result = await service.LoadAsync(path, CancellationToken.None);
+            var result = await service.LoadAsync(path, TestContext.Current.CancellationToken);
 
             Assert.False(result.Success);
             Assert.Equal(1, primary.CallCount);
@@ -173,7 +173,7 @@ public sealed class RuntimeChapterLoadServiceTests
         File.Copy(MatroskaFixture(), path);
         try
         {
-            var result = await CreateService().LoadAsync(path, CancellationToken.None);
+            var result = await CreateService().LoadAsync(path, TestContext.Current.CancellationToken);
 
             if (result.Success)
             {
@@ -222,10 +222,10 @@ public sealed class RuntimeChapterLoadServiceTests
         Directory.CreateDirectory(Path.Combine(root, "BDMV", "PLAYLIST"));
         try
         {
-            var result = await CreateService().LoadAsync(root, CancellationToken.None);
+            var result = await CreateService().LoadAsync(root, TestContext.Current.CancellationToken);
 
             Assert.False(result.Success);
-            Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "MissingDependency");
+            Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code is "MissingDependency" or "DependencyExecutionFailed");
             Assert.DoesNotContain(result.Diagnostics, diagnostic => diagnostic.Code == "UnsupportedSource");
         }
         finally
@@ -240,7 +240,7 @@ public sealed class RuntimeChapterLoadServiceTests
         var root = RepositoryRoot();
         var path = Path.Combine(root, "Time_Shift_Test", "[ifo_Sample]", "VTS_05_0.IFO");
 
-        var result = await CreateService().LoadAsync(path, CancellationToken.None);
+        var result = await CreateService().LoadAsync(path, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(static diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
         var info = result.Groups.Single().Options.Single().ChapterInfo;

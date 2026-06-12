@@ -14,7 +14,7 @@ public sealed class PlatformServiceTests
             ".mpls",
             "ChapterTool.MPLS",
             "ChapterTool",
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Equal("UnsupportedPlatform", result.Diagnostics.Single().Code);
@@ -26,7 +26,7 @@ public sealed class PlatformServiceTests
         var service = new UnsupportedPrivilegeService();
 
         Assert.False(service.IsAdministrator);
-        var result = await service.RequestElevationAsync("register-mpls", CancellationToken.None);
+        var result = await service.RequestElevationAsync("register-mpls", TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Equal("UnsupportedPlatform", result.Diagnostics.Single().Code);
@@ -37,7 +37,7 @@ public sealed class PlatformServiceTests
     {
         var service = new FileSystemNativeDependencyService([]);
 
-        var result = await service.ResolveAsync("missing-tool", CancellationToken.None);
+        var result = await service.ResolveAsync("missing-tool", TestContext.Current.CancellationToken);
 
         Assert.False(result.Found);
         Assert.Equal("NativeLibraryMissing", result.DiagnosticCode);
@@ -47,13 +47,13 @@ public sealed class PlatformServiceTests
     public async Task Memory_clipboard_dialog_localization_and_window_services_are_testable_skeletons()
     {
         var clipboard = new MemoryClipboardService();
-        await clipboard.SetTextAsync("copied", CancellationToken.None);
-        Assert.Equal("copied", await clipboard.GetTextAsync(CancellationToken.None));
+        await clipboard.SetTextAsync("copied", TestContext.Current.CancellationToken);
+        Assert.Equal("copied", await clipboard.GetTextAsync(TestContext.Current.CancellationToken));
 
         var dialogs = new ScriptedDialogService(new DialogResult(true, "accepted"));
         var dialogResult = await dialogs.ShowMessageAsync(
             new DialogRequest("title", "message", DialogKind.Confirmation),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
         Assert.True(dialogResult.Accepted);
         Assert.Equal("accepted", dialogResult.Text);
 
@@ -64,12 +64,12 @@ public sealed class PlatformServiceTests
                 ["en-US"] = new Dictionary<string, string> { ["Unloaded"] = "Unloaded" }
             });
         Assert.Equal("Default Unloaded", localization.GetString("Unloaded"));
-        await localization.SetLanguageAsync("en-US", CancellationToken.None);
+        await localization.SetLanguageAsync("en-US", TestContext.Current.CancellationToken);
         Assert.Equal("Unloaded", localization.GetString("Unloaded"));
 
         var windows = new RecordingWindowService();
-        await windows.ShowAsync("preview", "text", CancellationToken.None);
-        await windows.HideAsync("preview", CancellationToken.None);
+        await windows.ShowAsync("preview", "text", TestContext.Current.CancellationToken);
+        await windows.HideAsync("preview", TestContext.Current.CancellationToken);
         Assert.Equal(["show:preview", "hide:preview"], windows.Calls);
     }
 

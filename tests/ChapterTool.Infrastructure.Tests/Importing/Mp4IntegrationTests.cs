@@ -13,7 +13,7 @@ public sealed class Mp4IntegrationTests
     {
         var reader = new AtlMp4ChapterReader();
 
-        var result = await reader.ReadAsync(FixturePath, CancellationToken.None);
+        var result = await reader.ReadAsync(FixturePath, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(3, result.Chapters.Count);
@@ -30,7 +30,7 @@ public sealed class Mp4IntegrationTests
     {
         var importer = new Mp4ChapterImporter(new AtlMp4ChapterReader());
 
-        var result = await importer.ImportAsync(new ChapterImportRequest(FixturePath), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest(FixturePath), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(static diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
         Assert.Equal(
@@ -45,7 +45,7 @@ public sealed class Mp4IntegrationTests
     {
         var reader = new AtlMp4ChapterReader();
 
-        var result = await reader.ReadAsync(Path.Combine(Path.GetTempPath(), "nonexistent.mp4"), CancellationToken.None);
+        var result = await reader.ReadAsync(Path.Combine(Path.GetTempPath(), "nonexistent.mp4"), TestContext.Current.CancellationToken);
 
         // ATL catches FileNotFoundException internally and returns zero chapters
         Assert.True(result.Success);
@@ -59,7 +59,7 @@ public sealed class Mp4IntegrationTests
     {
         var reader = new AtlMp4ChapterReader();
 
-        var result = await reader.ReadAsync(path, CancellationToken.None);
+        var result = await reader.ReadAsync(path, TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Equal("Mp4InvalidPath", result.DiagnosticCode);

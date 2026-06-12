@@ -11,7 +11,7 @@ public sealed class AtlMp4ChapterReaderTests
             new AtlChapterEntry("Second", 1500, 4500, UseOffset: false),
             new AtlChapterEntry("Intro", 0, 1500, UseOffset: false)));
 
-        var result = await reader.ReadAsync("movie.mp4", CancellationToken.None);
+        var result = await reader.ReadAsync("movie.mp4", TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(["Intro", "Second"], result.Chapters.Select(static chapter => chapter.Title));
@@ -25,7 +25,7 @@ public sealed class AtlMp4ChapterReaderTests
             new AtlChapterEntry("序章", 0, 1234, UseOffset: false),
             new AtlChapterEntry("Épilogue", 1234, 2500, UseOffset: false)));
 
-        var result = await reader.ReadAsync("movie.m4a", CancellationToken.None);
+        var result = await reader.ReadAsync("movie.m4a", TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Equal(["序章", "Épilogue"], result.Chapters.Select(static chapter => chapter.Title));
@@ -37,7 +37,7 @@ public sealed class AtlMp4ChapterReaderTests
     {
         var reader = new AtlMp4ChapterReader(new FakeAtlTrackChapterSource());
 
-        var result = await reader.ReadAsync("empty.m4v", CancellationToken.None);
+        var result = await reader.ReadAsync("empty.m4v", TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Empty(result.Chapters);
@@ -49,7 +49,7 @@ public sealed class AtlMp4ChapterReaderTests
         var reader = new AtlMp4ChapterReader(new FakeAtlTrackChapterSource(
             new AtlChapterEntry("Offset", 0, 1000, UseOffset: true)));
 
-        var result = await reader.ReadAsync("offset.mp4", CancellationToken.None);
+        var result = await reader.ReadAsync("offset.mp4", TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Equal("Mp4UnsupportedMetadata", result.DiagnosticCode);
@@ -63,7 +63,7 @@ public sealed class AtlMp4ChapterReaderTests
         var reader = new AtlMp4ChapterReader(new FakeAtlTrackChapterSource(
             new AtlChapterEntry("Bad", startTime, endTime, UseOffset: false)));
 
-        var result = await reader.ReadAsync("bad.mp4", CancellationToken.None);
+        var result = await reader.ReadAsync("bad.mp4", TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Equal("Mp4MalformedMetadata", result.DiagnosticCode);
@@ -75,7 +75,7 @@ public sealed class AtlMp4ChapterReaderTests
     {
         var reader = new AtlMp4ChapterReader(new ThrowingAtlTrackChapterSource(exception));
 
-        var result = await reader.ReadAsync("broken.mp4", CancellationToken.None);
+        var result = await reader.ReadAsync("broken.mp4", TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Equal(expectedCode, result.DiagnosticCode);

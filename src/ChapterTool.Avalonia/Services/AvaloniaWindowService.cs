@@ -11,17 +11,23 @@ namespace ChapterTool.Avalonia.Services;
 
 public sealed class AvaloniaWindowService : IWindowService
 {
+    private readonly ISettingsStore<AppSettings>? appSettingsStore;
     private readonly ISettingsStore<ThemeColorSettings>? themeSettingsStore;
+    private readonly Func<Window, ISettingsPickerService>? settingsPickerFactory;
     private readonly Dictionary<string, Window> windows = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, object?> parameters = new(StringComparer.OrdinalIgnoreCase);
     private readonly IAppLocalizer localizer;
 
     public AvaloniaWindowService(
+        ISettingsStore<AppSettings>? appSettingsStore = null,
         ISettingsStore<ThemeColorSettings>? themeSettingsStore = null,
-        IAppLocalizer? localizer = null)
+        IAppLocalizer? localizer = null,
+        Func<Window, ISettingsPickerService>? settingsPickerFactory = null)
     {
+        this.appSettingsStore = appSettingsStore;
         this.themeSettingsStore = themeSettingsStore;
         this.localizer = localizer ?? new AppLocalizationManager();
+        this.settingsPickerFactory = settingsPickerFactory;
         this.localizer.CultureChanged += (_, _) =>
         {
             foreach (var (id, window) in windows)
@@ -44,7 +50,7 @@ public sealed class AvaloniaWindowService : IWindowService
         var window = new Window
         {
             Title = Title(windowId),
-            Width = windowId is "preview" or "log" ? 760 : 620,
+            Width = windowId is "preview" or "log" or "settings" ? 760 : 620,
             Height = 460,
             MinWidth = 420,
             MinHeight = 280,
@@ -95,6 +101,15 @@ public sealed class AvaloniaWindowService : IWindowService
                     viewModel.LogText,
                     new TextToolOptions { ClearAction = viewModel.ClearLog })
             },
+            "settings" => new SettingsToolView
+            {
+                DataContext = new SettingsToolViewModel(
+                    viewModel,
+                    appSettingsStore,
+                    themeSettingsStore,
+                    localizer,
+                    settingsPickerFactory?.Invoke(window))
+            },
             "color-settings" => new ColorSettingsView { DataContext = new ColorSettingsViewModel(themeSettingsStore) },
             "language" => new LanguageToolView { DataContext = new LanguageToolViewModel(viewModel) },
             "expression" => new ExpressionToolView { DataContext = new ExpressionToolViewModel(viewModel) },
@@ -118,6 +133,7 @@ public sealed class AvaloniaWindowService : IWindowService
     {
         "preview" => localizer.GetString("Tool.Preview.Title"),
         "log" => localizer.GetString("Tool.Log.Title"),
+        "settings" => localizer.GetString("Tool.Settings.Title"),
         "color-settings" => localizer.GetString("Tool.ColorSettings.Title"),
         "language" => localizer.GetString("Tool.Language.Title"),
         "expression" => localizer.GetString("Tool.Expression.Title"),

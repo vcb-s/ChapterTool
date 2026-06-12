@@ -15,9 +15,9 @@ public sealed class ExternalToolLocator(
     {
         var settings = await settingsStore.LoadAsync(cancellationToken);
         var configuredPath = GetConfiguredPath(toolId, settings);
-        var executableName = ExecutableName(toolId);
+        var executableName = ExternalToolPathResolver.ExecutableName(toolId);
 
-        foreach (var candidate in ExpandCandidates(configuredPath, executableName))
+        foreach (var candidate in ExternalToolPathResolver.ExpandConfiguredCandidates(configuredPath, executableName))
         {
             if (File.Exists(candidate))
             {
@@ -62,24 +62,4 @@ public sealed class ExternalToolLocator(
             _ => null
         };
 
-    private static IEnumerable<string> ExpandCandidates(string? configuredPath, string executableName)
-    {
-        if (string.IsNullOrWhiteSpace(configuredPath))
-        {
-            yield break;
-        }
-
-        if (Directory.Exists(configuredPath))
-        {
-            yield return Path.Combine(configuredPath, executableName);
-            yield break;
-        }
-
-        yield return configuredPath;
-    }
-
-    private static string ExecutableName(string toolId) =>
-        OperatingSystem.IsWindows() && !toolId.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
-            ? $"{toolId}.exe"
-            : toolId;
 }

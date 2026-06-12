@@ -1,4 +1,4 @@
-using ChapterTool.Avalonia.Localization;
+﻿using ChapterTool.Avalonia.Localization;
 using ChapterTool.Avalonia.Services;
 using ChapterTool.Avalonia.ViewModels;
 using ChapterTool.Core.Diagnostics;
@@ -10,6 +10,7 @@ using ChapterTool.Core.Services;
 using ChapterTool.Core.Transform;
 using ChapterTool.Infrastructure.Configuration;
 using ChapterTool.Infrastructure.Platform;
+using Microsoft.Extensions.Logging;
 using System.ComponentModel;
 
 namespace ChapterTool.Avalonia.Tests;
@@ -50,6 +51,7 @@ public sealed class MainWindowViewModelTests
         Assert.NotNull(vm.InsertCommand);
         Assert.NotNull(vm.PreviewCommand);
         Assert.NotNull(vm.LogCommand);
+        Assert.NotNull(vm.SettingsCommand);
         Assert.NotNull(vm.ColorSettingsCommand);
         Assert.NotNull(vm.LanguageCommand);
         Assert.NotNull(vm.ExpressionCommand);
@@ -188,7 +190,7 @@ public sealed class MainWindowViewModelTests
 
         try
         {
-            var text = await ChapterNameTemplateReader.ReadAsync(path, CancellationToken.None);
+            var text = await ChapterNameTemplateReader.ReadAsync(path, TestContext.Current.CancellationToken);
 
             Assert.Equal("Opening\nMiddle", text);
             Assert.DoesNotContain("\uFEFF", text, StringComparison.Ordinal);
@@ -483,7 +485,7 @@ public sealed class MainWindowViewModelTests
     [Fact]
     public async Task PreviewAndLogUseCurrentChapterState()
     {
-        var log = new InMemoryApplicationLogService();
+        var log = new ApplicationLogPanelProvider();
         var vm = CreateViewModel(logService: log);
 
         await vm.LoadCommand.ExecuteAsync("movie.txt");
@@ -491,6 +493,10 @@ public sealed class MainWindowViewModelTests
 
         Assert.Contains("CHAPTER01=", vm.BuildPreview(), StringComparison.Ordinal);
         Assert.Contains("Loaded 1 chapters", vm.LogText(), StringComparison.Ordinal);
+        Assert.Contains(log.Entries, entry =>
+            entry.Level == LogLevel.Information &&
+            entry.MessageKey == "Log.LoadingSource" &&
+            string.Equals(entry.Category, typeof(MainWindowViewModel).FullName, StringComparison.Ordinal));
 
         vm.ClearLog();
         Assert.Equal(string.Empty, vm.LogText());
@@ -546,7 +552,7 @@ public sealed class MainWindowViewModelTests
         var save = new FakeSaveService();
         var vm = CreateViewModel(saveService: save, appSettingsStore: store);
 
-        await vm.LoadSettingsAsync(CancellationToken.None);
+        await vm.LoadSettingsAsync(TestContext.Current.CancellationToken);
         await vm.LoadCommand.ExecuteAsync("movie.txt");
         await vm.SaveDirectoryCommand.ExecuteAsync("new-out");
 
@@ -560,7 +566,7 @@ public sealed class MainWindowViewModelTests
         var store = new FakeSettingsStore(new AppSettings(Language: ""));
         var vm = CreateViewModel(appSettingsStore: store);
 
-        await vm.SaveUiLanguageAsync("en-US", CancellationToken.None);
+        await vm.SaveUiLanguageAsync("en-US", TestContext.Current.CancellationToken);
 
         Assert.Equal("en-US", vm.UiLanguage);
         Assert.Equal("en-US", store.Current.Language);
@@ -573,7 +579,7 @@ public sealed class MainWindowViewModelTests
         var localizer = new AppLocalizationManager("en-US");
         var vm = CreateViewModel(appSettingsStore: store, localizer: localizer);
 
-        await vm.LoadSettingsAsync(CancellationToken.None);
+        await vm.LoadSettingsAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("zh-CN", vm.UiLanguage);
         Assert.Equal("zh-CN", localizer.CurrentCultureName);
@@ -583,7 +589,7 @@ public sealed class MainWindowViewModelTests
     public async Task LocalizedStatusAndLogRefreshAfterLanguageSwitch()
     {
         var localizer = new AppLocalizationManager("en-US");
-        var log = new InMemoryApplicationLogService();
+        var log = new ApplicationLogPanelProvider();
         var vm = CreateViewModel(logService: log, localizer: localizer);
 
         await vm.LoadCommand.ExecuteAsync("movie.txt");
@@ -595,6 +601,25 @@ public sealed class MainWindowViewModelTests
 
         Assert.Equal("1 個のチャプターを読み込みました", vm.StatusText);
         Assert.Contains("ソースを読み込み中", vm.LogText(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task DiagnosticLogsCaptureSeverityAndFormatForLogWindow()
+    {
+        var diagnostic = new ChapterDiagnostic(DiagnosticSeverity.Warning, "PartialParse", "stopped", "line 5", "tail");
+        var log = new ApplicationLogPanelProvider();
+        var vm = CreateViewModel(new FakeLoadService(ImportResult("movie.txt", Info("OGM", "movie.txt", new Chapter(1, TimeSpan.Zero, "Intro"))) with
+        {
+            Diagnostics = [diagnostic]
+        }), logService: log);
+
+        await vm.LoadCommand.ExecuteAsync("movie.txt");
+
+        var entry = Assert.Single(log.Entries, static item => item.MessageKey == "Log.Diagnostic");
+        Assert.Equal(LogLevel.Warning, entry.Level);
+        Assert.Equal("PartialParse", entry.Arguments?["code"]);
+        Assert.Equal("tail", entry.TechnicalDetail);
+        Assert.Contains("Load diagnostic: severity=Warning, code=PartialParse", vm.LogText(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -618,8 +643,11 @@ public sealed class MainWindowViewModelTests
         IApplicationLogService? logService = null,
         IShellService? shellService = null,
         ISettingsStore<AppSettings>? appSettingsStore = null,
-        IAppLocalizer? localizer = null) =>
-        new(
+        IAppLocalizer? localizer = null)
+    {
+        logService ??= new ApplicationLogPanelProvider();
+
+        return new MainWindowViewModel(
             loadService ?? new FakeLoadService(ImportResult("movie.txt", Info("OGM", "movie.txt", new Chapter(1, TimeSpan.Zero, "Intro")))),
             saveService ?? new FakeSaveService(),
             new ChapterEditingService(new ChapterTimeFormatter()),
@@ -627,10 +655,12 @@ public sealed class MainWindowViewModelTests
             windowService ?? new FakeWindowService(),
             new ChapterTimeFormatter(),
             logService,
+            TestApplicationLogger.Create<MainWindowViewModel>(logService),
             shellService,
             appSettingsStore,
             frameRateService: null,
             localizer ?? new AppLocalizationManager("en-US"));
+    }
 
     private static ChapterInfo Info(string sourceType, string sourceName, params Chapter[] chapters) =>
         new(sourceName, sourceName, 0, sourceType, 24, chapters.Last().Time, chapters);

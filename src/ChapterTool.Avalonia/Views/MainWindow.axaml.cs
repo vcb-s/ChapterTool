@@ -536,6 +536,11 @@ public sealed partial class MainWindow : Window
         isRefreshing = true;
         try
         {
+            if (ClipBox.SelectedIndex != viewModel.SelectedClipIndex)
+            {
+                ClipBox.SelectedIndex = viewModel.SelectedClipIndex;
+            }
+
             RaiseCommandStates();
         }
         finally
@@ -562,6 +567,7 @@ public sealed partial class MainWindow : Window
         viewModel.CombineCommand.RaiseCanExecuteChanged();
         viewModel.OpenRelatedMediaCommand.RaiseCanExecuteChanged();
         viewModel.PreviewCommand.RaiseCanExecuteChanged();
+        viewModel.SettingsCommand.RaiseCanExecuteChanged();
         viewModel.ColorSettingsCommand.RaiseCanExecuteChanged();
         viewModel.ExpressionCommand.RaiseCanExecuteChanged();
         viewModel.TemplateNamesCommand.RaiseCanExecuteChanged();

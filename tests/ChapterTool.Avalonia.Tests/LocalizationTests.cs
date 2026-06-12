@@ -9,6 +9,7 @@ using ChapterTool.Core.Importing;
 using ChapterTool.Core.Models;
 using ChapterTool.Core.Services;
 using ChapterTool.Core.Transform;
+using ChapterTool.Infrastructure.Platform;
 
 namespace ChapterTool.Avalonia.Tests;
 
@@ -80,15 +81,21 @@ public sealed class LocalizationTests
             .Order(StringComparer.Ordinal)
             .ToArray();
 
-    private static MainWindowViewModel CreateViewModel(IAppLocalizer localizer) =>
-        new(
+    private static MainWindowViewModel CreateViewModel(IAppLocalizer localizer)
+    {
+        var logService = new ApplicationLogPanelProvider();
+
+        return new MainWindowViewModel(
             new FakeLoadService(),
             new FakeSaveService(),
             new ChapterEditingService(new ChapterTimeFormatter()),
             new ChapterSegmentService(),
             new FakeWindowService(),
             new ChapterTimeFormatter(),
+            logService,
+            TestApplicationLogger.Create<MainWindowViewModel>(logService),
             localizer: localizer);
+    }
 
     private sealed class FakeLoadService : IChapterLoadService
     {

@@ -5,7 +5,6 @@ using ChapterTool.Infrastructure.Configuration;
 using ChapterTool.Infrastructure.Importing.Matroska;
 using ChapterTool.Infrastructure.Processes;
 using ChapterTool.Infrastructure.Tools;
-using Xunit.Sdk;
 
 namespace ChapterTool.Infrastructure.Tests.Importing;
 
@@ -14,7 +13,7 @@ public sealed class MatroskaIntegrationTests : IAsyncLifetime
     private ExternalToolLocation? mkvextractLocation;
     private string? skipReason;
 
-    public Task InitializeAsync()
+    public ValueTask InitializeAsync()
     {
         var root = Path.Combine(Path.GetTempPath(), "ChapterTool.Tests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
@@ -25,17 +24,17 @@ public sealed class MatroskaIntegrationTests : IAsyncLifetime
             .ToArray();
 
         var locator = new ExternalToolLocator(new AppSettingsStore(root, [root]), pathDirs);
-        mkvextractLocation = locator.LocateAsync("mkvextract", CancellationToken.None).AsTask().Result;
+        mkvextractLocation = locator.LocateAsync("mkvextract", TestContext.Current.CancellationToken).AsTask().Result;
 
         if (!mkvextractLocation.Found)
         {
             skipReason = "mkvextract not found. Install MKVToolNix to run this integration test.";
         }
 
-        return Task.CompletedTask;
+        return ValueTask.CompletedTask;
     }
 
-    public Task DisposeAsync() => Task.CompletedTask;
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
     public async Task Importer_reads_chapters_from_real_mkv_file()
@@ -48,7 +47,7 @@ public sealed class MatroskaIntegrationTests : IAsyncLifetime
             new ChapterTimeFormatter());
 
         var fixturePath = FixtureResolver.Fixture("Importing", "Media", "Chapter.mkv");
-        var result = await importer.ImportAsync(new ChapterImportRequest(fixturePath), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest(fixturePath), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(static diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
         var options = result.Groups.Single().Options;
@@ -82,7 +81,7 @@ public sealed class MatroskaIntegrationTests : IAsyncLifetime
 
         var result = await importer.ImportAsync(
             new ChapterImportRequest(Path.Combine(Path.GetTempPath(), "nonexistent.mkv")),
-            CancellationToken.None);
+            TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "MatroskaProcessFailed");
@@ -92,7 +91,7 @@ public sealed class MatroskaIntegrationTests : IAsyncLifetime
     {
         if (skipReason is not null)
         {
-            throw new XunitException(skipReason);
+            Assert.Skip(skipReason);
         }
     }
 

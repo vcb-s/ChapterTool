@@ -7,6 +7,8 @@ namespace ChapterTool.Avalonia;
 
 public sealed class App : Application
 {
+    private AppCompositionRoot? composition;
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -17,7 +19,8 @@ public sealed class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var startupPath = Program.StartupArgs.FirstOrDefault(static arg => !arg.StartsWith("--", StringComparison.Ordinal));
-            var composition = new AppCompositionRoot(startupPath);
+            composition = new AppCompositionRoot(startupPath);
+            desktop.Exit += (_, _) => composition.Dispose();
             desktop.MainWindow = composition.CreateMainWindow();
         }
 

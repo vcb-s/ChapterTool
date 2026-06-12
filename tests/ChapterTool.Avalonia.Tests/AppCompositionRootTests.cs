@@ -2,6 +2,7 @@ using ChapterTool.Avalonia.Composition;
 using ChapterTool.Avalonia.Services;
 using ChapterTool.Avalonia.ViewModels;
 using ChapterTool.Core.Services;
+using Microsoft.Extensions.Logging;
 using System.Text;
 
 namespace ChapterTool.Avalonia.Tests;
@@ -11,13 +12,50 @@ public sealed class AppCompositionRootTests
     [Fact]
     public void ResolvesPrimaryViewModelsAndServices()
     {
-        var root = new AppCompositionRoot(settingsDirectory: SettingsDirectory());
+        using var root = new AppCompositionRoot(settingsDirectory: SettingsDirectory());
 
         Assert.IsType<MainWindowViewModel>(root.CreateMainWindowViewModel());
         Assert.IsAssignableFrom<IWindowService>(root.CreateWindowService());
         Assert.IsAssignableFrom<IChapterLoadService>(root.CreateChapterLoadService());
         Assert.IsAssignableFrom<IChapterSaveService>(root.CreateChapterSaveService());
         Assert.IsAssignableFrom<IChapterImporterRegistry>(root.CreateChapterImporterRegistry());
+        Assert.IsAssignableFrom<IApplicationLogService>(root.CreateApplicationLogService());
+    }
+
+    [Fact]
+    public void RegistersLoggerPipelineUiSinkAndFileLogging()
+    {
+        var settingsDirectory = SettingsDirectory();
+        var root = new AppCompositionRoot(settingsDirectory: settingsDirectory);
+        var logger = root.CreateLogger<AppCompositionRootTests>();
+        var state = new Dictionary<string, object?>(StringComparer.Ordinal)
+        {
+            ["MessageKey"] = "Log.Status",
+            ["status"] = "Ready"
+        };
+
+        try
+        {
+            logger.Log(LogLevel.Information, new EventId(0, "Log.Status"), state, null, static (values, _) => values["MessageKey"]?.ToString() ?? string.Empty);
+            logger.LogError("composition-file-log-check");
+
+            var logService = root.CreateApplicationLogService();
+            Assert.Contains(logService.Entries, entry =>
+                entry.MessageKey == "Log.Status" &&
+                entry.Level == LogLevel.Information &&
+                string.Equals(entry.Category, typeof(AppCompositionRootTests).FullName, StringComparison.Ordinal));
+        }
+        finally
+        {
+            root.Dispose();
+        }
+
+        var logDirectory = Path.Combine(settingsDirectory, "logs");
+        var logFile = Assert.Single(Directory.EnumerateFiles(logDirectory, "chaptertool-*.log"));
+        var logText = File.ReadAllText(logFile, Encoding.UTF8);
+        Assert.Contains("composition-file-log-check", logText, StringComparison.Ordinal);
+
+        Directory.Delete(settingsDirectory, recursive: true);
     }
 
     [Fact]

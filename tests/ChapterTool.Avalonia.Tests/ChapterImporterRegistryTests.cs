@@ -23,7 +23,7 @@ public sealed class ChapterImporterRegistryTests
 
         try
         {
-            var result = await service.LoadAsync(path, CancellationToken.None);
+            var result = await service.LoadAsync(path, TestContext.Current.CancellationToken);
 
             Assert.True(result.Success);
             Assert.Equal(path, registry.LastPath);
@@ -75,7 +75,7 @@ public sealed class ChapterImporterRegistryTests
         {
             var registry = CreateRealRegistry();
             var importer = registry.Resolve(testPath);
-            var result = await importer!.ImportAsync(new ChapterImportRequest(testPath), CancellationToken.None);
+            var result = await importer!.ImportAsync(new ChapterImportRequest(testPath), TestContext.Current.CancellationToken);
 
             Assert.True(result.Success, string.Join(Environment.NewLine, result.Diagnostics.Select(static diagnostic => $"{diagnostic.Code}: {diagnostic.Message}")));
             Assert.Equal(["Chapter 01", "Chapter 02", "Chapter 03", "Chapter 04"], result.Groups.Single().Options.Single().ChapterInfo.Chapters.Select(static chapter => chapter.Name));

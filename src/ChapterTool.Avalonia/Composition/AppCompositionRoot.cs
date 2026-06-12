@@ -12,19 +12,25 @@ using ChapterTool.Infrastructure.Importing.Media;
 using ChapterTool.Infrastructure.Platform;
 using ChapterTool.Infrastructure.Processes;
 using ChapterTool.Infrastructure.Tools;
+using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Events;
 
 namespace ChapterTool.Avalonia.Composition;
 
-public sealed class AppCompositionRoot
+public sealed class AppCompositionRoot : IDisposable
 {
     private readonly string? startupPath;
     private readonly ChapterTimeFormatter formatter = new();
     private readonly ExpressionService expressionService = new();
     private readonly FrameRateService frameRateService = new();
-    private readonly InMemoryApplicationLogService logService = new();
+    private readonly ApplicationLogPanelProvider logService = new(capacity: 500, minimumLevel: LogLevel.Information);
     private readonly AppLocalizationManager localizationManager = new();
     private readonly AppSettingsStore appSettingsStore;
     private readonly ThemeSettingsStore themeSettingsStore;
+    private readonly ILoggerFactory loggerFactory;
+    private readonly Serilog.ILogger serilogLogger;
+    private bool disposed;
 
     public AppCompositionRoot(string? startupPath = null, string? settingsDirectory = null)
     {
@@ -32,6 +38,14 @@ public sealed class AppCompositionRoot
         var resolvedSettingsDirectory = settingsDirectory ?? SettingsDirectory();
         appSettingsStore = new AppSettingsStore(resolvedSettingsDirectory);
         themeSettingsStore = new ThemeSettingsStore(resolvedSettingsDirectory);
+        serilogLogger = CreateSerilogLogger(resolvedSettingsDirectory);
+        loggerFactory = LoggerFactory.Create(builder =>
+        {
+            builder.SetMinimumLevel(LogLevel.Debug);
+            builder.AddSerilog(serilogLogger, dispose: true);
+            builder.AddProvider(logService);
+        });
+
         var settings = appSettingsStore.LoadAsync(CancellationToken.None).AsTask().GetAwaiter().GetResult();
         localizationManager.SetCulture(settings.Language);
     }
@@ -51,10 +65,15 @@ public sealed class AppCompositionRoot
             CreateWindowService(),
             formatter,
             logService,
+            loggerFactory.CreateLogger<MainWindowViewModel>(),
             CreateShellService(),
             appSettingsStore,
             frameRateService,
             localizationManager);
+
+    public IApplicationLogService CreateApplicationLogService() => logService;
+
+    public ILogger<T> CreateLogger<T>() => loggerFactory.CreateLogger<T>();
 
     public IChapterLoadService CreateChapterLoadService() => new RuntimeChapterLoadService(CreateChapterImporterRegistry());
 
@@ -78,7 +97,12 @@ public sealed class AppCompositionRoot
 
     public ChapterSegmentService CreateChapterSegmentService() => new();
 
-    public IWindowService CreateWindowService() => new AvaloniaWindowService(themeSettingsStore, localizationManager);
+    public IWindowService CreateWindowService() =>
+        new AvaloniaWindowService(
+            appSettingsStore,
+            themeSettingsStore,
+            localizationManager,
+            owner => new AvaloniaSettingsPickerService(owner));
 
     public IAppLocalizer CreateLocalizer() => localizationManager;
 
@@ -93,6 +117,34 @@ public sealed class AppCompositionRoot
 
     public INativeDependencyService CreateNativeDependencyService() =>
         new FileSystemNativeDependencyService(PathSearchDirectories().Prepend(AppContext.BaseDirectory).ToArray());
+
+    public void Dispose()
+    {
+        if (disposed)
+        {
+            return;
+        }
+
+        disposed = true;
+        loggerFactory.Dispose();
+    }
+
+    private static Serilog.ILogger CreateSerilogLogger(string settingsDirectory)
+    {
+        var logDirectory = Path.Combine(settingsDirectory, "logs");
+        Directory.CreateDirectory(logDirectory);
+        return new LoggerConfiguration()
+            .MinimumLevel.Debug()
+            .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+            .Enrich.FromLogContext()
+            .WriteTo.File(
+                Path.Combine(logDirectory, "chaptertool-.log"),
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: 14,
+                fileSizeLimitBytes: 10 * 1024 * 1024,
+                rollOnFileSizeLimit: true)
+            .CreateLogger();
+    }
 
     private static string SettingsDirectory()
     {

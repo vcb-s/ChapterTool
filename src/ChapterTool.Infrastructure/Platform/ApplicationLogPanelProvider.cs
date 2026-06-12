@@ -1,0 +1,157 @@
+using ChapterTool.Core.Services;
+using Microsoft.Extensions.Logging;
+
+namespace ChapterTool.Infrastructure.Platform;
+
+public sealed class ApplicationLogPanelProvider : IApplicationLogService, ILoggerProvider
+{
+    private const int DefaultCapacity = 500;
+    private readonly object gate = new();
+    private readonly int capacity;
+    private readonly LogLevel minimumLevel;
+    private readonly List<ApplicationLogEntry> entries = [];
+
+    public ApplicationLogPanelProvider(int capacity = DefaultCapacity, LogLevel minimumLevel = LogLevel.Information)
+    {
+        this.capacity = Math.Max(1, capacity);
+        this.minimumLevel = minimumLevel;
+    }
+
+    public IReadOnlyList<ApplicationLogEntry> Entries
+    {
+        get
+        {
+            lock (gate)
+            {
+                return entries.ToArray();
+            }
+        }
+    }
+
+    public ILogger CreateLogger(string categoryName) => new ApplicationLogPanelLogger(this, categoryName);
+
+    public string Format(Func<ApplicationLogEntry, string>? formatter = null)
+    {
+        ApplicationLogEntry[] snapshot;
+        lock (gate)
+        {
+            snapshot = entries.ToArray();
+        }
+
+        return string.Join(
+            Environment.NewLine,
+            snapshot.Select(entry =>
+            {
+                var message = formatter is null ? entry.Message : formatter(entry);
+                return $"[{entry.Timestamp:yyyy-MM-dd HH:mm:ss}] {message}";
+            }));
+    }
+
+    public void Clear()
+    {
+        lock (gate)
+        {
+            entries.Clear();
+        }
+    }
+
+    public void Dispose()
+    {
+    }
+
+    private void Capture<TState>(
+        string category,
+        LogLevel logLevel,
+        EventId eventId,
+        TState state,
+        Exception? exception,
+        Func<TState, Exception?, string> formatter)
+    {
+        if (logLevel < minimumLevel || logLevel == LogLevel.None)
+        {
+            return;
+        }
+
+        var structuredState = StructuredState(state);
+        var messageKey = StateString(structuredState, "MessageKey");
+        var technicalDetail = StateString(structuredState, "TechnicalDetail");
+        var arguments = Arguments(structuredState);
+        var message = string.IsNullOrWhiteSpace(messageKey) ? formatter(state, exception).Trim() : messageKey.Trim();
+        if (string.IsNullOrWhiteSpace(message) && exception is null)
+        {
+            return;
+        }
+
+        var entry = new ApplicationLogEntry(
+            DateTimeOffset.Now,
+            logLevel,
+            string.IsNullOrWhiteSpace(message) ? exception!.Message : message,
+            messageKey,
+            arguments,
+            technicalDetail,
+            category,
+            eventId.Id,
+            eventId.Name,
+            exception?.ToString(),
+            structuredState);
+
+        lock (gate)
+        {
+            entries.Add(entry);
+            if (entries.Count > capacity)
+            {
+                entries.RemoveRange(0, entries.Count - capacity);
+            }
+        }
+    }
+
+    private static IReadOnlyDictionary<string, object?> StructuredState<TState>(TState state)
+    {
+        if (state is IEnumerable<KeyValuePair<string, object?>> pairs)
+        {
+            return pairs
+                .Where(static pair => !string.Equals(pair.Key, "{OriginalFormat}", StringComparison.Ordinal))
+                .ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal);
+        }
+
+        return state is null
+            ? new Dictionary<string, object?>(StringComparer.Ordinal)
+            : new Dictionary<string, object?>(StringComparer.Ordinal) { ["State"] = state };
+    }
+
+    private static IReadOnlyDictionary<string, object?> Arguments(IReadOnlyDictionary<string, object?> structuredState) =>
+        structuredState
+            .Where(static pair =>
+                !string.Equals(pair.Key, "MessageKey", StringComparison.Ordinal) &&
+                !string.Equals(pair.Key, "TechnicalDetail", StringComparison.Ordinal))
+            .ToDictionary(static pair => pair.Key, static pair => pair.Value, StringComparer.Ordinal);
+
+    private static string? StateString(IReadOnlyDictionary<string, object?> state, string key) =>
+        state.TryGetValue(key, out var value) ? value?.ToString() : null;
+
+    private sealed class ApplicationLogPanelLogger(ApplicationLogPanelProvider owner, string category) : ILogger
+    {
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull =>
+            NullScope.Instance;
+
+        public bool IsEnabled(LogLevel logLevel) => logLevel >= owner.minimumLevel && logLevel != LogLevel.None;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter) =>
+            owner.Capture(category, logLevel, eventId, state, exception, formatter);
+    }
+
+    private sealed class NullScope : IDisposable
+    {
+        public static readonly NullScope Instance = new();
+
+        public void Dispose()
+        {
+        }
+    }
+}

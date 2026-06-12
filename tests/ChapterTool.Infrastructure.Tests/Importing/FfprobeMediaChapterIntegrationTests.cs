@@ -24,7 +24,7 @@ public sealed class FfprobeMediaChapterIntegrationTests
             new SingleToolLocator(ffprobe),
             new ProcessRunner()));
 
-        var result = await importer.ImportAsync(new ChapterImportRequest(fixturePath), CancellationToken.None);
+        var result = await importer.ImportAsync(new ChapterImportRequest(fixturePath), TestContext.Current.CancellationToken);
 
         Assert.True(result.Success, Diagnostics(result));
         var option = result.Groups.Single().Options.Single();
@@ -67,7 +67,7 @@ public sealed class FfprobeMediaChapterIntegrationTests
         var searchDirectories = (Environment.GetEnvironmentVariable("PATH") ?? string.Empty)
             .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var locator = new ExternalToolLocator(new EmptySettingsStore(), searchDirectories, new EmptyMkvToolNixInstallProbe());
-        var location = await locator.LocateAsync("ffprobe", CancellationToken.None);
+        var location = await locator.LocateAsync("ffprobe", TestContext.Current.CancellationToken);
         Assert.True(location.Found, location.Message ?? "External tool 'ffprobe' was not found.");
         return location;
     }
