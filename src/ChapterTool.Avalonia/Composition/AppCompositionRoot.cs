@@ -46,8 +46,8 @@ public sealed class AppCompositionRoot : IDisposable
             builder.AddProvider(logService);
         });
 
-        var settings = appSettingsStore.LoadAsync(CancellationToken.None).AsTask().GetAwaiter().GetResult();
-        localizationManager.SetCulture(settings.Language);
+        // Settings are loaded asynchronously from MainWindow.Opened. Blocking here can deadlock
+        // macOS single-file startup before Avalonia has shown the first window.
     }
 
     public MainWindow CreateMainWindow()

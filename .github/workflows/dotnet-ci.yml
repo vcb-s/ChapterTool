@@ -28,3 +28,45 @@ jobs:
 
       - name: Test
         run: dotnet test ChapterTool.Avalonia.slnx --configuration Release --no-build
+
+  publish:
+    needs: build-test
+    runs-on: windows-2025
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime:
+          - win-x64
+          - linux-x64
+          - osx-x64
+          - osx-arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore src/ChapterTool.Avalonia/ChapterTool.Avalonia.csproj --runtime ${{ matrix.runtime }}
+
+      - name: Publish
+        run: >
+          dotnet publish src/ChapterTool.Avalonia/ChapterTool.Avalonia.csproj
+          --configuration Release
+          --runtime ${{ matrix.runtime }}
+          --self-contained false
+          --no-restore
+          --output artifacts/publish/framework-dependent/${{ matrix.runtime }}
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChapterTool-Avalonia-${{ matrix.runtime }}
+          path: artifacts/publish/framework-dependent/${{ matrix.runtime }}
+          if-no-files-found: error
