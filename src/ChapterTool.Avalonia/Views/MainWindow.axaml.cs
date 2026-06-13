@@ -537,6 +537,8 @@ public sealed partial class MainWindow : Window
                 ClipBox.SelectedIndex = viewModel.SelectedClipIndex;
             }
 
+            ClipCombineMenuItem.IsChecked = viewModel.IsClipCombineChecked;
+            GridCombineMenuItem.IsChecked = viewModel.IsClipCombineChecked;
             RaiseCommandStates();
         }
         finally

@@ -71,6 +71,11 @@ The Avalonia shell SHALL preserve documented shortcuts and context menu actions.
 - **WHEN** load, clip, or chapter-row context menus open
 - **THEN** entries such as append MPLS, merge chapters, related media, zones, forward translation, and insert SHALL be enabled only when the ViewModel capability flags allow them
 
+#### Scenario: MPLS clip merge is a checked toggle
+- **WHEN** an MPLS source exposes multiple clip options and the user invokes merge chapters from the clip or chapter-row context menu
+- **THEN** the menu item SHALL show a checked state and the current chapter rows SHALL represent all clips combined into one chapter set
+- **AND** invoking the same checked menu item again SHALL clear the checked state and restore the individual clip options and selected clip rows
+
 ### Requirement: Chapter grid interaction
 The chapter table SHALL use observable row models and commands instead of UI row tags.
 
@@ -344,3 +349,16 @@ The Avalonia shell SHALL allow XML export language selection from an ISO languag
 #### Scenario: Invalid XML language is rejected
 - **WHEN** a user enters an invalid XML language code
 - **THEN** the UI SHALL prevent save or show a localized validation diagnostic instead of silently exporting the invalid value
+
+### Requirement: Main-window selectors expose readable display content
+The Avalonia main window SHALL render clip and XML language selector options with user-readable display content while preserving the existing underlying selection values used by commands, import/export, settings, and shortcuts.
+
+#### Scenario: Clip selector displays main content with remarks
+- **WHEN** a source load result contains multiple clip, playlist, program-chain, or edition options
+- **THEN** the clip selector SHALL display each option with the primary source content first and secondary details such as chapter count as remark-style supporting content
+- **AND** selecting an option SHALL continue to update `SelectedClipIndex` and the current chapter rows exactly as before
+
+#### Scenario: XML language selector displays readable language names
+- **WHEN** XML language selection is shown
+- **THEN** the selector SHALL display each language option with both the language code and a readable language name
+- **AND** changing the selector SHALL continue to update `XmlLanguage` to the selected ISO code used for XML export

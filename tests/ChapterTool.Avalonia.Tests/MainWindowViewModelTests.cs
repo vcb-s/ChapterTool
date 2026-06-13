@@ -83,6 +83,60 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task ClipDisplayOptionsExposeMainContentWithRemarksWithoutChangingSourceOptions()
+    {
+        var firstInfo = Info("MPLS", "00002", new Chapter(1, TimeSpan.Zero, "A"));
+        var secondInfo = Info("MPLS", "00003", new Chapter(1, TimeSpan.Zero, "B"));
+        var load = new FakeLoadService(new ChapterImportResult(true, [
+            new ChapterInfoGroup("movie.mpls", [
+                new ChapterSourceOption("clip-0", "00002__6", firstInfo),
+                new ChapterSourceOption("clip-1", "00003__8", secondInfo)
+            ])
+        ], []));
+        var vm = CreateViewModel(load);
+
+        await vm.LoadCommand.ExecuteAsync("movie.mpls");
+
+        Assert.Equal("00002__6", vm.ClipOptions[0].DisplayName);
+        Assert.Equal("00002", vm.ClipDisplayOptions[0].MainText);
+        Assert.Equal("6 chapters", vm.ClipDisplayOptions[0].RemarkText);
+        Assert.Equal("00002（6 chapters）", vm.ClipDisplayOptions[0].DisplayText);
+
+        await vm.SelectClipCommand.ExecuteAsync(1);
+
+        Assert.Equal(1, vm.SelectedClipIndex);
+        Assert.Equal("B", vm.Rows[0].Name);
+    }
+
+    [Fact]
+    public async Task CombineCommandTogglesMplsClipsBetweenCombinedAndSplitOptions()
+    {
+        var load = new FakeLoadService(ImportResult(
+            "movie.mpls",
+            Info("MPLS", "00001", new Chapter(1, TimeSpan.Zero, "A"), new Chapter(2, TimeSpan.FromSeconds(10), "B")),
+            Info("MPLS", "00002", new Chapter(1, TimeSpan.Zero, "C"), new Chapter(2, TimeSpan.FromSeconds(5), "D"))));
+        var vm = CreateViewModel(load);
+
+        await vm.LoadCommand.ExecuteAsync("movie.mpls");
+        await vm.CombineCommand.ExecuteAsync();
+
+        Assert.True(vm.IsClipCombineChecked);
+        Assert.True(vm.IsClipSelectionVisible);
+        Assert.True(vm.CanCombine);
+        Assert.Single(vm.ClipOptions);
+        Assert.Equal(4, vm.Rows.Count);
+        Assert.Equal(["Chapter 01", "Chapter 02", "Chapter 03", "Chapter 04"], vm.Rows.Select(static row => row.Name).ToArray());
+
+        await vm.CombineCommand.ExecuteAsync();
+
+        Assert.False(vm.IsClipCombineChecked);
+        Assert.True(vm.IsClipSelectionVisible);
+        Assert.Equal(2, vm.ClipOptions.Count);
+        Assert.Equal(0, vm.SelectedClipIndex);
+        Assert.Equal(["A", "B"], vm.Rows.Select(static row => row.Name).ToArray());
+    }
+
+    [Fact]
     public async Task LoadMplsRaisesSelectedClipIndexChangeAfterClipOptionsPopulate()
     {
         var load = new FakeLoadService(ImportResult(
@@ -194,6 +248,23 @@ public sealed class MainWindowViewModelTests
         Assert.Contains("en", vm.XmlLanguageOptions);
         Assert.Contains("jpn", vm.XmlLanguageOptions);
         Assert.Contains("fr", vm.XmlLanguageOptions);
+    }
+
+    [Fact]
+    public void XmlLanguageDisplayOptionsExposeReadableNamesWithoutChangingCodes()
+    {
+        var vm = CreateViewModel();
+
+        var index = vm.XmlLanguageOptions.ToList().IndexOf("jpn");
+        var option = vm.XmlLanguageDisplayOptions[index];
+
+        Assert.Equal("jpn", option.MainText);
+        Assert.Equal("Japanese", option.RemarkText);
+        Assert.Equal("jpn（Japanese）", option.DisplayText);
+
+        vm.XmlLanguageIndex = index;
+
+        Assert.Equal("jpn", vm.XmlLanguage);
     }
 
     [Fact]

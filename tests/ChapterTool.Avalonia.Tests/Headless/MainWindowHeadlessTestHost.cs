@@ -73,11 +73,11 @@ internal sealed class MainWindowHeadlessTestHost : IDisposable
         await LayoutAsync();
     }
 
-    public async ValueTask LayoutAsync()
+    public async ValueTask LayoutAsync(double width = 920, double height = 720)
     {
         Window.Show();
-        Window.Width = 920;
-        Window.Height = 720;
+        Window.Width = width;
+        Window.Height = height;
         Dispatcher.UIThread.RunJobs();
         var layoutManager = Window.GetLayoutManager()
             ?? throw new InvalidOperationException("MainWindow layout manager was not available.");

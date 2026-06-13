@@ -1,8 +1,10 @@
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Headless.XUnit;
 using ChapterTool.Core.Importing;
 using ChapterTool.Core.Importing.Disc;
 using ChapterTool.Core.Importing.Text;
+using ChapterTool.Core.Exporting;
 using ChapterTool.Core.Transform;
 
 namespace ChapterTool.Avalonia.Tests.Headless;
@@ -57,6 +59,53 @@ public sealed class MainWindowHeadlessTests
     }
 
     [AvaloniaFact]
+    public async Task Clip_selector_keeps_selected_text_after_selection_refreshes_option()
+    {
+        using var host = CreateMultiOptionHost(
+            "00000.mpls",
+            MainWindowHeadlessTestHost.Option("MPLS", "00001", "MPLS A1", "MPLS A2"),
+            MainWindowHeadlessTestHost.Option("MPLS", "00002", "MPLS B1", "MPLS B2"));
+
+        await host.LoadAsync("00000.mpls");
+        var clipSelector = host.RequiredControl<ComboBox>("ClipBox");
+
+        clipSelector.SelectedIndex = 1;
+        await host.LayoutAsync();
+
+        Assert.Equal(1, host.ViewModel.SelectedClipIndex);
+        Assert.Equal("00002（2 chapters）", clipSelector.SelectionBoxItem?.ToString());
+        Assert.True(
+            host.ContainsRenderedText(clipSelector, "00002（2 chapters）"),
+            $"Expected selected clip label to remain visible. Rendered selector texts:{Environment.NewLine}{host.DescribeRenderedTexts(clipSelector)}");
+    }
+
+    [AvaloniaFact]
+    public async Task Clip_combine_context_menu_shows_checked_toggle_state()
+    {
+        using var host = CreateMultiOptionHost(
+            "00000.mpls",
+            MainWindowHeadlessTestHost.Option("MPLS", "00001", "MPLS A1", "MPLS A2"),
+            MainWindowHeadlessTestHost.Option("MPLS", "00002", "MPLS B1", "MPLS B2"));
+
+        await host.LoadAsync("00000.mpls");
+        var menuItem = host.RequiredControl<MenuItem>("ClipCombineMenuItem");
+
+        Assert.False(menuItem.IsChecked);
+
+        await host.Window.CombineCommand.ExecuteAsync();
+        await host.LayoutAsync();
+
+        Assert.True(host.ViewModel.IsClipCombineChecked);
+        Assert.True(menuItem.IsChecked);
+
+        await host.Window.CombineCommand.ExecuteAsync();
+        await host.LayoutAsync();
+
+        Assert.False(host.ViewModel.IsClipCombineChecked);
+        Assert.False(menuItem.IsChecked);
+    }
+
+    [AvaloniaFact]
     public async Task Xml_importer_option_labels_render_in_clip_selector()
     {
         var importer = new XmlChapterImporter(new ChapterTimeFormatter());
@@ -82,8 +131,8 @@ public sealed class MainWindowHeadlessTests
         Assert.True(result.Success);
         using var host = new MainWindowHeadlessTestHost(result);
 
-        await AssertDefaultSelectionDisplaysLabelAsync(host, "real.xml", "Edition 01");
-        await AssertSelectorDisplaysLabelAsync(host, "real.xml", selectedIndex: 1, "Edition 02");
+        await AssertDefaultSelectionDisplaysLabelAsync(host, "real.xml", "Edition 01（1 chapters）");
+        await AssertSelectorDisplaysLabelAsync(host, "real.xml", selectedIndex: 1, "Edition 02（1 chapters）");
     }
 
     [AvaloniaFact]
@@ -96,8 +145,8 @@ public sealed class MainWindowHeadlessTests
         Assert.True(result.Success);
         using var host = new MainWindowHeadlessTestHost(result);
 
-        await AssertDefaultSelectionDisplaysLabelAsync(host, path, "VTS_33_1__47");
-        await AssertSelectorDisplaysLabelAsync(host, path, selectedIndex: 1, "VTS_33_2__47");
+        await AssertDefaultSelectionDisplaysLabelAsync(host, path, "VTS_33_1（47 chapters）");
+        await AssertSelectorDisplaysLabelAsync(host, path, selectedIndex: 1, "VTS_33_2（47 chapters）");
     }
 
     [AvaloniaFact]
@@ -110,8 +159,42 @@ public sealed class MainWindowHeadlessTests
         Assert.True(result.Success);
         using var host = new MainWindowHeadlessTestHost(result);
 
-        await AssertDefaultSelectionDisplaysLabelAsync(host, path, "00002__6");
-        await AssertSelectorDisplaysLabelAsync(host, path, selectedIndex: 1, "00003__6");
+        await AssertDefaultSelectionDisplaysLabelAsync(host, path, "00002（6 chapters）");
+        await AssertSelectorDisplaysLabelAsync(host, path, selectedIndex: 1, "00003（6 chapters）");
+    }
+
+    [AvaloniaFact]
+    public async Task Main_window_selector_display_captures_screenshot_artifacts()
+    {
+        using var host = CreateMultiOptionHost(
+            "00000.mpls",
+            MainWindowHeadlessTestHost.Option("MPLS", "00002", "A1", "A2", "A3", "A4", "A5", "A6"),
+            MainWindowHeadlessTestHost.Option("MPLS", "00003", "B1", "B2", "B3", "B4", "B5", "B6"));
+
+        await host.LoadAsync("00000.mpls");
+        host.ViewModel.SaveFormat = ChapterExportFormat.Xml;
+        host.ViewModel.XmlLanguageIndex = host.ViewModel.XmlLanguageOptions.ToList().IndexOf("jpn");
+
+        foreach (var (name, width, height) in new[]
+        {
+            ("default", 920d, 720d),
+            ("wide", 1180d, 720d),
+            ("narrow", 760d, 720d)
+        })
+        {
+            await host.LayoutAsync(width, height);
+            var artifactPath = Path.Combine(MainWindowHeadlessTestHost.RepositoryRoot(), "artifacts", $"main-window-selectors-{name}.png");
+            Directory.CreateDirectory(Path.GetDirectoryName(artifactPath)!);
+            var bitmap = host.Window.CaptureRenderedFrame()
+                ?? throw new InvalidOperationException($"Main window selector frame '{name}' was not rendered.");
+            await using (var stream = File.Create(artifactPath))
+            {
+                bitmap.Save(stream);
+            }
+
+            Assert.True(File.Exists(artifactPath));
+            Assert.True(new FileInfo(artifactPath).Length > 0);
+        }
     }
 
     private static MainWindowHeadlessTestHost CreateMultiOptionHost(

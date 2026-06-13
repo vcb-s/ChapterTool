@@ -34,6 +34,9 @@ public sealed class MainWindowViewModel : ObservableViewModel
     private ChapterInfo? currentInfo;
     private FrameRateOption selectedFrameRateOption;
     private bool currentInfoBelongsToSelectedClip;
+    private ChapterInfoGroup? splitClipGroup;
+    private ChapterSourceOption? combinedClipOption;
+    private bool isClipCombineChecked;
     private bool autoGenerateNames;
     private bool useTemplateNames;
     private string chapterNameTemplateText = string.Empty;
@@ -167,6 +170,8 @@ public sealed class MainWindowViewModel : ObservableViewModel
 
     public ObservableCollection<ChapterSourceOption> ClipOptions { get; } = [];
 
+    public ObservableCollection<SelectorDisplayOption> ClipDisplayOptions { get; } = [];
+
     public int SelectedClipIndex
     {
         get;
@@ -210,7 +215,20 @@ public sealed class MainWindowViewModel : ObservableViewModel
         private set => SetProperty(ref field, value);
     } = -1;
 
-    public bool IsClipSelectionVisible => ClipOptions.Count > 1;
+    public bool IsClipSelectionVisible => ClipOptions.Count > 1 || IsClipCombineChecked;
+
+    public bool IsClipCombineChecked
+    {
+        get => isClipCombineChecked;
+        private set
+        {
+            if (SetProperty(ref isClipCombineChecked, value))
+            {
+                OnPropertyChanged(nameof(IsClipSelectionVisible));
+                OnPropertyChanged(nameof(CanCombine));
+            }
+        }
+    }
 
     public bool IsAdvancedPanelExpanded
     {
@@ -239,6 +257,14 @@ public sealed class MainWindowViewModel : ObservableViewModel
 
     public IReadOnlyList<string> XmlLanguageOptions { get; } =
         XmlChapterLanguageCatalog.Languages.Select(static language => language.Code).ToArray();
+
+    public IReadOnlyList<SelectorDisplayOption> XmlLanguageDisplayOptions { get; } =
+        XmlChapterLanguageCatalog.Languages
+            .Select(static language => new SelectorDisplayOption(
+                language.Code,
+                LanguageDisplayName(language),
+                $"{language.Code}（{LanguageDisplayName(language)}）"))
+            .ToArray();
 
     public string XmlLanguage
     {
@@ -427,10 +453,11 @@ public sealed class MainWindowViewModel : ObservableViewModel
 
     public bool CanAppendMpls => currentGroup?.Options.Any(static option => option.ChapterInfo.SourceType == "MPLS") == true;
 
-    public bool CanCombine => currentGroup is not null
-        && currentGroup.Options.Count > 1
-        && currentGroup.Options[0].ChapterInfo.SourceType is "MPLS" or "DVD"
-        && currentGroup.Options.All(option => option.ChapterInfo.SourceType == currentGroup.Options[0].ChapterInfo.SourceType);
+    public bool CanCombine => IsClipCombineChecked
+        || currentGroup is not null
+            && currentGroup.Options.Count > 1
+            && currentGroup.Options[0].ChapterInfo.SourceType is "MPLS" or "DVD"
+            && currentGroup.Options.All(option => option.ChapterInfo.SourceType == currentGroup.Options[0].ChapterInfo.SourceType);
 
     public bool CanSave => currentInfo is not null;
 
@@ -626,6 +653,9 @@ public sealed class MainWindowViewModel : ObservableViewModel
         CurrentPath = path;
         DisplayPath = Path.GetFileName(path);
         currentGroup = result.Groups[0];
+        splitClipGroup = null;
+        combinedClipOption = null;
+        IsClipCombineChecked = false;
         currentInfoBelongsToSelectedClip = false;
         SelectedClipIndex = -1;
         ClipOptions.Clear();
@@ -685,7 +715,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
 
         SelectedClipIndex = index;
         currentInfo = ClipOptions[index].ChapterInfo;
-        currentInfoBelongsToSelectedClip = true;
+        currentInfoBelongsToSelectedClip = !IsClipCombineChecked;
         Log("Log.SelectedSourceOption",
             ("index", index),
             ("label", ClipOptions[index].DisplayName),
@@ -723,8 +753,37 @@ public sealed class MainWindowViewModel : ObservableViewModel
             return;
         }
 
-        var result = segmentService.Combine(currentGroup);
-        ApplyEdit(result, $"Combine segments: options={currentGroup.Options.Count}, sourceType={currentGroup.Options[0].ChapterInfo.SourceType}");
+        if (IsClipCombineChecked)
+        {
+            RestoreSplitClips();
+            return;
+        }
+
+        var groupToCombine = splitClipGroup ?? currentGroup;
+        var result = segmentService.Combine(groupToCombine);
+        if (result.Diagnostics.Count > 0)
+        {
+            ApplyEdit(result, $"Combine segments: options={groupToCombine.Options.Count}, sourceType={groupToCombine.Options[0].ChapterInfo.SourceType}");
+            return;
+        }
+
+        splitClipGroup = groupToCombine;
+        combinedClipOption = CreateCombinedClipOption(groupToCombine, result.ChapterInfo);
+        currentGroup = groupToCombine with { Options = [combinedClipOption], DefaultOptionIndex = 0 };
+        IsClipCombineChecked = true;
+        currentInfo = result.ChapterInfo;
+        currentInfoBelongsToSelectedClip = false;
+        SelectedClipIndex = -1;
+        ClipOptions.Clear();
+        ClipOptions.Add(combinedClipOption);
+        SelectClip(0);
+        SetStatus("Status.Updated");
+        Log("Log.EditChapters",
+            ("action", $"Combine segments: options={groupToCombine.Options.Count}, sourceType={groupToCombine.Options[0].ChapterInfo.SourceType}"),
+            ("before", groupToCombine.Options.Sum(static option => option.ChapterInfo.Chapters.Count)),
+            ("after", currentInfo?.Chapters.Count ?? 0));
+        LogStatus();
+        NotifyStateChanged();
     }
 
     private async ValueTask AppendMplsAsync(string path, CancellationToken cancellationToken)
@@ -749,7 +808,8 @@ public sealed class MainWindowViewModel : ObservableViewModel
             return;
         }
 
-        var edit = segmentService.Append(currentGroup, result.Groups[0]);
+        var baseGroup = splitClipGroup ?? currentGroup;
+        var edit = segmentService.Append(baseGroup, result.Groups[0]);
         if (edit.Diagnostics.Count > 0)
         {
             SetStatus(null, diagnostic: edit.Diagnostics[0]);
@@ -759,9 +819,16 @@ public sealed class MainWindowViewModel : ObservableViewModel
             return;
         }
 
-        var options = currentGroup.Options.ToList();
+        var options = baseGroup.Options.ToList();
         options.AddRange(result.Groups[0].Options);
-        currentGroup = currentGroup with { Options = options };
+        var appendedGroup = baseGroup with { Options = options };
+        var combinedOption = CreateCombinedClipOption(appendedGroup, edit.ChapterInfo);
+
+        splitClipGroup = appendedGroup;
+        combinedClipOption = combinedOption;
+        currentGroup = appendedGroup with { Options = [combinedOption], DefaultOptionIndex = 0 };
+        IsClipCombineChecked = true;
+        SelectedClipIndex = -1;
         ClipOptions.Clear();
         foreach (var option in currentGroup.Options)
         {
@@ -770,7 +837,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
 
         currentInfo = edit.ChapterInfo;
         currentInfoBelongsToSelectedClip = false;
-        ApplyFrameInfo();
+        SelectClip(0);
         SetStatus("Status.AppendedMplsSegments", ("count", result.Groups[0].Options.Count));
         LogStatus();
         LogDiagnostics("Append load", result.Diagnostics);
@@ -839,6 +906,10 @@ public sealed class MainWindowViewModel : ObservableViewModel
         {
             UpdateCurrentClipOption(currentInfo);
         }
+        else if (IsClipCombineChecked)
+        {
+            UpdateCombinedClipOption(currentInfo);
+        }
         RefreshRows();
         NotifyStateChanged();
     }
@@ -855,7 +926,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
         if (!result.Success)
         {
             SetStatus(null, diagnostic: result.Diagnostics.FirstOrDefault());
-            LogDiagnostics("Change FPS", result.Diagnostics);
+            LogDiagnostics(localizer.GetString("Main.ChangeFps"), result.Diagnostics);
             NotifyStateChanged();
             return;
         }
@@ -863,8 +934,9 @@ public sealed class MainWindowViewModel : ObservableViewModel
         currentInfo = result.ChapterInfo;
         ApplyFrameInfo();
         SetStatus("Status.Updated");
-        Log("Log.EditChapters",
-            ("action", $"Change FPS: {sourceFps:0.###} -> {selectedFrameRateOption.Value:0.###}"),
+        Log("Log.ChangeFps",
+            ("sourceFps", $"{sourceFps:0.###}"),
+            ("targetFps", $"{selectedFrameRateOption.Value:0.###}"),
             ("before", result.ChapterInfo.Chapters.Count),
             ("after", result.ChapterInfo.Chapters.Count));
         LogStatus();
@@ -896,6 +968,73 @@ public sealed class MainWindowViewModel : ObservableViewModel
         currentGroup = currentGroup with { Options = options };
 
         OnPropertyChanged(nameof(RelatedMediaReferences));
+    }
+
+    private void UpdateCombinedClipOption(ChapterInfo info)
+    {
+        if (currentGroup is null || !IsClipCombineChecked)
+        {
+            return;
+        }
+
+        var option = combinedClipOption ?? ClipOptions.FirstOrDefault();
+        if (option is null)
+        {
+            return;
+        }
+
+        combinedClipOption = option with { ChapterInfo = info };
+        currentGroup = currentGroup with { Options = [combinedClipOption] };
+        if (ClipOptions.Count == 1)
+        {
+            ClipOptions[0] = combinedClipOption;
+        }
+
+        OnPropertyChanged(nameof(RelatedMediaReferences));
+    }
+
+    private void RestoreSplitClips()
+    {
+        if (splitClipGroup is null)
+        {
+            return;
+        }
+
+        var combinedChapterCount = combinedClipOption?.ChapterInfo.Chapters.Count ?? currentInfo?.Chapters.Count ?? 0;
+        currentGroup = splitClipGroup;
+        splitClipGroup = null;
+        combinedClipOption = null;
+        IsClipCombineChecked = false;
+        currentInfoBelongsToSelectedClip = false;
+        SelectedClipIndex = -1;
+        ClipOptions.Clear();
+        foreach (var option in currentGroup.Options)
+        {
+            ClipOptions.Add(option);
+        }
+
+        SelectClip(Math.Clamp(currentGroup.DefaultOptionIndex, 0, ClipOptions.Count - 1));
+        SetStatus("Status.Updated");
+        Log("Log.EditChapters",
+            ("action", $"Split combined segments: options={currentGroup.Options.Count}, sourceType={currentGroup.Options[0].ChapterInfo.SourceType}"),
+            ("before", combinedChapterCount),
+            ("after", currentInfo?.Chapters.Count ?? 0));
+        LogStatus();
+        NotifyStateChanged();
+    }
+
+    private static ChapterSourceOption CreateCombinedClipOption(ChapterInfoGroup sourceGroup, ChapterInfo combinedInfo)
+    {
+        var mediaReferences = sourceGroup.Options
+            .SelectMany(static option => option.MediaReferences ?? [])
+            .Distinct()
+            .ToArray();
+        return new ChapterSourceOption(
+            "combined",
+            $"{combinedInfo.Title}__{combinedInfo.Chapters.Count}",
+            combinedInfo,
+            CanCombine: true,
+            MediaReferences: mediaReferences);
     }
 
     private void RefreshRows()
@@ -933,9 +1072,97 @@ public sealed class MainWindowViewModel : ObservableViewModel
 
     private void OnClipOptionsChanged(object? sender, NotifyCollectionChangedEventArgs args)
     {
+        SyncClipDisplayOptions(args);
         OnPropertyChanged(nameof(IsClipSelectionVisible));
         OnPropertyChanged(nameof(RelatedMediaReferences));
         NotifyCommandStates();
+    }
+
+    private void SyncClipDisplayOptions(NotifyCollectionChangedEventArgs args)
+    {
+        switch (args.Action)
+        {
+            case NotifyCollectionChangedAction.Add:
+                if (args.NewItems is not null)
+                {
+                    var index = args.NewStartingIndex;
+                    foreach (ChapterSourceOption option in args.NewItems)
+                    {
+                        ClipDisplayOptions.Insert(index++, ToClipDisplayOption(option));
+                    }
+                }
+
+                break;
+            case NotifyCollectionChangedAction.Remove:
+                if (args.OldItems is not null)
+                {
+                    for (var i = 0; i < args.OldItems.Count; i++)
+                    {
+                        ClipDisplayOptions.RemoveAt(args.OldStartingIndex);
+                    }
+                }
+
+                break;
+            case NotifyCollectionChangedAction.Replace:
+                if (args.NewItems is not null)
+                {
+                    var index = args.NewStartingIndex;
+                    foreach (ChapterSourceOption option in args.NewItems)
+                    {
+                        ClipDisplayOptions[index++] = ToClipDisplayOption(option);
+                    }
+                }
+
+                break;
+            case NotifyCollectionChangedAction.Move:
+                if (args.OldStartingIndex >= 0 && args.NewStartingIndex >= 0)
+                {
+                    ClipDisplayOptions.Move(args.OldStartingIndex, args.NewStartingIndex);
+                }
+
+                break;
+            default:
+                RebuildClipDisplayOptions();
+                break;
+        }
+    }
+
+    private void RebuildClipDisplayOptions()
+    {
+        ClipDisplayOptions.Clear();
+        foreach (var option in ClipOptions)
+        {
+            ClipDisplayOptions.Add(ToClipDisplayOption(option));
+        }
+    }
+
+    private static SelectorDisplayOption ToClipDisplayOption(ChapterSourceOption option)
+    {
+        var mainText = option.DisplayName;
+        var remarkParts = new List<string>();
+        var markerIndex = option.DisplayName.LastIndexOf("__", StringComparison.Ordinal);
+        if (markerIndex > 0 && markerIndex + 2 < option.DisplayName.Length)
+        {
+            mainText = option.DisplayName[..markerIndex];
+            remarkParts.Add($"{option.DisplayName[(markerIndex + 2)..]} chapters");
+        }
+        else if (option.ChapterInfo.Chapters.Count > 0)
+        {
+            remarkParts.Add($"{option.ChapterInfo.Chapters.Count} chapters");
+        }
+
+        var remarkText = string.Join(", ", remarkParts.Where(static part => !string.IsNullOrWhiteSpace(part)).Distinct(StringComparer.OrdinalIgnoreCase));
+        var displayText = string.IsNullOrWhiteSpace(remarkText) ? mainText : $"{mainText}（{remarkText}）";
+        return new SelectorDisplayOption(mainText, remarkText, displayText);
+    }
+
+    private static string LanguageDisplayName(XmlChapterLanguage language)
+    {
+        const string separator = " - ";
+        var separatorIndex = language.DisplayName.IndexOf(separator, StringComparison.Ordinal);
+        return separatorIndex >= 0
+            ? language.DisplayName[(separatorIndex + separator.Length)..]
+            : language.DisplayName;
     }
 
     private void OnRowsChanged(object? sender, NotifyCollectionChangedEventArgs args)
@@ -1255,3 +1482,8 @@ public sealed class MainWindowViewModel : ObservableViewModel
 }
 
 public sealed record ChapterCellEdit(int Index, string Value);
+
+public sealed record SelectorDisplayOption(string MainText, string RemarkText, string DisplayText)
+{
+    public override string ToString() => DisplayText;
+}

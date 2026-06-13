@@ -57,11 +57,15 @@ public sealed class LocalizationTests
         var localizer = new AppLocalizationManager("missing");
 
         Assert.Equal("zh-CN", localizer.CurrentCultureName);
-        Assert.Equal("已载入 2 个章节", localizer.Format("Status.LoadedChapters", new Dictionary<string, object?> { ["count"] = 2 }));
+        Assert.Equal(
+            AppLocalizationResources.Fallback["Status.LoadedChapters"].Replace("{count}", "2", StringComparison.Ordinal),
+            localizer.Format("Status.LoadedChapters", new Dictionary<string, object?> { ["count"] = 2 }));
 
         localizer.SetCulture("en-US");
 
-        Assert.Equal("Loaded 2 chapters", localizer.Format("Status.LoadedChapters", new Dictionary<string, object?> { ["count"] = 2 }));
+        Assert.Equal(
+            AppLocalizationResources.All["en-US"]["Status.LoadedChapters"].Replace("{count}", "2", StringComparison.Ordinal),
+            localizer.Format("Status.LoadedChapters", new Dictionary<string, object?> { ["count"] = 2 }));
     }
 
     [Fact]
@@ -71,7 +75,9 @@ public sealed class LocalizationTests
         var tool = new LanguageToolViewModel(owner);
 
         Assert.Equal(["zh-CN", "en-US", "ja-JP"], tool.Languages.Select(static language => language.CultureName).ToArray());
-        Assert.Contains(tool.Languages, static language => language.DisplayName == "Japanese");
+        Assert.Contains(
+            tool.Languages,
+            language => language.DisplayName == AppLocalizationResources.All["en-US"]["Language.Japanese"]);
     }
 
     private static string[] Placeholders(string value) =>
