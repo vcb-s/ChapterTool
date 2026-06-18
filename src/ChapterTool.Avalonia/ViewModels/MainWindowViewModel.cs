@@ -118,7 +118,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
         {
             ChangeFpsToSelectedOption();
             return ValueTask.CompletedTask;
-        }, _ => currentInfo is not null && selectedFrameRateOption.IsValid);
+        }, _ => currentInfo is not null && selectedFrameRateOption?.IsValid == true);
         SelectClipCommand = new UiCommand((parameter, _) =>
         {
             SelectClip(Convert.ToInt32(parameter));
@@ -241,6 +241,8 @@ public sealed class MainWindowViewModel : ObservableViewModel
     public IReadOnlyList<string> XmlLanguageOptions { get; } =
         XmlChapterLanguageCatalog.Languages.Select(static language => language.Code).ToArray();
 
+    private IReadOnlyDictionary<string, int>? xmlLanguageIndexes;
+
     public string XmlLanguage
     {
         get => xmlLanguage;
@@ -258,8 +260,10 @@ public sealed class MainWindowViewModel : ObservableViewModel
     {
         get
         {
-            var index = XmlLanguageOptions.ToList().FindIndex(option => string.Equals(option, XmlLanguage, StringComparison.OrdinalIgnoreCase));
-            return Math.Max(0, index);
+            xmlLanguageIndexes ??= XmlLanguageOptions
+                .Select(static (option, index) => (option, index))
+                .ToDictionary(static item => item.option, static item => item.index, StringComparer.OrdinalIgnoreCase);
+            return xmlLanguageIndexes.TryGetValue(XmlLanguage, out var index) ? index : 0;
         }
         set
         {
@@ -860,13 +864,14 @@ public sealed class MainWindowViewModel : ObservableViewModel
             return;
         }
 
-        currentInfo = result.ChapterInfo;
+        var beforeCount = currentInfo.Chapters.Count;
+        currentInfo = result.Info;
         ApplyFrameInfo();
         SetStatus("Status.Updated");
         Log("Log.EditChapters",
             ("action", $"Change FPS: {sourceFps:0.###} -> {selectedFrameRateOption.Value:0.###}"),
-            ("before", result.ChapterInfo.Chapters.Count),
-            ("after", result.ChapterInfo.Chapters.Count));
+            ("before", beforeCount),
+            ("after", result.Info.Chapters.Count));
         LogStatus();
         NotifyStateChanged();
     }

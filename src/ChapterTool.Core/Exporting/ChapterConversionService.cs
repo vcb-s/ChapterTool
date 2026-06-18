@@ -9,6 +9,8 @@ public sealed class ChapterConversionService(IChapterTimeFormatter timeFormatter
 {
     public ChapterConversionResult ToCelltimes(ChapterInfo info, decimal framesPerSecond)
     {
+        ArgumentNullException.ThrowIfNull(info);
+
         if (framesPerSecond <= 0)
         {
             return Failure("InvalidFrameRate", "Frame rate must be greater than zero.");
@@ -129,8 +131,18 @@ public sealed class ChapterConversionService(IChapterTimeFormatter timeFormatter
         public long FrameFor(TimeSpan time)
         {
             var target = time.TotalMilliseconds - 0.5d;
-            var index = Array.FindIndex(milliseconds, value => value >= target);
-            return index < 0 ? milliseconds.Length : index;
+            var index = Array.BinarySearch(milliseconds, target);
+            if (index < 0)
+            {
+                return ~index;
+            }
+
+            while (index > 0 && milliseconds[index - 1] >= target)
+            {
+                index--;
+            }
+
+            return index;
         }
     }
 }

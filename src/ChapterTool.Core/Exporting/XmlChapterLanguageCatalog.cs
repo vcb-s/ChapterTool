@@ -10,6 +10,10 @@ public static class XmlChapterLanguageCatalog
 
     public static IReadOnlyList<XmlChapterLanguage> Languages { get; } = BuildLanguages();
 
+    private static readonly HashSet<string> LanguageCodes = Languages
+        .Select(static language => language.Code)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
     public static bool IsValidCode(string? code)
     {
         if (string.IsNullOrWhiteSpace(code))
@@ -17,7 +21,7 @@ public static class XmlChapterLanguageCatalog
             return false;
         }
 
-        return Languages.Any(language => string.Equals(language.Code, code.Trim(), StringComparison.OrdinalIgnoreCase));
+        return LanguageCodes.Contains(code.Trim());
     }
 
     public static string NormalizeOrDefault(string? code)
@@ -50,11 +54,20 @@ public static class XmlChapterLanguageCatalog
             .ToArray();
     }
 
-    private static string DisplayNameFor(string code) =>
-        code switch
+    private static string DisplayNameFor(string code)
+    {
+        try
         {
-            "und" => "und - Undetermined",
-            "jpn" => "jpn - Japanese",
-            _ => $"{code} - {new CultureInfo(code).EnglishName}"
-        };
+            return code switch
+            {
+                "und" => "und - Undetermined",
+                "jpn" => "jpn - Japanese",
+                _ => $"{code} - {new CultureInfo(code).EnglishName}"
+            };
+        }
+        catch (CultureNotFoundException)
+        {
+            return $"{code} - Unknown";
+        }
+    }
 }

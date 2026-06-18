@@ -34,6 +34,21 @@ public sealed class ChapterConversionServiceTests
     }
 
     [Fact]
+    public void ToCelltimes_null_info_throws()
+    {
+        Assert.Throws<ArgumentNullException>(() => service.ToCelltimes(null!, 24m));
+    }
+
+    [Fact]
+    public void ToCelltimes_empty_chapters_succeeds_with_empty_content()
+    {
+        var result = service.ToCelltimes(Sample() with { Chapters = [] }, 24m);
+
+        Assert.True(result.Success);
+        Assert.Equal(string.Empty, result.Content);
+    }
+
+    [Fact]
     public void ChapterTextToQpfile_converts_ogm_chapter_text()
     {
         const string text = """
@@ -64,6 +79,63 @@ public sealed class ChapterConversionServiceTests
 
         Assert.True(result.Success);
         Assert.Equal("2 I", result.Content);
+    }
+
+    [Fact]
+    public void ChapterTextToQpfile_zero_fps_with_timecodes_succeeds()
+    {
+        const string text = "CHAPTER01=00:00:00.050";
+        const string timecodes = """
+            # timecode format v2
+            0
+            41.708
+            83.417
+            """;
+
+        var result = service.ChapterTextToQpfile(text, 0m, timecodes);
+
+        Assert.True(result.Success);
+        Assert.Equal("2 I", result.Content);
+    }
+
+    [Theory]
+    [InlineData("00:00:00.000", "0 I")]
+    [InlineData("00:00:00.050", "2 I")]
+    [InlineData("00:00:00.200", "3 I")]
+    public void ChapterTextToQpfile_maps_timecode_boundaries(string chapterTime, string expected)
+    {
+        var text = $"CHAPTER01={chapterTime}";
+        const string timecodes = """
+            # timecode format v2
+            0
+            41.708
+            83.417
+            """;
+
+        var result = service.ChapterTextToQpfile(text, 0m, timecodes);
+
+        Assert.True(result.Success);
+        Assert.Equal(expected, result.Content);
+    }
+
+    [Theory]
+    [InlineData("00:00:00.000", "0")]
+    [InlineData("00:00:00.041", "1")]
+    [InlineData("00:00:00.062", "1")]
+    [InlineData("00:00:00.063", "2")]
+    public void Celltimes_rounds_frame_boundaries(string time, string expected)
+    {
+        var info = Sample() with
+        {
+            Chapters = [new Chapter(1, serviceTime(time), "Boundary")]
+        };
+
+        var result = service.ToCelltimes(info, 24m);
+
+        Assert.True(result.Success);
+        Assert.Equal(expected, result.Content);
+
+        static TimeSpan serviceTime(string value) => new ChapterTimeFormatter().ParseOrZero(value);
     }
 
     [Fact]
