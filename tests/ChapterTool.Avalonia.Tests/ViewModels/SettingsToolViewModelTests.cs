@@ -10,6 +10,7 @@ using ChapterTool.Core.Services;
 using ChapterTool.Core.Transform;
 using ChapterTool.Infrastructure.Configuration;
 using ChapterTool.Infrastructure.Platform;
+using Avalonia.Media;
 
 namespace ChapterTool.Avalonia.Tests;
 
@@ -57,6 +58,87 @@ public sealed class SettingsToolViewModelTests
         Assert.Equal("new-out", owner.SaveDirectory);
         Assert.Equal("ja-JP", owner.UiLanguage);
         Assert.Equal("#010203", themeStore.Current.BackChange);
+    }
+
+    [Fact]
+    public void ColorSlotSynchronizesColorAndHexValue()
+    {
+        var slot = new ColorSlotViewModel("BackChange", "#010203");
+
+        slot.Color = Color.FromRgb(10, 11, 12);
+
+        Assert.Equal("#0A0B0C", slot.Value);
+
+        slot.Value = "#112233";
+
+        Assert.Equal(Color.FromRgb(17, 34, 51), slot.Color);
+    }
+
+    [Fact]
+    public async Task AppearanceChangesApplyThemeImmediately()
+    {
+        var appStore = new FakeAppSettingsStore(new AppSettings());
+        var themeStore = new FakeThemeSettingsStore(ThemeColorSettings.Default);
+        var themeApplication = new FakeThemeApplicationService();
+        var owner = CreateOwner(appStore);
+        var viewModel = new SettingsToolViewModel(
+            owner,
+            appStore,
+            themeStore,
+            new AppLocalizationManager("en-US"),
+            themeApplicationService: themeApplication);
+        await viewModel.LoadAsync(TestContext.Current.CancellationToken);
+
+        viewModel.ColorSlots[0].Value = "#123456";
+
+        Assert.Equal("#123456", themeApplication.LastApplied?.BackChange);
+    }
+
+    [Fact]
+    public async Task DiscardUnsavedAppearanceChangesRestoresLoadedTheme()
+    {
+        var appStore = new FakeAppSettingsStore(new AppSettings());
+        var themeStore = new FakeThemeSettingsStore(ThemeColorSettings.Default with { BackChange = "#010203" });
+        var themeApplication = new FakeThemeApplicationService();
+        var owner = CreateOwner(appStore);
+        var viewModel = new SettingsToolViewModel(
+            owner,
+            appStore,
+            themeStore,
+            new AppLocalizationManager("en-US"),
+            themeApplicationService: themeApplication);
+        await viewModel.LoadAsync(TestContext.Current.CancellationToken);
+
+        viewModel.ColorSlots[0].Value = "#123456";
+        viewModel.DiscardUnsavedAppearanceChanges();
+
+        Assert.Equal("#010203", viewModel.ColorSlots[0].Value);
+        Assert.Equal("#010203", themeApplication.LastApplied?.BackChange);
+        Assert.Equal("#010203", themeStore.Current.BackChange);
+    }
+
+    [Fact]
+    public async Task DiscardAfterSaveKeepsSavedAppearanceChanges()
+    {
+        var appStore = new FakeAppSettingsStore(new AppSettings());
+        var themeStore = new FakeThemeSettingsStore(ThemeColorSettings.Default with { BackChange = "#010203" });
+        var themeApplication = new FakeThemeApplicationService();
+        var owner = CreateOwner(appStore);
+        var viewModel = new SettingsToolViewModel(
+            owner,
+            appStore,
+            themeStore,
+            new AppLocalizationManager("en-US"),
+            themeApplicationService: themeApplication);
+        await viewModel.LoadAsync(TestContext.Current.CancellationToken);
+
+        viewModel.ColorSlots[0].Value = "#123456";
+        await viewModel.SaveCommand.ExecuteAsync();
+        viewModel.DiscardUnsavedAppearanceChanges();
+
+        Assert.Equal("#123456", viewModel.ColorSlots[0].Value);
+        Assert.Equal("#123456", themeApplication.LastApplied?.BackChange);
+        Assert.Equal("#123456", themeStore.Current.BackChange);
     }
 
     [Fact]
@@ -198,6 +280,13 @@ public sealed class SettingsToolViewModelTests
             Current = settings;
             return ValueTask.CompletedTask;
         }
+    }
+
+    private sealed class FakeThemeApplicationService : IThemeApplicationService
+    {
+        public ThemeColorSettings? LastApplied { get; private set; }
+
+        public void Apply(ThemeColorSettings settings) => LastApplied = settings;
     }
 
     private sealed class FakeSettingsPicker(string directory, string executable) : ISettingsPickerService

@@ -28,6 +28,7 @@ public sealed class AppCompositionRoot : IDisposable
     private readonly AppLocalizationManager localizationManager = new();
     private readonly AppSettingsStore appSettingsStore;
     private readonly ThemeSettingsStore themeSettingsStore;
+    private readonly AvaloniaThemeApplicationService themeApplicationService = new();
     private readonly ILoggerFactory loggerFactory;
     private readonly Serilog.ILogger serilogLogger;
     private bool disposed;
@@ -48,6 +49,8 @@ public sealed class AppCompositionRoot : IDisposable
 
         // Settings are loaded asynchronously from MainWindow.Opened. Blocking here can deadlock
         // macOS single-file startup before Avalonia has shown the first window.
+        themeApplicationService.Apply(ThemeColorSettings.Default);
+        _ = ApplyThemeSettingsAsync();
     }
 
     public MainWindow CreateMainWindow()
@@ -101,6 +104,7 @@ public sealed class AppCompositionRoot : IDisposable
         new AvaloniaWindowService(
             appSettingsStore,
             themeSettingsStore,
+            themeApplicationService,
             localizationManager,
             owner => new AvaloniaSettingsPickerService(owner),
             CreateExternalToolLocator());
@@ -118,6 +122,23 @@ public sealed class AppCompositionRoot : IDisposable
 
     public INativeDependencyService CreateNativeDependencyService() =>
         new FileSystemNativeDependencyService(PathSearchDirectories().Prepend(AppContext.BaseDirectory).ToArray());
+
+    private async Task ApplyThemeSettingsAsync()
+    {
+        try
+        {
+            var settings = await themeSettingsStore.LoadAsync(CancellationToken.None);
+            themeApplicationService.Apply(settings);
+        }
+        catch (IOException)
+        {
+            themeApplicationService.Apply(ThemeColorSettings.Default);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            themeApplicationService.Apply(ThemeColorSettings.Default);
+        }
+    }
 
     public void Dispose()
     {

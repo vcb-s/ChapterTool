@@ -13,6 +13,7 @@ public sealed class AvaloniaWindowService : IWindowService
 {
     private readonly ISettingsStore<AppSettings>? appSettingsStore;
     private readonly ISettingsStore<ThemeColorSettings>? themeSettingsStore;
+    private readonly IThemeApplicationService? themeApplicationService;
     private readonly Func<Window, ISettingsPickerService>? settingsPickerFactory;
     private readonly IExternalToolLocator? externalToolLocator;
     private readonly Dictionary<string, Window> windows = new(StringComparer.OrdinalIgnoreCase);
@@ -22,12 +23,14 @@ public sealed class AvaloniaWindowService : IWindowService
     public AvaloniaWindowService(
         ISettingsStore<AppSettings>? appSettingsStore = null,
         ISettingsStore<ThemeColorSettings>? themeSettingsStore = null,
+        IThemeApplicationService? themeApplicationService = null,
         IAppLocalizer? localizer = null,
         Func<Window, ISettingsPickerService>? settingsPickerFactory = null,
         IExternalToolLocator? externalToolLocator = null)
     {
         this.appSettingsStore = appSettingsStore;
         this.themeSettingsStore = themeSettingsStore;
+        this.themeApplicationService = themeApplicationService;
         this.localizer = localizer ?? new AppLocalizationManager();
         this.settingsPickerFactory = settingsPickerFactory;
         this.externalToolLocator = externalToolLocator;
@@ -62,7 +65,15 @@ public sealed class AvaloniaWindowService : IWindowService
         };
         Refresh(window, windowId, parameter);
         parameters[windowId] = parameter;
-        window.Closed += (_, _) => windows.Remove(windowId);
+        window.Closed += (_, _) =>
+        {
+            if (window.Content is SettingsToolView { DataContext: SettingsToolViewModel settings })
+            {
+                settings.DiscardUnsavedAppearanceChanges();
+            }
+
+            windows.Remove(windowId);
+        };
         windows[windowId] = window;
         window.Show();
         return ValueTask.CompletedTask;
@@ -112,9 +123,10 @@ public sealed class AvaloniaWindowService : IWindowService
                     themeSettingsStore,
                     localizer,
                     settingsPickerFactory?.Invoke(window),
-                    externalToolLocator)
+                    externalToolLocator,
+                    themeApplicationService)
             },
-            "color-settings" => new ColorSettingsView { DataContext = new ColorSettingsViewModel(themeSettingsStore) },
+            "color-settings" => new ColorSettingsView { DataContext = new ColorSettingsViewModel(themeSettingsStore, themeApplicationService) },
             "language" => new LanguageToolView { DataContext = new LanguageToolViewModel(viewModel) },
             "expression" => new ExpressionToolView { DataContext = new ExpressionToolViewModel(viewModel) },
             "template-names" => new TemplateNamesToolView { DataContext = new TemplateNamesToolViewModel(viewModel) },

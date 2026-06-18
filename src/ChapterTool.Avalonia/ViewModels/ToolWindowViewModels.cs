@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using System.Xml.Linq;
+using Avalonia.Media;
+using ChapterTool.Avalonia.Services;
 using ChapterTool.Avalonia.Localization;
 using ChapterTool.Core.Exporting;
 using ChapterTool.Core.Services;
@@ -335,12 +337,27 @@ public sealed class TextToolFormatSelector
 public sealed class ColorSettingsViewModel : ObservableViewModel
 {
     private readonly ISettingsStore<ThemeColorSettings>? store;
+    private readonly IThemeApplicationService? themeApplicationService;
 
-    public ColorSettingsViewModel(ISettingsStore<ThemeColorSettings>? store)
+    public ColorSettingsViewModel(
+        ISettingsStore<ThemeColorSettings>? store,
+        IThemeApplicationService? themeApplicationService = null)
     {
         this.store = store;
+        this.themeApplicationService = themeApplicationService;
         Slots = new ObservableCollection<ColorSlotViewModel>(
             ThemeColorSettings.Default.OrderedSlots.Select(static slot => new ColorSlotViewModel(slot.Name, slot.Value)));
+        foreach (var slot in Slots)
+        {
+            slot.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(ColorSlotViewModel.Value))
+                {
+                    ApplyCurrentTheme();
+                }
+            };
+        }
+
         SaveCommand = new UiCommand(async (_, token) => await SaveAsync(token), _ => this.store is not null);
         _ = LoadAsync();
     }
@@ -362,6 +379,8 @@ public sealed class ColorSettingsViewModel : ObservableViewModel
         {
             Slots[index].Value = values[index].Value;
         }
+
+        ApplyCurrentTheme();
     }
 
     private async ValueTask SaveAsync(CancellationToken cancellationToken)
@@ -372,15 +391,32 @@ public sealed class ColorSettingsViewModel : ObservableViewModel
         }
 
         var defaults = ThemeColorSettings.Default.OrderedSlots.ToArray();
-        await store.SaveAsync(
-            new ThemeColorSettings(
-                NormalizeColor(Slots[0].Value, defaults[0].Value),
-                NormalizeColor(Slots[1].Value, defaults[1].Value),
-                NormalizeColor(Slots[2].Value, defaults[2].Value),
-                NormalizeColor(Slots[3].Value, defaults[3].Value),
-                NormalizeColor(Slots[4].Value, defaults[4].Value),
-                NormalizeColor(Slots[5].Value, defaults[5].Value)),
-            cancellationToken);
+        var settings = new ThemeColorSettings(
+            NormalizeColor(Slots[0].Value, defaults[0].Value),
+            NormalizeColor(Slots[1].Value, defaults[1].Value),
+            NormalizeColor(Slots[2].Value, defaults[2].Value),
+            NormalizeColor(Slots[3].Value, defaults[3].Value),
+            NormalizeColor(Slots[4].Value, defaults[4].Value),
+            NormalizeColor(Slots[5].Value, defaults[5].Value));
+        await store.SaveAsync(settings, cancellationToken);
+        themeApplicationService?.Apply(settings);
+    }
+
+    private void ApplyCurrentTheme()
+    {
+        if (Slots.Count < 6)
+        {
+            return;
+        }
+
+        var defaults = ThemeColorSettings.Default.OrderedSlots.ToArray();
+        themeApplicationService?.Apply(new ThemeColorSettings(
+            NormalizeColor(Slots[0].Value, defaults[0].Value),
+            NormalizeColor(Slots[1].Value, defaults[1].Value),
+            NormalizeColor(Slots[2].Value, defaults[2].Value),
+            NormalizeColor(Slots[3].Value, defaults[3].Value),
+            NormalizeColor(Slots[4].Value, defaults[4].Value),
+            NormalizeColor(Slots[5].Value, defaults[5].Value)));
     }
 
     private static string NormalizeColor(string? value, string fallback)
@@ -399,15 +435,71 @@ public sealed class ColorSettingsViewModel : ObservableViewModel
 
 public sealed class ColorSlotViewModel(string name, string value) : ObservableViewModel
 {
-    private string value = value;
+    private string value = NormalizeColor(value, ThemeColorSettings.Default.BackChange);
+    private Color color = ParseColor(value, ThemeColorSettings.Default.BackChange);
 
     public string Name { get; } = name;
 
     public string Value
     {
         get => value;
-        set => SetProperty(ref this.value, value);
+        set
+        {
+            if (!SetProperty(ref this.value, value))
+            {
+                return;
+            }
+
+            if (TryParseColor(value, out var parsed) && parsed != color)
+            {
+                color = parsed;
+                OnPropertyChanged(nameof(Color));
+            }
+        }
     }
+
+    public Color Color
+    {
+        get => color;
+        set
+        {
+            if (!SetProperty(ref color, value))
+            {
+                return;
+            }
+
+            var text = ToHex(value);
+            if (!string.Equals(this.value, text, StringComparison.Ordinal))
+            {
+                this.value = text;
+                OnPropertyChanged(nameof(Value));
+            }
+        }
+    }
+
+    private static string ToHex(Color color) => $"#{color.R:X2}{color.G:X2}{color.B:X2}";
+
+    private static Color ParseColor(string value, string fallback) =>
+        TryParseColor(value, out var color) ? color : Color.Parse(fallback);
+
+    private static bool TryParseColor(string? value, out Color color)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            var text = value.Trim();
+            if (text.Length == 7 && text[0] == '#' && text.Skip(1).All(Uri.IsHexDigit))
+            {
+                color = Color.Parse(text);
+                return true;
+            }
+        }
+
+        color = default;
+        return false;
+    }
+
+    private static string NormalizeColor(string? value, string fallback) =>
+        TryParseColor(value, out var color) ? ToHex(color) : fallback;
 }
 
 public sealed class LanguageToolViewModel : ObservableViewModel

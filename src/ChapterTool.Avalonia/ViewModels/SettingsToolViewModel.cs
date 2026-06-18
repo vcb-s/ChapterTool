@@ -30,6 +30,8 @@ public sealed class SettingsToolViewModel : ObservableViewModel
     private readonly IAppLocalizer localizer;
     private readonly ISettingsPickerService? picker;
     private readonly IExternalToolLocator? externalToolLocator;
+    private readonly IThemeApplicationService? themeApplicationService;
+    private ThemeColorSettings savedThemeSettings = ThemeColorSettings.Default;
     private string selectedLanguage;
     private string? saveDirectory;
     private string? mkvToolnixPath;
@@ -50,7 +52,8 @@ public sealed class SettingsToolViewModel : ObservableViewModel
         ISettingsStore<ThemeColorSettings>? themeSettingsStore,
         IAppLocalizer? localizer = null,
         ISettingsPickerService? picker = null,
-        IExternalToolLocator? externalToolLocator = null)
+        IExternalToolLocator? externalToolLocator = null,
+        IThemeApplicationService? themeApplicationService = null)
     {
         this.owner = owner;
         this.appSettingsStore = appSettingsStore;
@@ -58,12 +61,24 @@ public sealed class SettingsToolViewModel : ObservableViewModel
         this.localizer = localizer ?? owner.Localizer;
         this.picker = picker;
         this.externalToolLocator = externalToolLocator;
+        this.themeApplicationService = themeApplicationService;
         selectedLanguage = AppLanguage.Normalize(owner.UiLanguage);
         defaultSaveFormatIndex = Math.Clamp(owner.SaveFormatIndex, 0, SaveFormats.Length - 1);
         defaultXmlLanguageIndex = XmlLanguageIndex(owner.XmlLanguage);
         Languages = BuildLanguages();
         ColorSlots = new ObservableCollection<ColorSlotViewModel>(
             ThemeColorSettings.Default.OrderedSlots.Select(static slot => new ColorSlotViewModel(slot.Name, slot.Value)));
+        foreach (var slot in ColorSlots)
+        {
+            slot.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(ColorSlotViewModel.Value))
+                {
+                    ApplyCurrentTheme();
+                }
+            };
+        }
+
         SaveCommand = new UiCommand(async (_, token) => await SaveAsync(token), _ => appSettingsStore is not null || themeSettingsStore is not null);
         ResetCommand = new UiCommand((_, _) =>
         {
@@ -270,7 +285,9 @@ public sealed class SettingsToolViewModel : ObservableViewModel
         if (themeSettingsStore is not null)
         {
             var theme = await themeSettingsStore.LoadAsync(cancellationToken);
+            savedThemeSettings = NormalizeThemeSettings(theme);
             ApplyColors(theme);
+            themeApplicationService?.Apply(theme);
         }
 
         RefreshToolStatuses();
@@ -299,11 +316,26 @@ public sealed class SettingsToolViewModel : ObservableViewModel
 
         if (themeSettingsStore is not null)
         {
-            await themeSettingsStore.SaveAsync(CurrentThemeSettings(), cancellationToken);
+            var settings = CurrentThemeSettings();
+            await themeSettingsStore.SaveAsync(settings, cancellationToken);
+            savedThemeSettings = settings;
+            ApplyColors(settings);
+            themeApplicationService?.Apply(settings);
         }
 
         RefreshToolStatuses();
         StatusText = localizer.GetString("Settings.Status.Saved");
+    }
+
+    public void DiscardUnsavedAppearanceChanges()
+    {
+        if (CurrentThemeSettings() == savedThemeSettings)
+        {
+            return;
+        }
+
+        ApplyColors(savedThemeSettings);
+        themeApplicationService?.Apply(savedThemeSettings);
     }
 
     private void ApplyDefaults()
@@ -318,6 +350,7 @@ public sealed class SettingsToolViewModel : ObservableViewModel
         DefaultSaveFormatIndex = SaveFormatIndex(defaults.DefaultSaveFormat);
         DefaultXmlLanguageIndex = XmlLanguageIndex(defaults.DefaultXmlLanguage);
         ApplyColors(ThemeColorSettings.Default);
+        themeApplicationService?.Apply(ThemeColorSettings.Default);
         RefreshToolStatuses();
         StatusText = localizer.GetString("Settings.Status.Reset");
     }
@@ -453,6 +486,13 @@ public sealed class SettingsToolViewModel : ObservableViewModel
         return new ThemeColorSettings(values[0], values[1], values[2], values[3], values[4], values[5]);
     }
 
+    private static ThemeColorSettings NormalizeThemeSettings(ThemeColorSettings settings)
+    {
+        var defaults = ThemeColorSettings.Default.OrderedSlots.ToArray();
+        var values = settings.OrderedSlots.Select((slot, index) => NormalizeColor(slot.Value, defaults[index].Value)).ToArray();
+        return new ThemeColorSettings(values[0], values[1], values[2], values[3], values[4], values[5]);
+    }
+
     private void ApplyColors(ThemeColorSettings settings)
     {
         var values = settings.OrderedSlots.ToArray();
@@ -460,6 +500,16 @@ public sealed class SettingsToolViewModel : ObservableViewModel
         {
             ColorSlots[index].Value = values[index].Value;
         }
+    }
+
+    private void ApplyCurrentTheme()
+    {
+        if (ColorSlots.Count < ThemeColorSettings.Default.OrderedSlots.Count)
+        {
+            return;
+        }
+
+        themeApplicationService?.Apply(CurrentThemeSettings());
     }
 
     private static string NormalizeColor(string? value, string fallback)
