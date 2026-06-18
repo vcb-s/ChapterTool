@@ -35,13 +35,13 @@ public sealed class DiscImporterTests
         Assert.Equal(1, playItem.STNTable.NumberOfPrimaryVideoStreamEntries);
         Assert.Empty(playItem.STNTable.SubPathStreamEntries);
 
-        var primaryVideo = playItem.STNTable.PrimaryVideoStreamEntries.First();
+        var primaryVideo = playItem.STNTable.PrimaryVideoStreamEntries[0];
         Assert.Equal(0x01, primaryVideo.StreamEntry.StreamType);
         Assert.True(primaryVideo.StreamEntry.RefToStreamPID > 0);
         Assert.Equal(0x1B, primaryVideo.StreamAttributes.StreamCodingType);
         Assert.Equal((byte)2, primaryVideo.StreamAttributes.FrameRate.GetValueOrDefault());
 
-        var firstMark = file.PlayListMark.Marks.First();
+        var firstMark = file.PlayListMark.Marks[0];
         Assert.Equal(0x01, firstMark.MarkType);
         Assert.Equal(0, firstMark.RefToPlayItemID);
         Assert.Equal(188460000U, firstMark.MarkTimeStamp);
@@ -387,7 +387,7 @@ public sealed class DiscImporterTests
 
     private static double MplsFrameRate(MplsPlayItem playItem)
     {
-        var frameRateCode = playItem.STNTable.PrimaryVideoStreamEntries.First().StreamAttributes.FrameRate;
+        var frameRateCode = playItem.STNTable.PrimaryVideoStreamEntries[0].StreamAttributes.FrameRate;
         return frameRateCode switch
         {
             1 => 24000d / 1001d,

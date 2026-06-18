@@ -7,7 +7,7 @@ namespace ChapterTool.Core.Importing.Cue;
 
 public sealed partial class CueSheetParser
 {
-    public ChapterImportResult Parse(string text, string path = "")
+    public static ChapterImportResult Parse(string text, string path = "")
     {
         if (string.IsNullOrWhiteSpace(text))
         {
@@ -102,7 +102,7 @@ public sealed partial class CueSheetParser
             return ChapterImportResult.Failed(Error("EmptyCueFile", "No CUE chapters were parsed."));
         }
 
-        var ordered = chapters.OrderBy(static chapter => chapter.Number).ToArray();
+        var ordered = chapters.OrderBy(static chapter => chapter.Number).ToList();
         var info = new ChapterInfo(
             title,
             sourceName.Length == 0 ? Path.GetFileName(path) : sourceName,

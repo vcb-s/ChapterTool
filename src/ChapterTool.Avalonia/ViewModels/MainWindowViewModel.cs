@@ -26,7 +26,6 @@ public sealed class MainWindowViewModel : ObservableViewModel
     private readonly ChapterOutputProjectionService outputProjectionService;
     private readonly IApplicationLogService logService;
     private readonly ILogger<MainWindowViewModel> logger;
-    private readonly IAppLocalizer localizer;
     private readonly IShellService? shellService;
     private readonly ISettingsStore<AppSettings>? appSettingsStore;
 
@@ -70,12 +69,12 @@ public sealed class MainWindowViewModel : ObservableViewModel
         this.logService = logService;
         this.logger = logger;
 
-        this.localizer = localizer ?? new AppLocalizationManager();
+        this.Localizer = localizer ?? new AppLocalizationManager();
         this.shellService = shellService;
         this.appSettingsStore = appSettingsStore;
-        chapterNameTemplateStatus = this.localizer.GetString("Status.TemplateNotSelected");
-        statusText = this.localizer.GetString("Status.Ready");
-        this.localizer.CultureChanged += (_, _) => RefreshLocalizedState();
+        chapterNameTemplateStatus = this.Localizer.GetString("Status.TemplateNotSelected");
+        statusText = this.Localizer.GetString("Status.Ready");
+        this.Localizer.CultureChanged += (_, _) => RefreshLocalizedState();
         selectedFrameRateOption = this.frameRateService.Options[0];
         ClipOptions.CollectionChanged += OnClipOptionsChanged;
         Rows.CollectionChanged += OnRowsChanged;
@@ -184,11 +183,11 @@ public sealed class MainWindowViewModel : ObservableViewModel
         }
     }
 
-    public IReadOnlySet<int> SelectedRowIndexes
+    private HashSet<int> SelectedRowIndexes
     {
         get;
-        private set => SetProperty(ref field, value);
-    } = new HashSet<int>();
+        set => SetProperty(ref field, value);
+    } = new();
 
     public bool RoundFrames
     {
@@ -256,7 +255,9 @@ public sealed class MainWindowViewModel : ObservableViewModel
     }
 
     public IReadOnlyList<string> XmlLanguageOptions { get; } =
-        XmlChapterLanguageCatalog.Languages.Select(static language => language.Code).ToArray();
+        XmlChapterLanguageCatalog.Languages.Select(static language => language.Code).ToList();
+
+    private IReadOnlyDictionary<string, int>? xmlLanguageIndexes;
 
     public IReadOnlyList<SelectorDisplayOption> XmlLanguageDisplayOptions { get; } =
         XmlChapterLanguageCatalog.Languages
@@ -283,8 +284,10 @@ public sealed class MainWindowViewModel : ObservableViewModel
     {
         get
         {
-            var index = XmlLanguageOptions.ToList().FindIndex(option => string.Equals(option, XmlLanguage, StringComparison.OrdinalIgnoreCase));
-            return Math.Max(0, index);
+            xmlLanguageIndexes ??= XmlLanguageOptions
+                .Select(static (option, index) => (option, index))
+                .ToDictionary(static item => item.option, static item => item.index, StringComparer.OrdinalIgnoreCase);
+            return xmlLanguageIndexes.GetValueOrDefault(XmlLanguage, 0);
         }
         set
         {
@@ -303,7 +306,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
         private set => SetProperty(ref field, value);
     } = "";
 
-    public IAppLocalizer Localizer => localizer;
+    public IAppLocalizer Localizer { get; }
 
     public bool AutoGenerateNames
     {
@@ -385,7 +388,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
             if (value != 2)
             {
                 ChapterNameTemplateText = string.Empty;
-                ChapterNameTemplateStatus = localizer.GetString("Status.TemplateNotSelected");
+                ChapterNameTemplateStatus = Localizer.GetString("Status.TemplateNotSelected");
             }
 
             OnPropertyChanged();
@@ -530,7 +533,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
     {
         SaveDirectory = settings.SavingPath;
         UiLanguage = AppLanguage.Normalize(settings.Language);
-        localizer.SetCulture(UiLanguage);
+        Localizer.SetCulture(UiLanguage);
         if (Enum.TryParse<ChapterExportFormat>(settings.DefaultSaveFormat, ignoreCase: true, out var format))
         {
             SaveFormat = format;
@@ -546,7 +549,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
     public async ValueTask SaveUiLanguageAsync(string language, CancellationToken cancellationToken)
     {
         UiLanguage = AppLanguage.Normalize(language);
-        localizer.SetCulture(UiLanguage);
+        Localizer.SetCulture(UiLanguage);
         if (appSettingsStore is null)
         {
             return;
@@ -615,7 +618,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
         ApplyEdit(editingService.ShiftFramesForward(currentInfo, frames, (decimal)currentInfo.FramesPerSecond), $"Shift frames forward: frames={frames}");
     }
 
-    public ChapterExportOptions CurrentExportOptions() =>
+    private ChapterExportOptions CurrentExportOptions() =>
         new(
             Format: SaveFormat,
             XmlLanguage: XmlLanguage,
@@ -760,7 +763,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
         }
 
         var groupToCombine = splitClipGroup ?? currentGroup;
-        var result = segmentService.Combine(groupToCombine);
+        var result = ChapterSegmentService.Combine(groupToCombine);
         if (result.Diagnostics.Count > 0)
         {
             ApplyEdit(result, $"Combine segments: options={groupToCombine.Options.Count}, sourceType={groupToCombine.Options[0].ChapterInfo.SourceType}");
@@ -922,23 +925,23 @@ public sealed class MainWindowViewModel : ObservableViewModel
         }
 
         var sourceFps = (decimal)currentInfo.FramesPerSecond;
-        var result = new ChapterFpsTransformService().ChangeFps(currentInfo, sourceFps, selectedFrameRateOption.Value);
+        var result = ChapterFpsTransformService.ChangeFps(currentInfo, sourceFps, selectedFrameRateOption.Value);
         if (!result.Success)
         {
             SetStatus(null, diagnostic: result.Diagnostics.FirstOrDefault());
-            LogDiagnostics(localizer.GetString("Main.ChangeFps"), result.Diagnostics);
+            LogDiagnostics(Localizer.GetString("Main.ChangeFps"), result.Diagnostics);
             NotifyStateChanged();
             return;
         }
 
-        currentInfo = result.ChapterInfo;
+        var beforeCount = currentInfo.Chapters.Count;
+        currentInfo = result.Info;
         ApplyFrameInfo();
         SetStatus("Status.Updated");
-        Log("Log.ChangeFps",
-            ("sourceFps", $"{sourceFps:0.###}"),
-            ("targetFps", $"{selectedFrameRateOption.Value:0.###}"),
-            ("before", result.ChapterInfo.Chapters.Count),
-            ("after", result.ChapterInfo.Chapters.Count));
+        Log("Log.EditChapters",
+            ("action", $"Change FPS: {sourceFps:0.###} -> {selectedFrameRateOption.Value:0.###}"),
+            ("before", beforeCount),
+            ("after", result.Info.Chapters.Count));
         LogStatus();
         NotifyStateChanged();
     }
@@ -956,8 +959,8 @@ public sealed class MainWindowViewModel : ObservableViewModel
             return;
         }
 
-        var options = currentGroup.Options.ToArray();
-        if (index >= options.Length)
+        var options = currentGroup.Options.ToList();
+        if (index >= options.Count)
         {
             return;
         }
@@ -1284,7 +1287,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
             : new LocalizedMessage(
                 key,
                 arguments.ToDictionary(static item => item.Name, static item => item.Value, StringComparer.Ordinal));
-        StatusText = currentStatusMessage is null ? string.Empty : localizer.Format(currentStatusMessage);
+        StatusText = currentStatusMessage is null ? string.Empty : Localizer.Format(currentStatusMessage);
     }
 
     private void SetStatus(string? key, ChapterDiagnostic? diagnostic, params (string Name, object? Value)[] arguments)
@@ -1302,20 +1305,12 @@ public sealed class MainWindowViewModel : ObservableViewModel
     private string LocalizeDiagnostic(ChapterDiagnostic diagnostic)
     {
         var diagnosticKey = $"Diagnostic.{diagnostic.Code}";
-        return localizer.TryGetString(diagnosticKey, out _)
-            ? localizer.Format(diagnosticKey)
+        return Localizer.TryGetString(diagnosticKey, out _)
+            ? Localizer.Format(diagnosticKey)
             : diagnostic.Message;
     }
 
     private void LogStatus(LogLevel level = LogLevel.Information) => Log(level, "Log.Status", ("status", StatusText));
-
-    private void Log(string message)
-    {
-        if (!string.IsNullOrWhiteSpace(message))
-        {
-            logger.LogInformation("{Message}", message.Trim());
-        }
-    }
 
     private void Log(string key, params (string Name, object? Value)[] arguments) =>
         Log(LogLevel.Information, key, technicalDetail: null, arguments);
@@ -1354,7 +1349,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
             return entry.Message;
         }
 
-        var message = localizer.Format(entry.MessageKey, entry.Arguments);
+        var message = Localizer.Format(entry.MessageKey, entry.Arguments);
         return string.IsNullOrWhiteSpace(entry.TechnicalDetail)
             ? message
             : $"{message} {entry.TechnicalDetail}";
@@ -1364,12 +1359,12 @@ public sealed class MainWindowViewModel : ObservableViewModel
     {
         if (string.IsNullOrEmpty(chapterNameTemplateText))
         {
-            ChapterNameTemplateStatus = localizer.GetString("Status.TemplateNotSelected");
+            ChapterNameTemplateStatus = Localizer.GetString("Status.TemplateNotSelected");
         }
 
         if (currentStatusMessage is not null)
         {
-            StatusText = localizer.Format(currentStatusMessage);
+            StatusText = Localizer.Format(currentStatusMessage);
         }
     }
 

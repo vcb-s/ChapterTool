@@ -11,7 +11,7 @@
         MinWidth="608"
         MinHeight="480"
         WindowStartupLocation="CenterScreen"
-        Background="#f3f4f6"
+        Background="{DynamicResource ChapterTool.BackChangeBrush}"
         Opened="OnOpened"
         KeyDown="OnKeyDown"
         SizeChanged="OnSizeChanged"
@@ -20,6 +20,7 @@
         x:CompileBindings="True">
   <Window.Styles>
     <Style Selector="Button">
+      <Setter Property="Foreground" Value="{DynamicResource ChapterTool.TextFrontBrush}" />
       <Setter Property="CornerRadius" Value="2" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="Padding" Value="9.6,5.6" />
@@ -28,41 +29,44 @@
       <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
     <Style Selector="Button.primaryAction">
-      <Setter Property="Background" Value="#ffffff" />
-      <Setter Property="BorderBrush" Value="#0a84ff" />
+      <Setter Property="Background" Value="{DynamicResource ChapterTool.TextBackBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ChapterTool.BorderBrush}" />
       <Setter Property="FontSize" Value="13.6" />
       <Setter Property="MinWidth" Value="94.4" />
       <Setter Property="MinHeight" Value="43.2" />
     </Style>
     <Style Selector="Button.iconAction">
-      <Setter Property="Background" Value="#ffffff" />
-      <Setter Property="BorderBrush" Value="#0a84ff" />
+      <Setter Property="Background" Value="{DynamicResource ChapterTool.TextBackBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ChapterTool.BorderBrush}" />
       <Setter Property="FontSize" Value="12.8" />
       <Setter Property="Width" Value="35.2" />
       <Setter Property="Height" Value="35.2" />
       <Setter Property="Padding" Value="0" />
     </Style>
     <Style Selector="Button.statusAction">
-      <Setter Property="Background" Value="#ffffff" />
-      <Setter Property="BorderBrush" Value="#c7ccd1" />
+      <Setter Property="Background" Value="{DynamicResource ChapterTool.TextBackBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ChapterTool.BorderBrush}" />
       <Setter Property="FontSize" Value="9.6" />
       <Setter Property="MinWidth" Value="41.6" />
       <Setter Property="MinHeight" Value="19.2" />
       <Setter Property="Padding" Value="8,1.6" />
     </Style>
     <Style Selector="ComboBox, TextBox, NumericUpDown">
-      <Setter Property="Background" Value="#ffffff" />
-      <Setter Property="BorderBrush" Value="#c7ccd1" />
+      <Setter Property="Background" Value="{DynamicResource ChapterTool.TextBackBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource ChapterTool.TextFrontBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ChapterTool.BorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="2" />
       <Setter Property="MinHeight" Value="25.6" />
       <Setter Property="FontSize" Value="11.2" />
     </Style>
     <Style Selector="CheckBox">
+      <Setter Property="Foreground" Value="{DynamicResource ChapterTool.TextFrontBrush}" />
       <Setter Property="FontSize" Value="11.2" />
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <Style Selector="TextBlock.optionLabel">
+      <Setter Property="Foreground" Value="{DynamicResource ChapterTool.TextFrontBrush}" />
       <Setter Property="FontSize" Value="11.2" />
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
@@ -72,8 +76,9 @@
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <Style Selector="DataGrid">
-      <Setter Property="Background" Value="#e8e9eb" />
-      <Setter Property="BorderBrush" Value="#0a84ff" />
+      <Setter Property="Background" Value="{DynamicResource ChapterTool.BackChangeBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource ChapterTool.TextFrontBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ChapterTool.BorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="GridLinesVisibility" Value="All" />
       <Setter Property="HeadersVisibility" Value="Column" />
@@ -81,14 +86,17 @@
       <Setter Property="FontSize" Value="11.2" />
     </Style>
     <Style Selector="DataGridColumnHeader">
-      <Setter Property="Background" Value="#ffffff" />
-      <Setter Property="BorderBrush" Value="#0a84ff" />
+      <Setter Property="Background" Value="{DynamicResource ChapterTool.TextBackBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource ChapterTool.TextFrontBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ChapterTool.BorderBrush}" />
       <Setter Property="BorderThickness" Value="0,0,1,1" />
       <Setter Property="Padding" Value="2,3.2" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
     </Style>
     <Style Selector="DataGridCell">
-      <Setter Property="BorderBrush" Value="#d0d7de" />
+      <Setter Property="Background" Value="{DynamicResource ChapterTool.TextBackBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource ChapterTool.TextFrontBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ChapterTool.BorderBrush}" />
       <Setter Property="BorderThickness" Value="0,0,1,1" />
       <Setter Property="Padding" Value="2,1.6" />
     </Style>
@@ -128,12 +136,18 @@
       <Setter Property="Foreground" Value="#ef4444" />
       <Setter Property="Opacity" Value="0.34" />
     </Style>
+    <Style Selector="Button:pointerover">
+      <Setter Property="Background" Value="{DynamicResource ChapterTool.MouseOverBrush}" />
+    </Style>
+    <Style Selector="Button:pressed">
+      <Setter Property="Background" Value="{DynamicResource ChapterTool.MouseDownBrush}" />
+    </Style>
   </Window.Styles>
 
   <DockPanel x:Name="RootPanel" LastChildFill="True">
     <Border DockPanel.Dock="Bottom"
-            Background="#f3f4f6"
-            BorderBrush="#d8dee4"
+            Background="{DynamicResource ChapterTool.BackChangeBrush}"
+            BorderBrush="{DynamicResource ChapterTool.BorderBrush}"
             BorderThickness="0,1,0,0">
       <Grid ColumnDefinitions="*,Auto,Auto" Height="27.2">
         <TextBlock x:Name="StatusBlock"
@@ -141,6 +155,7 @@
                    Margin="8,0"
                    VerticalAlignment="Center"
                    FontSize="10.4"
+                   Foreground="{DynamicResource ChapterTool.TextFrontBrush}"
                    Text="{Binding StatusText}" />
         <ProgressBar x:Name="ProgressBar"
                      Grid.Column="2"
@@ -429,6 +444,7 @@
             <ComboBoxItem Content="JSON" />
             <ComboBoxItem Content="WebVTT" />
             <ComboBoxItem Content="Celltimes" />
+            <ComboBoxItem Content="Chapter2Qpfile" />
           </ComboBox>
         </Grid>
 

@@ -5,12 +5,12 @@ namespace ChapterTool.Core.Tests.Transform;
 
 public sealed class FrameRateServiceTests
 {
-    private readonly FrameRateService _service = new();
+    private readonly FrameRateService service = new();
 
     [Fact]
     public void Options_expose_legacy_mpls_frame_rate_codes_without_combo_box_indexes()
     {
-        var options = _service.Options;
+        var options = service.Options;
 
         Assert.Collection(
             options,
@@ -27,7 +27,7 @@ public sealed class FrameRateServiceTests
     [Fact]
     public void FindByValue_matches_valid_frame_rate_with_legacy_tolerance()
     {
-        var actual = _service.FindByValue(23.976023976m);
+        var actual = service.FindByValue(23.976023976m);
 
         Assert.Equal("Fps23976", actual.Code);
     }
@@ -43,7 +43,7 @@ public sealed class FrameRateServiceTests
         };
         var info = NewInfo(0m, chapters);
 
-        var actual = _service.Detect(info, tolerance: 0.01m);
+        var actual = service.Detect(info, tolerance: 0.01m);
 
         Assert.Equal("Fps25", actual.Code);
     }
@@ -58,7 +58,7 @@ public sealed class FrameRateServiceTests
         };
         var info = NewInfo(0m, chapters);
 
-        var actual = _service.Detect(info, tolerance: 0.15m);
+        var actual = service.Detect(info, tolerance: 0.15m);
 
         Assert.Equal("Fps24", actual.Code);
     }
@@ -75,7 +75,7 @@ public sealed class FrameRateServiceTests
         };
         var info = NewInfo(0m, chapters);
 
-        var result = _service.DetectDetailed(info, tolerance: 0.01m);
+        var result = service.DetectDetailed(info, tolerance: 0.01m);
 
         Assert.Equal("Fps24", result.Option.Code);
         Assert.Equal(0m, result.CumulativeDeviation);
@@ -92,7 +92,7 @@ public sealed class FrameRateServiceTests
         };
         var info = NewInfo(0m, chapters);
 
-        var result = _service.DetectDetailed(info, tolerance: 0.01m);
+        var result = service.DetectDetailed(info, tolerance: 0.01m);
 
         Assert.Equal("Fps25", result.Option.Code);
         Assert.Equal(FrameRateConfidence.High, result.Confidence);
@@ -111,7 +111,7 @@ public sealed class FrameRateServiceTests
         };
         var info = NewInfo(0m, chapters);
 
-        var result = _service.DetectDetailed(info, tolerance: 0.01m);
+        var result = service.DetectDetailed(info, tolerance: 0.01m);
 
         Assert.Equal("Fps25", result.Option.Code);
         Assert.Equal(FrameRateConfidence.Medium, result.Confidence);
@@ -131,7 +131,7 @@ public sealed class FrameRateServiceTests
         };
         var info = NewInfo(0m, chapters);
 
-        var result = _service.DetectDetailed(info, tolerance: 0.01m);
+        var result = service.DetectDetailed(info, tolerance: 0.01m);
 
         Assert.Equal(FrameRateConfidence.Low, result.Confidence);
     }
@@ -141,7 +141,7 @@ public sealed class FrameRateServiceTests
     {
         var info = NewInfo(0m, []);
 
-        var result = _service.DetectDetailed(info, tolerance: 0.01m);
+        var result = service.DetectDetailed(info, tolerance: 0.01m);
 
         Assert.Equal("Fps23976", result.Option.Code);
         Assert.Equal(FrameRateConfidence.Low, result.Confidence);
@@ -161,7 +161,7 @@ public sealed class FrameRateServiceTests
         };
         var info = NewInfo(0m, chapters);
 
-        var result = _service.DetectDetailed(info, tolerance: 0.01m);
+        var result = service.DetectDetailed(info, tolerance: 0.01m);
 
         Assert.Equal(2, result.EvaluatedChapterCount);
         Assert.Equal("Fps25", result.Option.Code);
@@ -177,7 +177,7 @@ public sealed class FrameRateServiceTests
         };
         var info = NewInfo(0m, chapters);
 
-        var actual = _service.UpdateFrames(info, _service.Options[0], round: true, tolerance: 0.01m);
+        var actual = service.UpdateFrames(info, service.Options[0], round: true, tolerance: 0.01m);
 
         Assert.Equal("Fps25", actual.SelectedOption.Code);
         Assert.Equal(25m, actual.FramesPerSecond);
@@ -190,7 +190,7 @@ public sealed class FrameRateServiceTests
     {
         var info = NewInfo(0m, [new Chapter(1, TimeSpan.FromSeconds(1.0004), "Chapter 1")]);
 
-        var actual = _service.UpdateFrames(info, _service.Options[3], round: true, tolerance: 0.15m);
+        var actual = service.UpdateFrames(info, service.Options[3], round: true, tolerance: 0.15m);
 
         Assert.Equal("25", actual.Chapters.Single().FramesInfo);
         Assert.Equal(FrameAccuracy.Accurate, actual.Chapters.Single().FrameAccuracy);
@@ -201,7 +201,7 @@ public sealed class FrameRateServiceTests
     {
         var info = NewInfo(0m, [new Chapter(1, TimeSpan.FromSeconds(1.004), "Chapter 1")]);
 
-        var actual = _service.UpdateFrames(info, _service.Options[3], round: true, tolerance: 0.01m);
+        var actual = service.UpdateFrames(info, service.Options[3], round: true, tolerance: 0.01m);
 
         Assert.Equal("25", actual.Chapters.Single().FramesInfo);
         Assert.Equal(FrameAccuracy.Inexact, actual.Chapters.Single().FrameAccuracy);
@@ -212,7 +212,7 @@ public sealed class FrameRateServiceTests
     {
         var info = NewInfo(0m, [new Chapter(1, TimeSpan.FromSeconds(0.5), "Chapter 1")]);
 
-        var actual = _service.UpdateFrames(info, _service.Options[3], round: true, tolerance: 0.01m);
+        var actual = service.UpdateFrames(info, service.Options[3], round: true, tolerance: 0.01m);
 
         Assert.Equal("13", actual.Chapters.Single().FramesInfo);
         Assert.Equal(FrameAccuracy.Inexact, actual.Chapters.Single().FrameAccuracy);
@@ -223,7 +223,7 @@ public sealed class FrameRateServiceTests
     {
         var info = NewInfo(0m, [new Chapter(1, TimeSpan.FromSeconds(0.5), "Chapter 1")]);
 
-        var actual = _service.UpdateFrames(info, _service.Options[2], round: false, tolerance: 0.15m);
+        var actual = service.UpdateFrames(info, service.Options[2], round: false, tolerance: 0.15m);
 
         Assert.Equal("12.0", actual.Chapters.Single().FramesInfo);
         Assert.Equal(FrameAccuracy.Neutral, actual.Chapters.Single().FrameAccuracy);

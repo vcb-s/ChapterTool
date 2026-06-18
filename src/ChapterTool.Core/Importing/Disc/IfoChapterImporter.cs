@@ -25,8 +25,8 @@ public sealed partial class IfoChapterImporter : IChapterImporter
                     info,
                     CanCombine: true,
                     MediaReferences: [new SourceMediaReference($"{info.SourceName}.VOB", $"{info.SourceName}.VOB")]))
-                .ToArray();
-            if (options.Length == 0)
+                .ToList();
+            if (options.Count == 0)
             {
                 return ChapterImportResult.Failed(Error("NoChaptersFound", "No DVD chapters were parsed."));
             }
@@ -93,7 +93,7 @@ public sealed partial class IfoChapterImporter : IChapterImporter
             chapters);
     }
 
-    private static IReadOnlyList<Chapter> GetChapters(string path, int programChain, out TimeSpan duration, out bool isNtsc)
+    private static List<Chapter> GetChapters(string path, int programChain, out TimeSpan duration, out bool isNtsc)
     {
         duration = TimeSpan.Zero;
         isNtsc = true;

@@ -7,7 +7,7 @@ using ChapterTool.Core.Models;
 using ChapterTool.Core.Services;
 using ChapterTool.Core.Transform;
 
-namespace ChapterTool.Avalonia.Tests;
+namespace ChapterTool.Avalonia.Tests.Services;
 
 public sealed class ChapterImporterRegistryTests
 {

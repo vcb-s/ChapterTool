@@ -12,15 +12,15 @@ public sealed class ChapterFpsTransformServiceTests
     {
         var info = Sample();
 
-        var result = service.ChangeFps(info, 24m, 48m);
+        var result = ChapterFpsTransformService.ChangeFps(info, 24m, 48m);
 
         Assert.True(result.Success);
-        Assert.Equal(TimeSpan.FromSeconds(5), result.ChapterInfo.Chapters[1].Time);
-        Assert.Equal(48, result.ChapterInfo.FramesPerSecond);
+        Assert.Equal(TimeSpan.FromSeconds(5), result.Info.Chapters[1].Time);
+        Assert.Equal(48, result.Info.FramesPerSecond);
     }
 
     [Fact]
-    public void ChangeFps_preserves_frame_duration_when_end_exists()
+    public void ChangeFps_preserves_frame_span_when_end_exists()
     {
         var info = Sample() with
         {
@@ -30,11 +30,11 @@ public sealed class ChapterFpsTransformServiceTests
             ]
         };
 
-        var result = service.ChangeFps(info, 24m, 48m);
+        var result = ChapterFpsTransformService.ChangeFps(info, 24m, 48m);
 
         Assert.True(result.Success);
-        Assert.Equal(TimeSpan.FromSeconds(5), result.ChapterInfo.Chapters[0].Time);
-        Assert.Equal(TimeSpan.FromSeconds(6), result.ChapterInfo.Chapters[0].End);
+        Assert.Equal(TimeSpan.FromSeconds(5), result.Info.Chapters[0].Time);
+        Assert.Equal(TimeSpan.FromSeconds(6), result.Info.Chapters[0].End);
     }
 
     [Fact]
@@ -42,10 +42,10 @@ public sealed class ChapterFpsTransformServiceTests
     {
         var info = Sample();
 
-        var result = service.ChangeFps(info, 0, 24m);
+        var result = ChapterFpsTransformService.ChangeFps(info, 0, 24m);
 
         Assert.False(result.Success);
-        Assert.Same(info, result.ChapterInfo);
+        Assert.Same(info, result.Info);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "InvalidFrameRate");
     }
 

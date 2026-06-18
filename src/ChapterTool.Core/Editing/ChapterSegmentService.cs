@@ -5,7 +5,7 @@ namespace ChapterTool.Core.Editing;
 
 public sealed class ChapterSegmentService
 {
-    public ChapterEditResult Combine(ChapterInfoGroup group)
+    public static ChapterEditResult Combine(ChapterInfoGroup group)
     {
         if (group.Options.Count == 0)
         {
@@ -53,7 +53,10 @@ public sealed class ChapterSegmentService
             return new ChapterEditResult(Empty(), [new ChapterDiagnostic(DiagnosticSeverity.Error, "UnsupportedAppendSource", "Only MPLS chapter groups can be appended.")]);
         }
 
-        var combined = existing with { Options = existing.Options.Concat(appended.Options).ToArray() };
+        var combined = new ChapterInfoGroup(
+            existing.SourcePath,
+            existing.Options.Concat(appended.Options).ToList(),
+            existing.DefaultOptionIndex);
         return Combine(combined);
     }
 

@@ -114,7 +114,7 @@ public sealed partial class BdmvChapterImporter : IChapterImporter
         return new ChapterImportResult(true, [], [new ChapterDiagnostic(DiagnosticSeverity.Info, "Stdout", result.StandardOutput)]);
     }
 
-    private static IReadOnlyList<PlaylistCandidate> ParsePlaylistList(string text)
+    private static List<PlaylistCandidate> ParsePlaylistList(string text)
     {
         var candidates = new List<PlaylistCandidate>();
         foreach (var block in PlaylistBlocks(text))

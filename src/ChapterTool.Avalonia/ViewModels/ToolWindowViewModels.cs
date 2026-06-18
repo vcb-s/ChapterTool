@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using System.Xml.Linq;
+using Avalonia.Media;
+using ChapterTool.Avalonia.Services;
 using ChapterTool.Avalonia.Localization;
 using ChapterTool.Core.Exporting;
 using ChapterTool.Core.Services;
@@ -10,6 +12,8 @@ namespace ChapterTool.Avalonia.ViewModels;
 
 public sealed class TextToolViewModel : ObservableViewModel
 {
+    private static readonly JsonSerializerOptions IndentedJsonOptions = new() { WriteIndented = true };
+
     private readonly Func<string> refreshText;
     private readonly TextToolOptions options;
     private string text;
@@ -108,7 +112,7 @@ public sealed class TextToolViewModel : ObservableViewModel
             {
                 TextToolKind.Json => JsonSerializer.Serialize(
                     JsonSerializer.Deserialize<JsonElement>(text),
-                    new JsonSerializerOptions { WriteIndented = true }),
+                    IndentedJsonOptions),
                 TextToolKind.Xml => XDocument.Parse(text).ToString(SaveOptions.None),
                 _ => text
             };
@@ -133,7 +137,7 @@ public sealed class TextToolViewModel : ObservableViewModel
         return text.ReplaceLineEndings("\n")
             .Split('\n')
             .Select((line, index) => new TextToolLineViewModel(index + 1, Highlight(line, kind)))
-            .ToArray();
+            .ToList();
     }
 
     private static IReadOnlyList<TextToolSpanViewModel> Highlight(string line, TextToolKind kind) =>
@@ -217,7 +221,7 @@ public sealed class TextToolViewModel : ObservableViewModel
         }
     }
 
-    private static IReadOnlyList<TextToolSpanViewModel> HighlightXml(string line)
+    private static List<TextToolSpanViewModel> HighlightXml(string line)
     {
         var spans = new List<TextToolSpanViewModel>();
         for (var index = 0; index < line.Length;)
@@ -293,8 +297,11 @@ public sealed class TextToolFormatSelector(MainWindowViewModel owner)
         ChapterExportFormat.Cue,
         ChapterExportFormat.Json,
         ChapterExportFormat.WebVtt,
-        ChapterExportFormat.Celltimes
+        ChapterExportFormat.Celltimes,
+        ChapterExportFormat.Chapter2Qpfile
     ];
+
+    private int selectedIndex = Math.Clamp(owner.SaveFormatIndex, 0, Formats.Length - 1);
 
     private MainWindowViewModel Owner { get; } = owner;
 
@@ -302,9 +309,9 @@ public sealed class TextToolFormatSelector(MainWindowViewModel owner)
 
     public int SelectedIndex
     {
-        get;
-        set => field = Math.Clamp(value, 0, Formats.Length - 1);
-    } = Math.Clamp(owner.SaveFormatIndex, 0, Formats.Length - 1);
+        get => selectedIndex;
+        set => selectedIndex = Math.Clamp(value, 0, Formats.Length - 1);
+    }
 
     public TextToolKind Kind => KindFor(Formats[SelectedIndex]);
 
@@ -332,12 +339,27 @@ internal static class ChapterExportFormatDisplay
 public sealed class ColorSettingsViewModel : ObservableViewModel
 {
     private readonly ISettingsStore<ThemeColorSettings>? store;
+    private readonly IThemeApplicationService? themeApplicationService;
 
-    public ColorSettingsViewModel(ISettingsStore<ThemeColorSettings>? store)
+    public ColorSettingsViewModel(
+        ISettingsStore<ThemeColorSettings>? store,
+        IThemeApplicationService? themeApplicationService = null)
     {
         this.store = store;
+        this.themeApplicationService = themeApplicationService;
         Slots = new ObservableCollection<ColorSlotViewModel>(
             ThemeColorSettings.Default.OrderedSlots.Select(static slot => new ColorSlotViewModel(slot.Name, slot.Value)));
+        foreach (var slot in Slots)
+        {
+            slot.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(ColorSlotViewModel.Value))
+                {
+                    ApplyCurrentTheme();
+                }
+            };
+        }
+
         SaveCommand = new UiCommand(async (_, token) => await SaveAsync(token), _ => this.store is not null);
         _ = LoadAsync();
     }
@@ -354,11 +376,13 @@ public sealed class ColorSettingsViewModel : ObservableViewModel
         }
 
         var settings = await store.LoadAsync(CancellationToken.None);
-        var values = settings.OrderedSlots.ToArray();
-        for (var index = 0; index < Slots.Count && index < values.Length; index++)
+        var values = settings.OrderedSlots.ToList();
+        for (var index = 0; index < Slots.Count && index < values.Count; index++)
         {
             Slots[index].Value = values[index].Value;
         }
+
+        ApplyCurrentTheme();
     }
 
     private async ValueTask SaveAsync(CancellationToken cancellationToken)
@@ -368,16 +392,33 @@ public sealed class ColorSettingsViewModel : ObservableViewModel
             return;
         }
 
-        var defaults = ThemeColorSettings.Default.OrderedSlots.ToArray();
-        await store.SaveAsync(
-            new ThemeColorSettings(
-                NormalizeColor(Slots[0].Value, defaults[0].Value),
-                NormalizeColor(Slots[1].Value, defaults[1].Value),
-                NormalizeColor(Slots[2].Value, defaults[2].Value),
-                NormalizeColor(Slots[3].Value, defaults[3].Value),
-                NormalizeColor(Slots[4].Value, defaults[4].Value),
-                NormalizeColor(Slots[5].Value, defaults[5].Value)),
-            cancellationToken);
+        var defaults = ThemeColorSettings.Default.OrderedSlots.ToList();
+        var settings = new ThemeColorSettings(
+            NormalizeColor(Slots[0].Value, defaults[0].Value),
+            NormalizeColor(Slots[1].Value, defaults[1].Value),
+            NormalizeColor(Slots[2].Value, defaults[2].Value),
+            NormalizeColor(Slots[3].Value, defaults[3].Value),
+            NormalizeColor(Slots[4].Value, defaults[4].Value),
+            NormalizeColor(Slots[5].Value, defaults[5].Value));
+        await store.SaveAsync(settings, cancellationToken);
+        themeApplicationService?.Apply(settings);
+    }
+
+    private void ApplyCurrentTheme()
+    {
+        if (Slots.Count < 6)
+        {
+            return;
+        }
+
+        var defaults = ThemeColorSettings.Default.OrderedSlots.ToList();
+        themeApplicationService?.Apply(new ThemeColorSettings(
+            NormalizeColor(Slots[0].Value, defaults[0].Value),
+            NormalizeColor(Slots[1].Value, defaults[1].Value),
+            NormalizeColor(Slots[2].Value, defaults[2].Value),
+            NormalizeColor(Slots[3].Value, defaults[3].Value),
+            NormalizeColor(Slots[4].Value, defaults[4].Value),
+            NormalizeColor(Slots[5].Value, defaults[5].Value)));
     }
 
     private static string NormalizeColor(string? value, string fallback)
@@ -396,13 +437,71 @@ public sealed class ColorSettingsViewModel : ObservableViewModel
 
 public sealed class ColorSlotViewModel(string name, string value) : ObservableViewModel
 {
+    private string value = NormalizeColor(value, ThemeColorSettings.Default.BackChange);
+    private Color color = ParseColor(value, ThemeColorSettings.Default.BackChange);
+
     public string Name { get; } = name;
 
     public string Value
     {
-        get;
-        set => SetProperty(ref field, value);
-    } = value;
+        get => value;
+        set
+        {
+            if (!SetProperty(ref this.value, value))
+            {
+                return;
+            }
+
+            if (TryParseColor(value, out var parsed) && parsed != color)
+            {
+                color = parsed;
+                OnPropertyChanged(nameof(Color));
+            }
+        }
+    }
+
+    public Color Color
+    {
+        get => color;
+        set
+        {
+            if (!SetProperty(ref color, value))
+            {
+                return;
+            }
+
+            var text = ToHex(value);
+            if (!string.Equals(this.value, text, StringComparison.Ordinal))
+            {
+                this.value = text;
+                OnPropertyChanged(nameof(Value));
+            }
+        }
+    }
+
+    private static string ToHex(Color color) => $"#{color.R:X2}{color.G:X2}{color.B:X2}";
+
+    private static Color ParseColor(string value, string fallback) =>
+        TryParseColor(value, out var color) ? color : Color.Parse(fallback);
+
+    private static bool TryParseColor(string? value, out Color color)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            var text = value.Trim();
+            if (text.Length == 7 && text[0] == '#' && text.Skip(1).All(Uri.IsHexDigit))
+            {
+                color = Color.Parse(text);
+                return true;
+            }
+        }
+
+        color = default;
+        return false;
+    }
+
+    private static string NormalizeColor(string? value, string fallback) =>
+        TryParseColor(value, out var color) ? ToHex(color) : fallback;
 }
 
 public sealed class LanguageToolViewModel : ObservableViewModel
@@ -460,13 +559,13 @@ public sealed class LanguageToolViewModel : ObservableViewModel
 
     public UiCommand ApplyCommand { get; }
 
-    private IReadOnlyList<LanguageOptionViewModel> BuildLanguages()
+    private List<LanguageOptionViewModel> BuildLanguages()
     {
         var languages = owner.Localizer.SupportedLanguages
             .Select(language => new LanguageOptionViewModel(
                 language.CultureName,
                 owner.Localizer.GetString(language.DisplayNameKey)))
-            .ToArray();
+            .ToList();
         OnPropertyChanged(nameof(Languages));
         OnPropertyChanged(nameof(SelectedLanguageIndex));
         return languages;

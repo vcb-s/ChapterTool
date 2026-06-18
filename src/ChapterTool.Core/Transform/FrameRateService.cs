@@ -115,7 +115,7 @@ public sealed class FrameRateService : IFrameRateService
                 FramesInfo = frameDisplays[index].Text,
                 FrameAccuracy = frameDisplays[index].Accuracy
             })
-            .ToArray();
+            .ToList();
 
         var updatedInfo = info with
         {

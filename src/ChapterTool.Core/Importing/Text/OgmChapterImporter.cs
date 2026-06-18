@@ -82,7 +82,7 @@ public sealed partial class OgmChapterImporter(IChapterTimeFormatter timeFormatt
 
     private static ChapterImportResult PartialOrFailure(
         string path,
-        IReadOnlyList<Chapter> chapters,
+        List<Chapter> chapters,
         List<ChapterDiagnostic> diagnostics,
         string line)
     {

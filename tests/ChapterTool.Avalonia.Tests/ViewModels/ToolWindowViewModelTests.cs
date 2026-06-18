@@ -1,3 +1,4 @@
+using ChapterTool.Avalonia.Services;
 using ChapterTool.Avalonia.ViewModels;
 using ChapterTool.Core.Editing;
 using ChapterTool.Core.Exporting;
@@ -8,7 +9,7 @@ using ChapterTool.Core.Transform;
 using ChapterTool.Infrastructure.Configuration;
 using ChapterTool.Infrastructure.Platform;
 
-namespace ChapterTool.Avalonia.Tests;
+namespace ChapterTool.Avalonia.Tests.ViewModels;
 
 public sealed class ToolWindowViewModelTests
 {
@@ -65,7 +66,8 @@ public sealed class ToolWindowViewModelTests
         Assert.True(vm.CanSelectFormat);
         Assert.False(vm.CanClear);
         Assert.Contains("QPFile", vm.FormatOptions);
-        Assert.Equal(9, vm.FormatOptions.Count);
+        Assert.Contains("Chapter2Qpfile", vm.FormatOptions);
+        Assert.Equal(10, vm.FormatOptions.Count);
     }
 
     [Fact]
@@ -133,12 +135,12 @@ public sealed class ToolWindowViewModelTests
         }
     }
 
-    private sealed class FakeLoadService(ChapterImportResult result) : Services.IChapterLoadService
+    private sealed class FakeLoadService(ChapterImportResult result) : IChapterLoadService
     {
         public ValueTask<ChapterImportResult> LoadAsync(string path, CancellationToken cancellationToken) => ValueTask.FromResult(result);
     }
 
-    private sealed class FakeSaveService : Services.IChapterSaveService
+    private sealed class FakeSaveService : IChapterSaveService
     {
         public ValueTask<ChapterExportResult> SaveAsync(ChapterInfo info, ChapterExportOptions options, string? directory, CancellationToken cancellationToken) =>
             ValueTask.FromResult(new ChapterExportResult(true, string.Empty, ".txt", []));

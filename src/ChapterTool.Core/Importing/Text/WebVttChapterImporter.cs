@@ -18,7 +18,7 @@ public sealed class WebVttChapterImporter : IChapterImporter
         return ImportText(text, request.Path);
     }
 
-    public ChapterImportResult ImportText(string text, string path = "")
+    public static ChapterImportResult ImportText(string text, string path = "")
     {
         text = text.Replace("\r", string.Empty, StringComparison.Ordinal);
         var blocks = text.Split("\n\n");

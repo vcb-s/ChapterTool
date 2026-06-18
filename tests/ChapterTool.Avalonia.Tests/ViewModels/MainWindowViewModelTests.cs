@@ -1,4 +1,5 @@
-﻿using ChapterTool.Avalonia.Localization;
+﻿using System.ComponentModel;
+using ChapterTool.Avalonia.Localization;
 using ChapterTool.Avalonia.Services;
 using ChapterTool.Avalonia.ViewModels;
 using ChapterTool.Core.Diagnostics;
@@ -11,9 +12,8 @@ using ChapterTool.Core.Transform;
 using ChapterTool.Infrastructure.Configuration;
 using ChapterTool.Infrastructure.Platform;
 using Microsoft.Extensions.Logging;
-using System.ComponentModel;
 
-namespace ChapterTool.Avalonia.Tests;
+namespace ChapterTool.Avalonia.Tests.ViewModels;
 
 public sealed class MainWindowViewModelTests
 {
@@ -242,12 +242,11 @@ public sealed class MainWindowViewModelTests
     {
         var vm = CreateViewModel();
 
-        Assert.Contains("und", vm.XmlLanguageOptions);
-        Assert.Contains("zh", vm.XmlLanguageOptions);
-        Assert.Contains("ja", vm.XmlLanguageOptions);
-        Assert.Contains("en", vm.XmlLanguageOptions);
-        Assert.Contains("jpn", vm.XmlLanguageOptions);
+        Assert.Equal(["und", "zh", "ja", "en", "jpn"], vm.XmlLanguageOptions.Take(5));
         Assert.Contains("fr", vm.XmlLanguageOptions);
+        Assert.Equal(
+            vm.XmlLanguageOptions.Count,
+            vm.XmlLanguageOptions.Distinct(StringComparer.OrdinalIgnoreCase).Count());
     }
 
     [Fact]
@@ -277,6 +276,19 @@ public sealed class MainWindowViewModelTests
 
         Assert.Equal("jpn", vm.XmlLanguage);
         Assert.Equal(index, vm.XmlLanguageIndex);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(int.MaxValue)]
+    public void XmlLanguageIndexOutOfRangeDoesNotChangeSelectedLanguage(int index)
+    {
+        var vm = CreateViewModel();
+        vm.XmlLanguage = "und";
+
+        vm.XmlLanguageIndex = index;
+
+        Assert.Equal("und", vm.XmlLanguage);
     }
 
     [Fact]
@@ -406,7 +418,8 @@ public sealed class MainWindowViewModelTests
         var vm = CreateViewModel(load);
 
         await vm.LoadCommand.ExecuteAsync("movie.txt");
-        vm.SetFrameOptions(frameRateIndex: 7, roundFrames: true);
+        var targetIndex = new FrameRateService().Options.Single(option => option.Code == "Fps5994").LegacyMplsCode;
+        vm.SetFrameOptions(frameRateIndex: targetIndex, roundFrames: true);
         await vm.ChangeFpsCommand.ExecuteAsync();
 
         Assert.Equal("00:00:04.004", vm.Rows[0].TimeText);

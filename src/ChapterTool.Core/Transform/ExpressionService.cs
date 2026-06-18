@@ -156,7 +156,7 @@ public sealed class ExpressionService : IExpressionService
                 new ChapterDiagnostic(DiagnosticSeverity.Warning, "InvalidExpression", message)
             ]);
 
-    private static IReadOnlyList<string> Tokenize(string expression)
+    private static List<string> Tokenize(string expression)
     {
         var tokens = new List<string>();
         for (var i = 0; i < expression.Length;)
@@ -217,7 +217,7 @@ public sealed class ExpressionService : IExpressionService
         return tokens;
     }
 
-    private static IReadOnlyList<string> ToPostfix(IReadOnlyList<string> tokens)
+    private static List<string> ToPostfix(IReadOnlyList<string> tokens)
     {
         var output = new List<string>();
         var operators = new Stack<string>();

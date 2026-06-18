@@ -1,4 +1,6 @@
+using System.Buffers.Binary;
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -13,6 +15,8 @@ public sealed class ChapterExportService(
     IChapterTimeFormatter timeFormatter,
     IExpressionService expressionService)
 {
+    private readonly ChapterConversionService chapterConversionService = new(timeFormatter);
+
     public ChapterExportResult Export(ChapterInfo info, ChapterExportOptions options)
     {
         var projection = options.ProjectOutput
@@ -30,15 +34,14 @@ public sealed class ChapterExportService(
             ChapterExportFormat.Cue => Cue(outputInfo, options),
             ChapterExportFormat.Json => Json(info, options),
             ChapterExportFormat.WebVtt => WebVtt(outputInfo, options),
-            ChapterExportFormat.Celltimes => new ChapterConversionService().ToCelltimes(outputInfo, (decimal)outputInfo.FramesPerSecond) is { } conversion
-                ? new ChapterExportResult(conversion.Success, conversion.Content, conversion.Extension, conversion.Diagnostics)
-                : Failure("CelltimesExportFailed", "Celltimes export failed."),
+            ChapterExportFormat.Celltimes => Celltimes(outputInfo),
+            ChapterExportFormat.Chapter2Qpfile => Chapter2Qpfile(outputInfo, options),
             _ => Failure("UnsupportedExportFormat", "Unsupported export format.")
         };
 
         return result with
         {
-            Diagnostics = result.Diagnostics.Concat(projection.Diagnostics).ToArray()
+            Diagnostics = result.Diagnostics.Concat(projection.Diagnostics).ToList()
         };
     }
 
@@ -57,7 +60,7 @@ public sealed class ChapterExportService(
     private ChapterExportResult Xml(ChapterInfo info, ChapterExportOptions options)
     {
         var language = XmlChapterLanguageCatalog.NormalizeOrDefault(options.XmlLanguage);
-        var uidSeed = HashCode.Combine(info.Title, info.SourceName, info.SourceType, info.Chapters.Count);
+        var uidSeed = StableHashCode(info.Title, info.SourceName, info.SourceType, info.Chapters.Count.ToString(CultureInfo.InvariantCulture));
         var random = new Random(uidSeed);
         var atoms = info.Chapters.Where(NotSeparator).Select(chapter =>
             new XElement(
@@ -83,8 +86,8 @@ public sealed class ChapterExportService(
 
     private ChapterExportResult TsMuxer(ChapterInfo info, ChapterExportOptions options)
     {
-        var chapters = info.Chapters.Where(NotSeparator).Select(FormatTime).ToArray();
-        if (chapters.Length == 0)
+        var chapters = info.Chapters.Where(NotSeparator).Select(FormatTime).ToList();
+        if (chapters.Count == 0)
         {
             return Failure("NoChapters", "No chapters are available for tsMuxeR meta export.");
         }
@@ -107,6 +110,19 @@ public sealed class ChapterExportService(
                 .Select(chapter => ChapterRounding
                     .RoundToInt64((decimal)chapter.Time.TotalSeconds * framesPerSecond)
                     .ToString(CultureInfo.InvariantCulture) + " I"));
+    }
+
+    private ChapterExportResult Celltimes(ChapterInfo info)
+    {
+        var conversion = ChapterConversionService.ToCelltimes(info, (decimal)info.FramesPerSecond);
+        return new ChapterExportResult(conversion.Success, conversion.Content, conversion.Extension, conversion.Diagnostics);
+    }
+
+    private ChapterExportResult Chapter2Qpfile(ChapterInfo info, ChapterExportOptions options)
+    {
+        var text = Text(info, options);
+        var conversion = chapterConversionService.ChapterTextToQpfile(text.Content, (decimal)info.FramesPerSecond);
+        return new ChapterExportResult(conversion.Success, conversion.Content, conversion.Extension, conversion.Diagnostics);
     }
 
     private ChapterExportResult Cue(ChapterInfo info, ChapterExportOptions options)
@@ -132,15 +148,15 @@ public sealed class ChapterExportService(
         builder.AppendLine("WEBVTT");
         builder.AppendLine();
 
-        var chapters = info.Chapters.Where(NotSeparator).ToArray();
-        for (var i = 0; i < chapters.Length; i++)
+        var chapters = info.Chapters.Where(NotSeparator).ToList();
+        for (var i = 0; i < chapters.Count; i++)
         {
             var chapter = chapters[i];
-            var endTime = i + 1 < chapters.Length ? chapters[i + 1].Time : info.Duration;
+            var endTime = i + 1 < chapters.Count ? chapters[i + 1].Time : info.Duration;
 
             builder.AppendLine(CultureInfo.InvariantCulture, $"{FormatWebVttTime(chapter.Time)} --> {FormatWebVttTime(endTime)}");
             builder.AppendLine(chapter.Name);
-            if (i < chapters.Length - 1)
+            if (i < chapters.Count - 1)
             {
                 builder.AppendLine();
             }
@@ -194,6 +210,13 @@ public sealed class ChapterExportService(
     private string FormatTime(Chapter chapter) => timeFormatter.Format(chapter.Time);
 
     private static int NextUid(Random random) => random.Next(1, int.MaxValue);
+
+    private static int StableHashCode(params string?[] values)
+    {
+        var payload = string.Join('\u001f', values.Select(static value => value ?? string.Empty));
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(payload));
+        return BinaryPrimitives.ReadInt32LittleEndian(hash);
+    }
 
     private static ChapterExportResult Success(string content, string extension) =>
         new(true, content, extension, []);

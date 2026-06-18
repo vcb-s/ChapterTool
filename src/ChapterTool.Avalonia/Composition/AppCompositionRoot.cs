@@ -14,6 +14,7 @@ using ChapterTool.Infrastructure.Processes;
 using ChapterTool.Infrastructure.Tools;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using Serilog.Core;
 using Serilog.Events;
 using ILogger = Serilog.ILogger;
 
@@ -29,6 +30,7 @@ public sealed class AppCompositionRoot : IDisposable
     private readonly AppLocalizationManager localizationManager = new();
     private readonly AppSettingsStore appSettingsStore;
     private readonly ThemeSettingsStore themeSettingsStore;
+    private readonly AvaloniaThemeApplicationService themeApplicationService = new();
     private readonly ILoggerFactory loggerFactory;
     private bool disposed;
 
@@ -48,6 +50,8 @@ public sealed class AppCompositionRoot : IDisposable
 
         // Settings are loaded asynchronously from MainWindow.Opened. Blocking here can deadlock
         // macOS single-file startup before Avalonia has shown the first window.
+        themeApplicationService.Apply(ThemeColorSettings.Default);
+        _ = ApplyThemeSettingsAsync();
     }
 
     public MainWindow CreateMainWindow()
@@ -85,7 +89,7 @@ public sealed class AppCompositionRoot : IDisposable
             CreateMediaChapterReader(),
             CreateMp4ChapterReader());
 
-    public AtlMp4ChapterReader CreateMp4ChapterReader() => new();
+    public static AtlMp4ChapterReader CreateMp4ChapterReader() => new();
 
     public FfprobeMediaChapterReader CreateMediaChapterReader() =>
         new(CreateExternalToolLocator(), CreateProcessRunner());
@@ -95,29 +99,47 @@ public sealed class AppCompositionRoot : IDisposable
 
     public IChapterEditingService CreateChapterEditingService() => new ChapterEditingService(formatter);
 
-    public ChapterSegmentService CreateChapterSegmentService() => new();
+    public static ChapterSegmentService CreateChapterSegmentService() => new();
 
     public IWindowService CreateWindowService() =>
         new AvaloniaWindowService(
             appSettingsStore,
             themeSettingsStore,
+            themeApplicationService,
             localizationManager,
             owner => new AvaloniaSettingsPickerService(owner),
             CreateExternalToolLocator());
 
     public IAppLocalizer CreateLocalizer() => localizationManager;
 
-    public IShellService CreateShellService() => new ShellService();
+    public static IShellService CreateShellService() => new ShellService();
 
-    public IFilePickerService CreateFilePickerService(Window owner) => new AvaloniaFilePickerService(owner);
+    public static IFilePickerService CreateFilePickerService(Window owner) => new AvaloniaFilePickerService(owner);
 
     public IExternalToolLocator CreateExternalToolLocator() =>
-        new ExternalToolLocator(appSettingsStore, PathSearchDirectories().ToArray());
+        new ExternalToolLocator(appSettingsStore, PathSearchDirectories().ToList());
 
     public IProcessRunner CreateProcessRunner() => new ProcessRunner();
 
-    public INativeDependencyService CreateNativeDependencyService() =>
-        new FileSystemNativeDependencyService(PathSearchDirectories().Prepend(AppContext.BaseDirectory).ToArray());
+    public static INativeDependencyService CreateNativeDependencyService() =>
+        new FileSystemNativeDependencyService(PathSearchDirectories().Prepend(AppContext.BaseDirectory).ToList());
+
+    private async Task ApplyThemeSettingsAsync()
+    {
+        try
+        {
+            var settings = await themeSettingsStore.LoadAsync(CancellationToken.None);
+            themeApplicationService.Apply(settings);
+        }
+        catch (IOException)
+        {
+            themeApplicationService.Apply(ThemeColorSettings.Default);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            themeApplicationService.Apply(ThemeColorSettings.Default);
+        }
+    }
 
     public void Dispose()
     {
@@ -130,7 +152,7 @@ public sealed class AppCompositionRoot : IDisposable
         loggerFactory.Dispose();
     }
 
-    private static ILogger CreateSerilogLogger(string settingsDirectory)
+    private static Logger CreateSerilogLogger(string settingsDirectory)
     {
         var logDirectory = Path.Combine(settingsDirectory, "logs");
         Directory.CreateDirectory(logDirectory);

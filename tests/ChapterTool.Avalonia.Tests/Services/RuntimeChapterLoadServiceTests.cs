@@ -1,10 +1,10 @@
-using ChapterTool.Avalonia.Services;
 using ChapterTool.Avalonia.Composition;
+using ChapterTool.Avalonia.Services;
 using ChapterTool.Core.Diagnostics;
 using ChapterTool.Core.Importing;
 using ChapterTool.Core.Models;
 
-namespace ChapterTool.Avalonia.Tests;
+namespace ChapterTool.Avalonia.Tests.Services;
 
 public sealed class RuntimeChapterLoadServiceTests
 {

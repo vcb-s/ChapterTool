@@ -10,9 +10,9 @@ using ChapterTool.Core.Services;
 using ChapterTool.Core.Transform;
 using ChapterTool.Infrastructure.Platform;
 
-namespace ChapterTool.Avalonia.Tests;
+namespace ChapterTool.Avalonia.Tests.Localization;
 
-public sealed class LocalizationTests
+public sealed partial class LocalizationTests
 {
     [Fact]
     public void SupportedCulturesHaveMatchingResourceKeys()
@@ -81,7 +81,7 @@ public sealed class LocalizationTests
     }
 
     private static string[] Placeholders(string value) =>
-        Regex.Matches(value, @"\{(?<name>[A-Za-z0-9_]+)\}")
+        PlaceholderRegex().Matches(value)
             .Select(static match => match.Groups["name"].Value)
             .Order(StringComparer.Ordinal)
             .ToArray();
@@ -123,4 +123,7 @@ public sealed class LocalizationTests
 
         public ValueTask HideAsync(string windowId, CancellationToken cancellationToken) => ValueTask.CompletedTask;
     }
+
+    [GeneratedRegex(@"\{(?<name>[A-Za-z0-9_]+)\}")]
+    private static partial Regex PlaceholderRegex();
 }

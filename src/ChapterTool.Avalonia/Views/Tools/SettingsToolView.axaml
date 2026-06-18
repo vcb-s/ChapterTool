@@ -33,6 +33,12 @@
       <Setter Property="VerticalAlignment" Value="Center" />
       <Setter Property="TextAlignment" Value="Right" />
     </Style>
+    <Style Selector="ColorPicker">
+      <Setter Property="Width" Value="78" />
+      <Setter Property="Height" Value="40" />
+      <Setter Property="MinWidth" Value="78" />
+      <Setter Property="MinHeight" Value="40" />
+    </Style>
     <Style Selector="Button.compact">
       <Setter Property="MinWidth" Value="42" />
       <Setter Property="MinHeight" Value="30" />
@@ -178,9 +184,13 @@
             <ItemsControl ItemsSource="{Binding ColorSlots}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="vm:ColorSlotViewModel">
-                  <Grid ColumnDefinitions="150,*" ColumnSpacing="12" Margin="0,0,0,8">
+                  <Grid ColumnDefinitions="150,Auto,120" ColumnSpacing="12" Margin="0,0,0,8" VerticalAlignment="Center">
                     <TextBlock Grid.Column="0" Classes="label" Text="{Binding Name}" />
-                    <TextBox Grid.Column="1" Text="{Binding Value}" />
+                    <ColorPicker Grid.Column="1" Color="{Binding Color, Mode=TwoWay}" VerticalAlignment="Center" />
+                    <TextBox Grid.Column="2"
+                             Text="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             VerticalAlignment="Center"
+                             HorizontalAlignment="Stretch" />
                   </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>

@@ -12,6 +12,44 @@ namespace ChapterTool.Avalonia.Tests.Headless;
 public sealed class SettingsToolHeadlessTests
 {
     [AvaloniaFact]
+    public async Task Appearance_tab_renders_color_pickers_for_theme_slots()
+    {
+        using var host = new MainWindowHeadlessTestHost();
+        var viewModel = new SettingsToolViewModel(
+            host.ViewModel,
+            host.AppSettingsStore,
+            host.ThemeSettingsStore,
+            host.Localizer);
+        await viewModel.LoadAsync(TestContext.Current.CancellationToken);
+        var view = new SettingsToolView { DataContext = viewModel };
+        var window = new Window
+        {
+            Content = view,
+            Width = 760,
+            Height = 520
+        };
+
+        try
+        {
+            window.Show();
+            var tabControl = window.GetVisualDescendants().OfType<TabControl>().Single();
+            tabControl.SelectedIndex = 3;
+            var layoutManager = window.GetLayoutManager()
+                ?? throw new InvalidOperationException("Settings window layout manager was not available.");
+            layoutManager.ExecuteInitialLayoutPass();
+            layoutManager.ExecuteLayoutPass();
+
+            var colorPickers = window.GetVisualDescendants().OfType<ColorPicker>().ToArray();
+
+            Assert.Equal(ThemeColorSettings.Default.OrderedSlots.Count, colorPickers.Length);
+        }
+        finally
+        {
+            window.Close();
+        }
+    }
+
+    [AvaloniaFact]
     public async Task Settings_panel_renders_and_captures_screenshot_artifact()
     {
         var root = Path.Combine(Path.GetTempPath(), "ChapterTool.Tests", Guid.NewGuid().ToString("N"));

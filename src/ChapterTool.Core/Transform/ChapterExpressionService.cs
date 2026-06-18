@@ -41,7 +41,7 @@ public sealed class ChapterExpressionService(IExpressionService expressionServic
                 FramesInfo = frameDisplay.Text,
                 FrameAccuracy = frameDisplay.Accuracy
             };
-        }).ToArray();
+        }).ToList();
 
         return new ChapterExpressionResult(info with { Chapters = chapters }, diagnostics);
     }

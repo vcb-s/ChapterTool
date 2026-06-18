@@ -10,5 +10,6 @@ public enum ChapterExportFormat
     Cue,
     Json,
     WebVtt,
-    Celltimes
+    Celltimes,
+    Chapter2Qpfile
 }

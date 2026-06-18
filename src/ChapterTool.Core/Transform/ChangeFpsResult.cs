@@ -5,5 +5,5 @@ namespace ChapterTool.Core.Transform;
 
 public sealed record ChangeFpsResult(
     bool Success,
-    ChapterInfo ChapterInfo,
+    ChapterInfo Info,
     IReadOnlyList<ChapterDiagnostic> Diagnostics);

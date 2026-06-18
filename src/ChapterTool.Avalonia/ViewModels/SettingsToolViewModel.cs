@@ -21,7 +21,8 @@ public sealed class SettingsToolViewModel : ObservableViewModel
         ChapterExportFormat.Cue,
         ChapterExportFormat.Json,
         ChapterExportFormat.WebVtt,
-        ChapterExportFormat.Celltimes
+        ChapterExportFormat.Celltimes,
+        ChapterExportFormat.Chapter2Qpfile
     ];
 
     private readonly MainWindowViewModel owner;
@@ -30,6 +31,8 @@ public sealed class SettingsToolViewModel : ObservableViewModel
     private readonly IAppLocalizer localizer;
     private readonly ISettingsPickerService? picker;
     private readonly IExternalToolLocator? externalToolLocator;
+    private readonly IThemeApplicationService? themeApplicationService;
+    private ThemeColorSettings savedThemeSettings = ThemeColorSettings.Default;
     private string selectedLanguage;
     private int defaultSaveFormatIndex;
     private int defaultXmlLanguageIndex;
@@ -41,7 +44,8 @@ public sealed class SettingsToolViewModel : ObservableViewModel
         ISettingsStore<ThemeColorSettings>? themeSettingsStore,
         IAppLocalizer? localizer = null,
         ISettingsPickerService? picker = null,
-        IExternalToolLocator? externalToolLocator = null)
+        IExternalToolLocator? externalToolLocator = null,
+        IThemeApplicationService? themeApplicationService = null)
     {
         this.owner = owner;
         this.appSettingsStore = appSettingsStore;
@@ -49,6 +53,7 @@ public sealed class SettingsToolViewModel : ObservableViewModel
         this.localizer = localizer ?? owner.Localizer;
         this.picker = picker;
         this.externalToolLocator = externalToolLocator;
+        this.themeApplicationService = themeApplicationService;
         selectedLanguage = AppLanguage.Normalize(owner.UiLanguage);
         defaultSaveFormatIndex = Math.Clamp(owner.SaveFormatIndex, 0, SaveFormats.Length - 1);
         defaultXmlLanguageIndex = XmlLanguageIndex(owner.XmlLanguage);
@@ -56,6 +61,17 @@ public sealed class SettingsToolViewModel : ObservableViewModel
         Languages = BuildLanguages();
         ColorSlots = new ObservableCollection<ColorSlotViewModel>(
             ThemeColorSettings.Default.OrderedSlots.Select(static slot => new ColorSlotViewModel(slot.Name, slot.Value)));
+        foreach (var slot in ColorSlots)
+        {
+            slot.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(ColorSlotViewModel.Value))
+                {
+                    ApplyCurrentTheme();
+                }
+            };
+        }
+
         SaveCommand = new UiCommand(async (_, token) => await SaveAsync(token), _ => appSettingsStore is not null || themeSettingsStore is not null);
         ResetCommand = new UiCommand((_, _) =>
         {
@@ -82,7 +98,7 @@ public sealed class SettingsToolViewModel : ObservableViewModel
                 StatusText = this.localizer.GetString("Settings.Status.Ready");
             }
         };
-        _ = LoadAsync(CancellationToken.None);
+        _ = InitializeAsync();
     }
 
     public IReadOnlyList<LanguageOptionViewModel> Languages { get; private set; }
@@ -90,7 +106,7 @@ public sealed class SettingsToolViewModel : ObservableViewModel
     public IReadOnlyList<string> SaveFormatOptions { get; } = SaveFormats.Select(ChapterExportFormatDisplay.LabelFor).ToArray();
 
     public IReadOnlyList<string> XmlLanguageOptions { get; } =
-        XmlChapterLanguageCatalog.Languages.Select(static language => language.Code).ToArray();
+        XmlChapterLanguageCatalog.Languages.Select(static language => language.Code).ToList();
 
     public ObservableCollection<ColorSlotViewModel> ColorSlots { get; }
 
@@ -285,11 +301,18 @@ public sealed class SettingsToolViewModel : ObservableViewModel
         if (themeSettingsStore is not null)
         {
             var theme = await themeSettingsStore.LoadAsync(cancellationToken);
+            savedThemeSettings = NormalizeThemeSettings(theme);
             ApplyColors(theme);
+            themeApplicationService?.Apply(theme);
         }
 
         RefreshToolStatuses();
         StatusText = localizer.GetString("Settings.Status.Ready");
+    }
+
+    private async Task InitializeAsync()
+    {
+        await LoadAsync(CancellationToken.None);
     }
 
     private async ValueTask SaveAsync(CancellationToken cancellationToken)
@@ -315,11 +338,26 @@ public sealed class SettingsToolViewModel : ObservableViewModel
 
         if (themeSettingsStore is not null)
         {
-            await themeSettingsStore.SaveAsync(CurrentThemeSettings(), cancellationToken);
+            var settings = CurrentThemeSettings();
+            await themeSettingsStore.SaveAsync(settings, cancellationToken);
+            savedThemeSettings = settings;
+            ApplyColors(settings);
+            themeApplicationService?.Apply(settings);
         }
 
         RefreshToolStatuses();
         StatusText = localizer.GetString("Settings.Status.Saved");
+    }
+
+    public void DiscardUnsavedAppearanceChanges()
+    {
+        if (CurrentThemeSettings() == savedThemeSettings)
+        {
+            return;
+        }
+
+        ApplyColors(savedThemeSettings);
+        themeApplicationService?.Apply(savedThemeSettings);
     }
 
     private void ApplyDefaults()
@@ -335,6 +373,7 @@ public sealed class SettingsToolViewModel : ObservableViewModel
         DefaultXmlLanguageIndex = XmlLanguageIndex(defaults.DefaultXmlLanguage);
         FrameAccuracyTolerance = defaults.FrameAccuracyTolerance;
         ApplyColors(ThemeColorSettings.Default);
+        themeApplicationService?.Apply(ThemeColorSettings.Default);
         RefreshToolStatuses();
         StatusText = localizer.GetString("Settings.Status.Reset");
     }
@@ -374,13 +413,13 @@ public sealed class SettingsToolViewModel : ObservableViewModel
             return ValueTask.CompletedTask;
         });
 
-    private IReadOnlyList<LanguageOptionViewModel> BuildLanguages()
+    private List<LanguageOptionViewModel> BuildLanguages()
     {
         var languages = localizer.SupportedLanguages
             .Select(language => new LanguageOptionViewModel(
                 language.CultureName,
                 localizer.GetString(language.DisplayNameKey)))
-            .ToArray();
+            .ToList();
         OnPropertyChanged(nameof(Languages));
         OnPropertyChanged(nameof(SelectedLanguageIndex));
         return languages;
@@ -465,18 +504,35 @@ public sealed class SettingsToolViewModel : ObservableViewModel
 
     private ThemeColorSettings CurrentThemeSettings()
     {
-        var defaults = ThemeColorSettings.Default.OrderedSlots.ToArray();
-        var values = ColorSlots.Select((slot, index) => NormalizeColor(slot.Value, defaults[index].Value)).ToArray();
+        var defaults = ThemeColorSettings.Default.OrderedSlots.ToList();
+        var values = ColorSlots.Select((slot, index) => NormalizeColor(slot.Value, defaults[index].Value)).ToList();
+        return new ThemeColorSettings(values[0], values[1], values[2], values[3], values[4], values[5]);
+    }
+
+    private static ThemeColorSettings NormalizeThemeSettings(ThemeColorSettings settings)
+    {
+        var defaults = ThemeColorSettings.Default.OrderedSlots.ToList();
+        var values = settings.OrderedSlots.Select((slot, index) => NormalizeColor(slot.Value, defaults[index].Value)).ToList();
         return new ThemeColorSettings(values[0], values[1], values[2], values[3], values[4], values[5]);
     }
 
     private void ApplyColors(ThemeColorSettings settings)
     {
-        var values = settings.OrderedSlots.ToArray();
-        for (var index = 0; index < ColorSlots.Count && index < values.Length; index++)
+        var values = settings.OrderedSlots.ToList();
+        for (var index = 0; index < ColorSlots.Count && index < values.Count; index++)
         {
             ColorSlots[index].Value = values[index].Value;
         }
+    }
+
+    private void ApplyCurrentTheme()
+    {
+        if (ColorSlots.Count < ThemeColorSettings.Default.OrderedSlots.Count)
+        {
+            return;
+        }
+
+        themeApplicationService?.Apply(CurrentThemeSettings());
     }
 
     private static string NormalizeColor(string? value, string fallback)

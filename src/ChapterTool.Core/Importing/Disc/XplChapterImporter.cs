@@ -31,8 +31,8 @@ public sealed class XplChapterImporter : IChapterImporter
                 document = await XDocument.LoadAsync(request.Content, LoadOptions.None, cancellationToken);
             }
 
-            var options = Parse(document, request.Path).ToArray();
-            if (options.Length == 0)
+            var options = Parse(document, request.Path).ToList();
+            if (options.Count == 0)
             {
                 return ChapterImportResult.Failed(Error("XplNoChapters", "No HD-DVD chapters were parsed."));
             }
@@ -68,8 +68,8 @@ public sealed class XplChapterImporter : IChapterImporter
                         var timeText = (string?)chapter.Attribute("titleTimeBegin") ?? throw new InvalidDataException("Missing titleTimeBegin.");
                         return new Chapter(index + 1, ParseTime(timeText, timeBase, tickBase, tickBaseDivisor), name);
                     })
-                    .ToArray();
-                if (chapters.Length == 0)
+                    .ToList();
+                if (chapters.Count == 0)
                 {
                     continue;
                 }
@@ -83,10 +83,10 @@ public sealed class XplChapterImporter : IChapterImporter
                     24,
                     ParseTime(durationText, timeBase, tickBase, tickBaseDivisor),
                     chapters);
-                var mediaReferences = string.IsNullOrWhiteSpace(sourceName)
-                    ? Array.Empty<SourceMediaReference>()
+                IReadOnlyList<SourceMediaReference> mediaReferences = string.IsNullOrWhiteSpace(sourceName)
+                    ? []
                     : [new SourceMediaReference(Path.GetFileName(sourceName), Path.Combine("..", "HVDVD_TS", Path.GetFileName(sourceName)))];
-                yield return new ChapterSourceOption($"title-{optionIndex}", $"{info.Title}__{chapters.Length}", info, MediaReferences: mediaReferences);
+                yield return new ChapterSourceOption($"title-{optionIndex}", $"{info.Title}__{chapters.Count}", info, MediaReferences: mediaReferences);
                 optionIndex++;
             }
         }

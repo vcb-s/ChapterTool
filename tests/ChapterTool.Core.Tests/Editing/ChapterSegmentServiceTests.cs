@@ -15,7 +15,7 @@ public sealed class ChapterSegmentServiceTests
                 new ChapterSourceOption("b", "b", Info("MPLS", TimeSpan.FromSeconds(30), new Chapter(1, TimeSpan.Zero, "C"), new Chapter(2, TimeSpan.FromSeconds(5), "D")))
             ]);
 
-        var result = new ChapterSegmentService().Combine(group);
+        var result = ChapterSegmentService.Combine(group);
 
         Assert.Empty(result.Diagnostics);
         Assert.Equal("FULL Chapter", result.ChapterInfo.Title);
@@ -29,7 +29,7 @@ public sealed class ChapterSegmentServiceTests
     {
         var group = new ChapterInfoGroup("x", [new ChapterSourceOption("x", "x", Info("CUE", TimeSpan.FromSeconds(1), new Chapter(1, TimeSpan.Zero, "A")))]);
 
-        var result = new ChapterSegmentService().Combine(group);
+        var result = ChapterSegmentService.Combine(group);
 
         Assert.NotEmpty(result.Diagnostics);
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "UnsupportedCombineSource");
@@ -45,7 +45,7 @@ public sealed class ChapterSegmentServiceTests
                 new ChapterSourceOption("b", "b", Info("DVD", TimeSpan.FromSeconds(1), new Chapter(1, TimeSpan.Zero, "B")))
             ]);
 
-        var result = new ChapterSegmentService().Combine(group);
+        var result = ChapterSegmentService.Combine(group);
 
         Assert.Contains(result.Diagnostics, diagnostic => diagnostic.Code == "UnsupportedCombineSource");
     }

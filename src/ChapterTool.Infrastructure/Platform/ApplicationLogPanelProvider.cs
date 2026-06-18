@@ -20,7 +20,7 @@ public sealed class ApplicationLogPanelProvider(
         {
             lock (gate)
             {
-                return entries.ToArray();
+                return entries.ToList();
             }
         }
     }
@@ -29,10 +29,10 @@ public sealed class ApplicationLogPanelProvider(
 
     public string Format(Func<ApplicationLogEntry, string>? formatter = null)
     {
-        ApplicationLogEntry[] snapshot;
+        IReadOnlyList<ApplicationLogEntry> snapshot;
         lock (gate)
         {
-            snapshot = entries.ToArray();
+            snapshot = entries.ToList();
         }
 
         return string.Join(
@@ -102,7 +102,7 @@ public sealed class ApplicationLogPanelProvider(
         }
     }
 
-    private static IReadOnlyDictionary<string, object?> StructuredState<TState>(TState state)
+    private static Dictionary<string, object?> StructuredState<TState>(TState state)
     {
         if (state is IEnumerable<KeyValuePair<string, object?>> pairs)
         {
@@ -116,7 +116,7 @@ public sealed class ApplicationLogPanelProvider(
             : new Dictionary<string, object?>(StringComparer.Ordinal) { ["State"] = state };
     }
 
-    private static IReadOnlyDictionary<string, object?> Arguments(IReadOnlyDictionary<string, object?> structuredState) =>
+    private static Dictionary<string, object?> Arguments(IReadOnlyDictionary<string, object?> structuredState) =>
         structuredState
             .Where(static pair =>
                 !string.Equals(pair.Key, "MessageKey", StringComparison.Ordinal) &&

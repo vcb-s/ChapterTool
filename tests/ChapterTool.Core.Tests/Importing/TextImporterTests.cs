@@ -214,37 +214,37 @@ public sealed class TextImporterTests
     {
         var importer = new WebVttChapterImporter();
         const string vttText = """
-                               WEBVTT
+            WEBVTT
 
-                               chapter-1
-                               00:00:00.000 --> 00:00:26.000
-                               Introduction
+            chapter-1
+            00:00:00.000 --> 00:00:26.000
+            Introduction
 
-                               chapter-2
-                               00:00:28.206 --> 00:01:02.000
-                               Watch out!
+            chapter-2
+            00:00:28.206 --> 00:01:02.000
+            Watch out!
 
-                               chapter-3
-                               00:01:02.034 --> 00:03:10.000
-                               Let's go
+            chapter-3
+            00:01:02.034 --> 00:03:10.000
+            Let's go
 
-                               chapter-4
-                               00:03:10.014 --> 00:05:40.000
-                               The machine
+            chapter-4
+            00:03:10.014 --> 00:05:40.000
+            The machine
 
-                               chapter-5
-                               00:05:41.208 --> 00:07:26.000
-                               Close your eyes
+            chapter-5
+            00:05:41.208 --> 00:07:26.000
+            Close your eyes
 
-                               chapter-6
-                               00:07:27.125 --> 00:08:12.000
-                               There's nothing there
+            chapter-6
+            00:07:27.125 --> 00:08:12.000
+            There's nothing there
 
-                               chapter-7
-                               00:08:13.000 --> 00:09:07.500
-                               The Colossus of Rhodes
-                               """;
-        var result = importer.ImportText(vttText);
+            chapter-7
+            00:08:13.000 --> 00:09:07.500
+            The Colossus of Rhodes
+            """;
+        var result = WebVttChapterImporter.ImportText(vttText);
 
         Assert.True(result.Success);
         var chapters = result.Groups.Single().Options.Single().ChapterInfo.Chapters;
@@ -256,8 +256,7 @@ public sealed class TextImporterTests
     [Fact]
     public async Task WebVttImporterSkipsCueIds()
     {
-        var importer = new WebVttChapterImporter();
-        var result = importer.ImportText(
+        var result = WebVttChapterImporter.ImportText(
             """
             WEBVTT
 
@@ -277,7 +276,7 @@ public sealed class TextImporterTests
     public async Task WebVttImporterFailsMalformedInput(string text, string code)
     {
         var importer = new WebVttChapterImporter();
-        var result = importer.ImportText(text);
+        var result = WebVttChapterImporter.ImportText(text);
 
         Assert.False(result.Success);
         Assert.Empty(result.Groups);
