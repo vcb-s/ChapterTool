@@ -2,7 +2,7 @@
 
 ## Dev Environment Tips
 
-- This repo contains the legacy WinForms project under `Time_Shift/` and the .NET 10 rewrite under `src/`.
+- This repo contains the legacy WinForms project under `Time_Shift/` and the current .NET 10 Avalonia/Core/Infrastructure solution under `src/`.
 - Use `ChapterTool.Avalonia.slnx` for the current Avalonia/Core/Infrastructure solution.
 - Main projects:
   - `src/ChapterTool.Core`
@@ -15,21 +15,21 @@
 - When reading files with PowerShell, explicitly use UTF-8, for example:
   - `Get-Content -Raw -Encoding utf8 path\to\file`
   - `[System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)`
+- Keep this file focused on durable repository guidance. Do not add one-off implementation notes, completed change records, or transient archive paths here.
 - Do not port WinForms absolute positioning into Avalonia. Use responsive Avalonia layout panels and stable sizing constraints.
-- Keep user-facing Chinese strings as valid UTF-8. Watch for mojibake such as `杞藉叆` or `淇濆瓨`.
+- Keep user-facing Chinese strings as valid UTF-8. Validate localization through behavior, rendered UI, or resource-level checks rather than hard-coding incidental mojibake examples.
 
 ## OpenSpec Workflow
 
 - OpenSpec specs are under `openspec/specs/`.
 - Archived changes are under `openspec/changes/archive/`.
+- Active changes are discovered with OpenSpec commands; do not assume a specific change name from prior work.
 - Before implementing spec-driven work, inspect the active change:
   - `openspec list --json`
   - `openspec status --change "<change-name>" --json`
   - `openspec validate "<change-name>" --strict`
 - After completing and archiving a change, validate all specs:
   - `openspec validate --all`
-- The rewrite change `rewrite-avalonia-dotnet10` has been archived into:
-  - `openspec/changes/archive/2026-06-07-rewrite-avalonia-dotnet10/`
 
 ## Testing Instructions
 
@@ -45,6 +45,7 @@
 - If a test/build fails because `ChapterTool.Avalonia.exe` is locked, close the running app or run:
   - `Get-Process ChapterTool.Avalonia -ErrorAction SilentlyContinue | Stop-Process`
 - Add or update tests for changed behavior, especially UI layout constraints, UTF-8 labels, import/export behavior, and platform-service boundaries.
+- If dependencies, target frameworks, or generated project assets change, restore/build once before running no-restore test commands.
 
 ## UI Implementation Notes
 
@@ -61,6 +62,7 @@
 - Do not expose Windows registry-dependent actions, such as file association, as always-visible primary UI.
 - When verifying visual layout changes, capture screenshots at default, wide, and narrow sizes and store them under `artifacts/`.
 - Avoid static string assertions over source/configuration layout. Validate UI through Avalonia compilation, behavior-level tests, and screenshots/runtime checks instead.
+- Preserve accessible names, keyboard navigation, focus behavior, and localization boundaries when changing controls.
 
 ## PR Instructions
 

@@ -4,10 +4,11 @@ using ChapterTool.Avalonia.Localization;
 using ChapterTool.Avalonia.ViewModels;
 using ChapterTool.Avalonia.Views.Tools;
 using ChapterTool.Infrastructure.Configuration;
+using System.Text.RegularExpressions;
 
 namespace ChapterTool.Avalonia.Tests.Headless;
 
-public sealed class LocalizationAndLayoutHeadlessTests
+public sealed partial class LocalizationAndLayoutHeadlessTests
 {
     [AvaloniaFact]
     public async Task Runtime_language_switch_refreshes_main_window_and_tool_text()
@@ -64,7 +65,7 @@ public sealed class LocalizationAndLayoutHeadlessTests
         Assert.True(host.ContainsRenderedText("载入"));
         var rendered = MainWindowHeadlessTestHost.RenderedTexts(host.Window);
         Assert.DoesNotContain(rendered, text => text.StartsWith("Main.", StringComparison.Ordinal) || text.StartsWith("Common.", StringComparison.Ordinal));
-        Assert.DoesNotContain(rendered, text => text.Contains("杞藉叆", StringComparison.Ordinal) || text.Contains("淇濆瓨", StringComparison.Ordinal));
+        Assert.DoesNotContain(rendered, ContainsEncodingArtifact);
     }
 
     [AvaloniaFact]
@@ -161,4 +162,11 @@ public sealed class LocalizationAndLayoutHeadlessTests
             window.Close();
         }
     }
+
+    private static bool ContainsEncodingArtifact(string text) =>
+        text.Contains('\uFFFD', StringComparison.Ordinal) ||
+        InvalidTextControlCharacterRegex().IsMatch(text);
+
+    [GeneratedRegex(@"[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]")]
+    private static partial Regex InvalidTextControlCharacterRegex();
 }

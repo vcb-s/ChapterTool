@@ -41,13 +41,14 @@ public sealed partial class LocalizationTests
     }
 
     [Fact]
-    public void ChineseAndJapaneseResourcesDoNotContainKnownMojibake()
+    public void NonEnglishResourcesDoNotContainEncodingArtifacts()
     {
-        var banned = new[] { "杞藉叆", "淇濆瓨" };
         foreach (var culture in new[] { "zh-CN", "ja-JP" })
         {
-            var text = string.Join('\n', AppLocalizationResources.All[culture].Values);
-            Assert.DoesNotContain(banned, token => text.Contains(token, StringComparison.Ordinal));
+            foreach (var (key, value) in AppLocalizationResources.All[culture])
+            {
+                AssertNoEncodingArtifacts(value, $"{culture}:{key}");
+            }
         }
     }
 
@@ -85,6 +86,17 @@ public sealed partial class LocalizationTests
             .Select(static match => match.Groups["name"].Value)
             .Order(StringComparer.Ordinal)
             .ToArray();
+
+    private static void AssertNoEncodingArtifacts(string value, string context)
+    {
+        Assert.False(value.Contains('\uFFFD', StringComparison.Ordinal), $"{context} contains the Unicode replacement character.");
+
+        var invalidControlCharacter = InvalidTextControlCharacterRegex().Match(value);
+        if (invalidControlCharacter.Success)
+        {
+            Assert.Fail($"{context} contains invalid control character U+{(int)invalidControlCharacter.Value[0]:X4}.");
+        }
+    }
 
     private static MainWindowViewModel CreateViewModel(IAppLocalizer localizer)
     {
@@ -126,4 +138,7 @@ public sealed partial class LocalizationTests
 
     [GeneratedRegex(@"\{(?<name>[A-Za-z0-9_]+)\}")]
     private static partial Regex PlaceholderRegex();
+
+    [GeneratedRegex(@"[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]")]
+    private static partial Regex InvalidTextControlCharacterRegex();
 }
