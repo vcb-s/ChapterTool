@@ -136,6 +136,27 @@ public sealed class RuntimeChapterLoadServiceTests
     }
 
     [Fact]
+    public async Task RuntimePassesProgressToImporter()
+    {
+        var path = await CreateTempFileAsync(".txt");
+        var importer = new StubImporter("stub", SuccessfulImport(path, "TXT"));
+        var registry = new StubRegistry(importer, fallback: null);
+        var service = new RuntimeChapterLoadService(registry);
+        var progress = new StubProgress();
+        try
+        {
+            var result = await service.LoadAsync(path, progress, TestContext.Current.CancellationToken);
+
+            Assert.True(result.Success, Diagnostics(result));
+            Assert.Same(progress, importer.LastRequest?.Progress);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task RuntimeDoesNotFallbackAfterInvokedPrimaryFailure()
     {
         var path = await CreateTempFileAsync(".mp4");
@@ -305,6 +326,8 @@ public sealed class RuntimeChapterLoadServiceTests
     {
         public int CallCount { get; private set; }
 
+        public ChapterImportRequest? LastRequest { get; private set; }
+
         public string Id { get; } = id;
 
         public IReadOnlySet<string> SupportedExtensions { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -312,7 +335,15 @@ public sealed class RuntimeChapterLoadServiceTests
         public ValueTask<ChapterImportResult> ImportAsync(ChapterImportRequest request, CancellationToken cancellationToken)
         {
             CallCount++;
+            LastRequest = request;
             return ValueTask.FromResult(result);
+        }
+    }
+
+    private sealed class StubProgress : IProgress<ChapterLoadProgress>
+    {
+        public void Report(ChapterLoadProgress value)
+        {
         }
     }
 }

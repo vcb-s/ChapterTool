@@ -78,29 +78,14 @@
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
     <Style Selector="DataGrid">
-      <Setter Property="Background" Value="{DynamicResource ChapterTool.BackChangeBrush}" />
-      <Setter Property="Foreground" Value="{DynamicResource ChapterTool.TextFrontBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource ChapterTool.BorderBrush}" />
-      <Setter Property="BorderThickness" Value="1" />
       <Setter Property="GridLinesVisibility" Value="All" />
-      <Setter Property="HeadersVisibility" Value="Column" />
-      <Setter Property="RowHeight" Value="24" />
-      <Setter Property="FontSize" Value="11.2" />
     </Style>
-    <Style Selector="DataGridColumnHeader">
-      <Setter Property="Background" Value="{DynamicResource ChapterTool.TextBackBrush}" />
-      <Setter Property="Foreground" Value="{DynamicResource ChapterTool.TextFrontBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource ChapterTool.BorderBrush}" />
-      <Setter Property="BorderThickness" Value="0,0,1,1" />
-      <Setter Property="Padding" Value="2,3.2" />
-      <Setter Property="HorizontalContentAlignment" Value="Center" />
-    </Style>
-    <Style Selector="DataGridCell">
-      <Setter Property="Background" Value="{DynamicResource ChapterTool.TextBackBrush}" />
-      <Setter Property="Foreground" Value="{DynamicResource ChapterTool.TextFrontBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource ChapterTool.BorderBrush}" />
-      <Setter Property="BorderThickness" Value="0,0,1,1" />
-      <Setter Property="Padding" Value="2,1.6" />
+    <Style Selector="TextBox.gridEditor">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
     <Style Selector="TextBlock.frameText">
       <Setter Property="Foreground" Value="#111111" />
@@ -304,7 +289,7 @@
                  Grid.Row="0"
                  IsVisible="False"
                  AutomationProperties.AutomationId="SourcePath" />
-        <DataGrid x:Name="ChapterGrid"
+          <DataGrid x:Name="ChapterGrid"
                   Grid.Row="1"
                   MinHeight="208"
                   AutoGenerateColumns="False"
@@ -312,6 +297,7 @@
                   CanUserResizeColumns="True"
                   IsReadOnly="False"
                   SelectionMode="Extended"
+                  GridLinesVisibility="All"
                   ItemsSource="{Binding Rows}"
                   CellEditEnded="OnChapterGridCellEditEnded"
                   AutomationProperties.AutomationId="ChapterGrid">
@@ -336,6 +322,7 @@
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:ChapterRowViewModel">
                   <TextBlock HorizontalAlignment="Stretch"
+                             VerticalAlignment="Center"
                              TextAlignment="Center"
                              Text="{Binding Number}" />
                 </DataTemplate>
@@ -345,13 +332,16 @@
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:ChapterRowViewModel">
                   <TextBlock HorizontalAlignment="Stretch"
+                             VerticalAlignment="Center"
                              TextAlignment="Center"
                              Text="{Binding TimeText}" />
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
               <DataGridTemplateColumn.CellEditingTemplate>
                 <DataTemplate x:DataType="vm:ChapterRowViewModel">
-                  <TextBox TextAlignment="Center" Text="{Binding TimeText, Mode=TwoWay}" />
+                  <TextBox Classes="gridEditor"
+                           TextAlignment="Center"
+                           Text="{Binding TimeText, Mode=TwoWay}" />
                 </DataTemplate>
               </DataGridTemplateColumn.CellEditingTemplate>
             </DataGridTemplateColumn>
@@ -359,25 +349,29 @@
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:ChapterRowViewModel">
                   <TextBlock HorizontalAlignment="Stretch"
-                             TextAlignment="Left"
+                             VerticalAlignment="Center"
+                             TextAlignment="Center"
                              Text="{Binding Name}" />
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
               <DataGridTemplateColumn.CellEditingTemplate>
                 <DataTemplate x:DataType="vm:ChapterRowViewModel">
-                  <TextBox TextAlignment="Left" Text="{Binding Name, Mode=TwoWay}" />
+                  <TextBox Classes="gridEditor"
+                           TextAlignment="Center"
+                           Text="{Binding Name, Mode=TwoWay}" />
                 </DataTemplate>
               </DataGridTemplateColumn.CellEditingTemplate>
             </DataGridTemplateColumn>
             <DataGridTemplateColumn Header="{DynamicResource Main.ColumnFrames}" Width="120" MinWidth="76.8">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate x:DataType="vm:ChapterRowViewModel">
-                  <Grid>
+                  <Grid VerticalAlignment="Center">
                     <TextBlock Classes.frameGlowSoft="True"
                                Classes.frameAccurate="{Binding IsFrameAccurate}"
                                Classes.frameInexact="{Binding IsFrameInexact}"
                                HorizontalAlignment="Stretch"
-                               TextAlignment="Right"
+                               VerticalAlignment="Center"
+                               TextAlignment="Center"
                                Text="{Binding FramesInfo}">
                       <TextBlock.Effect>
                         <DropShadowEffect BlurRadius="10"
@@ -389,7 +383,8 @@
                                Classes.frameAccurate="{Binding IsFrameAccurate}"
                                Classes.frameInexact="{Binding IsFrameInexact}"
                                HorizontalAlignment="Stretch"
-                               TextAlignment="Right"
+                               VerticalAlignment="Center"
+                               TextAlignment="Center"
                                Text="{Binding FramesInfo}">
                       <TextBlock.Effect>
                         <DropShadowEffect BlurRadius="5"
@@ -402,14 +397,17 @@
                                Classes.frameInexact="{Binding IsFrameInexact}"
                                Classes.frameNeutral="{Binding IsFrameNeutral}"
                                HorizontalAlignment="Stretch"
-                               TextAlignment="Right"
+                               VerticalAlignment="Center"
+                               TextAlignment="Center"
                                Text="{Binding FramesInfo}" />
                   </Grid>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
               <DataGridTemplateColumn.CellEditingTemplate>
                 <DataTemplate x:DataType="vm:ChapterRowViewModel">
-                  <TextBox TextAlignment="Right" Text="{Binding FramesInfo, Mode=TwoWay}" />
+                  <TextBox Classes="gridEditor"
+                           TextAlignment="Center"
+                           Text="{Binding FramesInfo, Mode=TwoWay}" />
                 </DataTemplate>
               </DataGridTemplateColumn.CellEditingTemplate>
             </DataGridTemplateColumn>

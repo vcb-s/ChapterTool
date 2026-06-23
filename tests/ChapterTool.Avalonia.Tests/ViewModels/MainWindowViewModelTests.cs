@@ -83,6 +83,36 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
+    public async Task LoadAppliesProgressUpdatesBeforeCompletion()
+    {
+        var load = new FakeLoadService(ImportResult("movie.txt", Info("OGM", "movie.txt", new Chapter(1, TimeSpan.Zero, "Intro"))))
+        {
+            OnLoad = progress => progress?.Report(new ChapterLoadProgress(0.42, "Status.LoadingSource.Export"))
+        };
+        var vm = CreateViewModel(load);
+        var progressValues = new List<double>();
+        var progressStatuses = new List<string>();
+        vm.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(MainWindowViewModel.Progress))
+            {
+                progressValues.Add(vm.Progress);
+            }
+            else if (args.PropertyName == nameof(MainWindowViewModel.StatusText))
+            {
+                progressStatuses.Add(vm.StatusText);
+            }
+        };
+
+        await vm.LoadCommand.ExecuteAsync("movie.txt");
+
+        Assert.Contains(progressValues, value => value is > 0 and < 1);
+        Assert.Contains("Loading source...", progressStatuses);
+        Assert.Contains("Exporting chapter text...", progressStatuses);
+        Assert.Equal(1, vm.Progress);
+    }
+
+    [Fact]
     public async Task ClipDisplayOptionsExposeMainContentWithRemarksWithoutChangingSourceOptions()
     {
         var firstInfo = Info("MPLS", "00002", new Chapter(1, TimeSpan.Zero, "A"));
@@ -830,13 +860,21 @@ public sealed class MainWindowViewModelTests
     {
         private readonly Queue<ChapterImportResult> results = new(results);
 
+        public Action<IProgress<ChapterLoadProgress>?>? OnLoad { get; init; }
+
         public ValueTask<ChapterImportResult> LoadAsync(string path, CancellationToken cancellationToken)
+        {
+            return LoadAsync(path, progress: null, cancellationToken);
+        }
+
+        public ValueTask<ChapterImportResult> LoadAsync(string path, IProgress<ChapterLoadProgress>? progress, CancellationToken cancellationToken)
         {
             if (results.Count == 0)
             {
                 throw new InvalidOperationException("FakeLoadService has no more results queued.");
             }
 
+            OnLoad?.Invoke(progress);
             var result = results.Count == 1 ? results.Peek() : results.Dequeue();
             return ValueTask.FromResult(result);
         }

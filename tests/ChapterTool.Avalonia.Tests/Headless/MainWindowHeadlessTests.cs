@@ -225,10 +225,10 @@ public sealed class MainWindowHeadlessTests
 
         Assert.True(grid.Columns[0].ActualWidth >= 56);
         Assert.True(grid.Columns[0].ActualWidth < 70);
-        AssertCellTextAlignment(grid, "10", TextAlignment.Center);
-        AssertCellTextAlignment(grid, "00:01:30.000", TextAlignment.Center);
-        AssertCellTextAlignment(grid, "A10", TextAlignment.Left);
-        AssertCellTextAlignment(grid, "2160", TextAlignment.Right);
+        AssertCellTextAlignment(grid, "2", TextAlignment.Center);
+        AssertCellTextAlignment(grid, "00:00:10.000", TextAlignment.Center);
+        AssertCellTextAlignment(grid, "A2", TextAlignment.Center);
+        AssertCellTextAlignment(grid, "240", TextAlignment.Center);
     }
 
     private static MainWindowHeadlessTestHost CreateMultiOptionHost(

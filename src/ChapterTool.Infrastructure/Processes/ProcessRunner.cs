@@ -17,8 +17,12 @@ public sealed class ProcessRunner : IProcessRunner
         try
         {
             process.Start();
-            var stdoutTask = process.StandardOutput.ReadToEndAsync(linkedCts.Token);
-            var stderrTask = process.StandardError.ReadToEndAsync(linkedCts.Token);
+            var stdoutTask = request.RedirectOutput
+                ? process.StandardOutput.ReadToEndAsync(linkedCts.Token)
+                : Task.FromResult(string.Empty);
+            var stderrTask = request.RedirectOutput
+                ? process.StandardError.ReadToEndAsync(linkedCts.Token)
+                : Task.FromResult(string.Empty);
 
             await process.WaitForExitAsync(linkedCts.Token);
             var stdout = await stdoutTask;
@@ -56,13 +60,16 @@ public sealed class ProcessRunner : IProcessRunner
         {
             FileName = request.FileName,
             WorkingDirectory = request.WorkingDirectory ?? string.Empty,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            StandardOutputEncoding = Encoding.UTF8,
-            StandardErrorEncoding = Encoding.UTF8,
+            RedirectStandardOutput = request.RedirectOutput,
+            RedirectStandardError = request.RedirectOutput,
             UseShellExecute = false,
-            CreateNoWindow = true
+            CreateNoWindow = request.CreateNoWindow
         };
+        if (request.RedirectOutput)
+        {
+            startInfo.StandardOutputEncoding = Encoding.UTF8;
+            startInfo.StandardErrorEncoding = Encoding.UTF8;
+        }
 
         foreach (var argument in request.Arguments)
         {

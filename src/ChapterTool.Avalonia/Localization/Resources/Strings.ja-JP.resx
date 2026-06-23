@@ -297,6 +297,21 @@
   <data name="Status.LoadedChapters" xml:space="preserve">
     <value>{count} 個のチャプターを読み込みました</value>
   </data>
+  <data name="Status.LoadingSource" xml:space="preserve">
+    <value>読み込み中...</value>
+  </data>
+  <data name="Status.LoadingSource.Validate" xml:space="preserve">
+    <value>ソースを検証中...</value>
+  </data>
+  <data name="Status.LoadingSource.Discover" xml:space="preserve">
+    <value>eac3to を検索中...</value>
+  </data>
+  <data name="Status.LoadingSource.Export" xml:space="preserve">
+    <value>チャプターを出力中...</value>
+  </data>
+  <data name="Status.LoadingSource.Parse" xml:space="preserve">
+    <value>チャプターを解析中...</value>
+  </data>
   <data name="Status.LoadFailed" xml:space="preserve">
     <value>読み込みに失敗しました</value>
   </data>

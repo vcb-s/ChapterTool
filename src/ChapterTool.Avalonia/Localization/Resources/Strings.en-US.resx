@@ -297,6 +297,21 @@
   <data name="Status.LoadedChapters" xml:space="preserve">
     <value>Loaded {count} chapters</value>
   </data>
+  <data name="Status.LoadingSource" xml:space="preserve">
+    <value>Loading source...</value>
+  </data>
+  <data name="Status.LoadingSource.Validate" xml:space="preserve">
+    <value>Validating source...</value>
+  </data>
+  <data name="Status.LoadingSource.Discover" xml:space="preserve">
+    <value>Locating eac3to...</value>
+  </data>
+  <data name="Status.LoadingSource.Export" xml:space="preserve">
+    <value>Exporting chapter text...</value>
+  </data>
+  <data name="Status.LoadingSource.Parse" xml:space="preserve">
+    <value>Parsing chapter text...</value>
+  </data>
   <data name="Status.LoadFailed" xml:space="preserve">
     <value>Load failed</value>
   </data>

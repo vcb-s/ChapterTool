@@ -68,16 +68,29 @@ public sealed class ProcessRunnerTests
         Assert.True(result.Cancelled);
     }
 
+    [Fact]
+    public async Task RunAsync_can_disable_output_redirection()
+    {
+        var runner = new ProcessRunner();
+        var request = ShellCommand.Create("echo hidden output", redirectOutput: false);
+
+        var result = await runner.RunAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, result.ExitCode);
+        Assert.Equal(string.Empty, result.StandardOutput);
+        Assert.Equal(string.Empty, result.StandardError);
+    }
+
     private static class ShellCommand
     {
-        public static ProcessRunRequest Create(string command, string? workingDirectory = null, TimeSpan? timeout = null)
+        public static ProcessRunRequest Create(string command, string? workingDirectory = null, TimeSpan? timeout = null, bool redirectOutput = true)
         {
             if (OperatingSystem.IsWindows())
             {
-                return new ProcessRunRequest("cmd.exe", ["/c", command], workingDirectory, timeout);
+                return new ProcessRunRequest("cmd.exe", ["/c", command], workingDirectory, timeout, redirectOutput);
             }
 
-            return new ProcessRunRequest("/bin/sh", ["-c", command], workingDirectory, timeout);
+            return new ProcessRunRequest("/bin/sh", ["-c", command], workingDirectory, timeout, redirectOutput);
         }
 
         public static ProcessRunRequest CreateSleep(TimeSpan duration, TimeSpan? timeout = null)

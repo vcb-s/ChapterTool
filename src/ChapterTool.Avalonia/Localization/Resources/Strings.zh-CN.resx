@@ -297,6 +297,21 @@
   <data name="Status.LoadedChapters" xml:space="preserve">
     <value>已载入 {count} 个章节</value>
   </data>
+  <data name="Status.LoadingSource" xml:space="preserve">
+    <value>正在加载...</value>
+  </data>
+  <data name="Status.LoadingSource.Validate" xml:space="preserve">
+    <value>正在校验源结构...</value>
+  </data>
+  <data name="Status.LoadingSource.Discover" xml:space="preserve">
+    <value>正在定位 eac3to...</value>
+  </data>
+  <data name="Status.LoadingSource.Export" xml:space="preserve">
+    <value>正在导出章节文本...</value>
+  </data>
+  <data name="Status.LoadingSource.Parse" xml:space="preserve">
+    <value>正在解析章节文本...</value>
+  </data>
   <data name="Status.LoadFailed" xml:space="preserve">
     <value>载入失败</value>
   </data>

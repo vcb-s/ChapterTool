@@ -43,6 +43,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
     private string chapterNameTemplateStatus;
     private string statusText;
     private LocalizedMessage? currentStatusMessage;
+    private LocalizedMessage? currentProgressMessage;
     private decimal frameAccuracyTolerance = 0.15m;
 
     public MainWindowViewModel(
@@ -650,11 +651,19 @@ public sealed class MainWindowViewModel : ObservableViewModel
         }
 
         Log("Log.LoadingSource", ("path", path));
-        var result = await loadService.LoadAsync(path, cancellationToken);
+        Progress = 0.05;
+        SetProgressStatus("Status.LoadingSource");
+        var progress = new ChapterLoadProgressSink(update =>
+        {
+            Progress = Math.Clamp(update.Value, 0, 0.98);
+            SetProgressStatus(update.Message);
+        });
+        var result = await loadService.LoadAsync(path, progress, cancellationToken);
         LogImportSummary("Load", result);
         if (!result.Success || result.Groups.Count == 0)
         {
             SetStatus("Status.LoadFailed", diagnostic: result.Diagnostics.FirstOrDefault());
+            currentProgressMessage = null;
             Progress = 0;
             LogStatus();
             LogDiagnostics("Load", result.Diagnostics);
@@ -678,6 +687,7 @@ public sealed class MainWindowViewModel : ObservableViewModel
 
         SelectClip(Math.Clamp(currentGroup.DefaultOptionIndex, 0, ClipOptions.Count - 1));
         SetStatus("Status.LoadedChapters", ("count", Rows.Count));
+        currentProgressMessage = null;
         Progress = 1;
         Log("Log.StatusFromPath", ("status", StatusText), ("path", path));
         LogDiagnostics("Load", result.Diagnostics);
@@ -1311,6 +1321,17 @@ public sealed class MainWindowViewModel : ObservableViewModel
         SetStatus(key, arguments);
     }
 
+    private void SetProgressStatus(string? messageKey, params (string Name, object? Value)[] arguments)
+    {
+        currentStatusMessage = null;
+        currentProgressMessage = messageKey is null
+            ? null
+            : new LocalizedMessage(
+                messageKey,
+                arguments.ToDictionary(static item => item.Name, static item => item.Value, StringComparer.Ordinal));
+        StatusText = currentProgressMessage is null ? string.Empty : Localizer.Format(currentProgressMessage);
+    }
+
     private string LocalizeDiagnostic(ChapterDiagnostic diagnostic)
     {
         var diagnosticKey = $"Diagnostic.{diagnostic.Code}";
@@ -1376,6 +1397,12 @@ public sealed class MainWindowViewModel : ObservableViewModel
         if (currentStatusMessage is not null)
         {
             StatusText = Localizer.Format(currentStatusMessage);
+            return;
+        }
+
+        if (currentProgressMessage is not null)
+        {
+            StatusText = Localizer.Format(currentProgressMessage);
         }
     }
 
@@ -1520,6 +1547,11 @@ public sealed class MainWindowViewModel : ObservableViewModel
         Time,
         Name,
         Frame
+    }
+
+    private sealed class ChapterLoadProgressSink(Action<ChapterLoadProgress> handler) : IProgress<ChapterLoadProgress>
+    {
+        public void Report(ChapterLoadProgress value) => handler(value);
     }
 }
 

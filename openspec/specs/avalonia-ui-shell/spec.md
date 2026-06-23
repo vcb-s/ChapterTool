@@ -14,6 +14,14 @@ The Avalonia main window SHALL be driven by a ViewModel rather than by direct co
 - **WHEN** a load service returns a successful chapter result
 - **THEN** the ViewModel SHALL update current path, display path, clip options, current chapter rows, status text, and progress from the result
 
+### Requirement: Main window load progress
+The main window SHALL present bounded progress during source loading when the load pipeline reports intermediate progress.
+
+#### Scenario: Importer reports intermediate progress
+- **WHEN** a load operation reports progress before returning its import result
+- **THEN** the main-window view model SHALL update the progress value to a bounded intermediate value
+- **AND** completion or failure handling SHALL remain responsible for the final progress state
+
 ### Requirement: Legacy-inspired cross-platform UX
 The Avalonia main window SHALL preserve the original ChapterTool workflow density while using cross-platform Avalonia controls and services.
 

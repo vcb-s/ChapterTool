@@ -7,6 +7,11 @@ public sealed class RuntimeChapterLoadService(IChapterImporterRegistry importerR
 {
     public ValueTask<ChapterImportResult> LoadAsync(string path, CancellationToken cancellationToken)
     {
+        return LoadAsync(path, progress: null, cancellationToken);
+    }
+
+    public ValueTask<ChapterImportResult> LoadAsync(string path, IProgress<ChapterLoadProgress>? progress, CancellationToken cancellationToken)
+    {
         if (string.IsNullOrWhiteSpace(path) || (!File.Exists(path) && !Directory.Exists(path)))
         {
             return ValueTask.FromResult(ChapterImportResult.Failed(new ChapterDiagnostic(DiagnosticSeverity.Error, "InvalidPath", "The source path does not exist.")));
@@ -17,12 +22,16 @@ public sealed class RuntimeChapterLoadService(IChapterImporterRegistry importerR
 
         return importer is null
             ? ValueTask.FromResult(ChapterImportResult.Failed(new ChapterDiagnostic(DiagnosticSeverity.Error, "UnsupportedSource", $"Unsupported source extension: {extension}.")))
-            : LoadWithFallbackAsync(path, importer, cancellationToken);
+            : LoadWithFallbackAsync(path, importer, progress, cancellationToken);
     }
 
-    private async ValueTask<ChapterImportResult> LoadWithFallbackAsync(string path, IChapterImporter importer, CancellationToken cancellationToken)
+    private async ValueTask<ChapterImportResult> LoadWithFallbackAsync(
+        string path,
+        IChapterImporter importer,
+        IProgress<ChapterLoadProgress>? progress,
+        CancellationToken cancellationToken)
     {
-        var primaryResult = await importer.ImportAsync(new ChapterImportRequest(path), cancellationToken);
+        var primaryResult = await importer.ImportAsync(new ChapterImportRequest(path, Progress: progress), cancellationToken);
         if (primaryResult.Success)
         {
             return primaryResult;
@@ -34,7 +43,7 @@ public sealed class RuntimeChapterLoadService(IChapterImporterRegistry importerR
             return primaryResult;
         }
 
-        var fallbackResult = await fallback.ImportAsync(new ChapterImportRequest(path), cancellationToken);
+        var fallbackResult = await fallback.ImportAsync(new ChapterImportRequest(path, Progress: progress), cancellationToken);
         var fallbackDiagnostic = new ChapterDiagnostic(
             DiagnosticSeverity.Info,
             "ImporterFallbackUsed",
