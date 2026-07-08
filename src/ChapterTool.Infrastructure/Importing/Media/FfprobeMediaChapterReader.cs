@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ChapterTool.Core.Importing.Media;
-using ChapterTool.Core.Services;
+using ChapterTool.Infrastructure.Services;
 using ChapterTool.Infrastructure.Configuration;
 
 namespace ChapterTool.Infrastructure.Importing.Media;

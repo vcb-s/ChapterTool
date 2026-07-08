@@ -6,8 +6,19 @@ using ChapterTool.Core.Transform;
 
 namespace ChapterTool.Core.Editing;
 
+/// <summary>
+/// Provides chapter editing operations for ChapterTool chapter data.
+/// </summary>
+/// <param name="timeFormatter">The chapter time formatter.</param>
 public sealed partial class ChapterEditingService(IChapterTimeFormatter timeFormatter) : IChapterEditingService
 {
+    /// <summary>
+    /// Executes the EditTime operation.
+    /// </summary>
+    /// <param name="info">The chapter data to process.</param>
+    /// <param name="index">The zero-based chapter index.</param>
+    /// <param name="text">The text to parse.</param>
+    /// <returns>The operation result.</returns>
     public ChapterEditResult EditTime(ChapterInfo info, int index, string text)
     {
         var chapters = info.Chapters.ToList();
@@ -22,6 +33,14 @@ public sealed partial class ChapterEditingService(IChapterTimeFormatter timeForm
         return new ChapterEditResult(info with { Chapters = Renumber(chapters) }, parsed.Diagnostics);
     }
 
+    /// <summary>
+    /// Executes the EditFrame operation.
+    /// </summary>
+    /// <param name="info">The chapter data to process.</param>
+    /// <param name="index">The zero-based chapter index.</param>
+    /// <param name="text">The text to parse.</param>
+    /// <param name="framesPerSecond">The frame rate in frames per second.</param>
+    /// <returns>The operation result.</returns>
     public ChapterEditResult EditFrame(ChapterInfo info, int index, string text, decimal framesPerSecond)
     {
         var chapters = info.Chapters.ToList();
@@ -49,6 +68,13 @@ public sealed partial class ChapterEditingService(IChapterTimeFormatter timeForm
         return new ChapterEditResult(info with { Chapters = Renumber(chapters) }, []);
     }
 
+    /// <summary>
+    /// Executes the Rename operation.
+    /// </summary>
+    /// <param name="info">The chapter data to process.</param>
+    /// <param name="index">The zero-based chapter index.</param>
+    /// <param name="name">The chapter name.</param>
+    /// <returns>The operation result.</returns>
     public ChapterEditResult Rename(ChapterInfo info, int index, string name)
     {
         var chapters = info.Chapters.ToList();
@@ -61,6 +87,12 @@ public sealed partial class ChapterEditingService(IChapterTimeFormatter timeForm
         return new ChapterEditResult(info with { Chapters = chapters }, []);
     }
 
+    /// <summary>
+    /// Executes the Delete operation.
+    /// </summary>
+    /// <param name="info">The chapter data to process.</param>
+    /// <param name="indexes">The zero-based chapter indexes.</param>
+    /// <returns>The operation result.</returns>
     public ChapterEditResult Delete(ChapterInfo info, IReadOnlySet<int> indexes)
     {
         var chapters = info.Chapters.Where((_, index) => !indexes.Contains(index)).ToList();
@@ -73,6 +105,12 @@ public sealed partial class ChapterEditingService(IChapterTimeFormatter timeForm
         return new ChapterEditResult(info with { Chapters = Renumber(chapters) }, []);
     }
 
+    /// <summary>
+    /// Executes the InsertBefore operation.
+    /// </summary>
+    /// <param name="info">The chapter data to process.</param>
+    /// <param name="index">The zero-based chapter index.</param>
+    /// <returns>The operation result.</returns>
     public ChapterEditResult InsertBefore(ChapterInfo info, int index)
     {
         if (index < 0 || index > info.Chapters.Count)
@@ -85,6 +123,12 @@ public sealed partial class ChapterEditingService(IChapterTimeFormatter timeForm
         return new ChapterEditResult(info with { Chapters = Renumber(chapters) }, []);
     }
 
+    /// <summary>
+    /// Executes the ApplyOrderShift operation.
+    /// </summary>
+    /// <param name="info">The chapter data to process.</param>
+    /// <param name="shift">The order shift.</param>
+    /// <returns>The operation result.</returns>
     public ChapterEditResult ApplyOrderShift(ChapterInfo info, int shift)
     {
         var effectiveShift = Math.Max(0, shift);
@@ -105,6 +149,12 @@ public sealed partial class ChapterEditingService(IChapterTimeFormatter timeForm
         return new ChapterEditResult(info with { Chapters = chapters }, diagnostics);
     }
 
+    /// <summary>
+    /// Executes the ApplyTemplate operation.
+    /// </summary>
+    /// <param name="info">The chapter data to process.</param>
+    /// <param name="templateText">The template text.</param>
+    /// <returns>The operation result.</returns>
     public ChapterEditResult ApplyTemplate(ChapterInfo info, string templateText)
     {
         var names = templateText
@@ -118,6 +168,13 @@ public sealed partial class ChapterEditingService(IChapterTimeFormatter timeForm
         return new ChapterEditResult(info with { Chapters = chapters }, []);
     }
 
+    /// <summary>
+    /// Executes the ShiftFramesForward operation.
+    /// </summary>
+    /// <param name="info">The chapter data to process.</param>
+    /// <param name="frames">The frame count.</param>
+    /// <param name="framesPerSecond">The frame rate in frames per second.</param>
+    /// <returns>The operation result.</returns>
     public ChapterEditResult ShiftFramesForward(ChapterInfo info, int frames, decimal framesPerSecond)
     {
         if (framesPerSecond <= 0)
@@ -135,6 +192,13 @@ public sealed partial class ChapterEditingService(IChapterTimeFormatter timeForm
         return new ChapterEditResult(info with { Chapters = Renumber(chapters) }, []);
     }
 
+    /// <summary>
+    /// Executes the CreateZones operation.
+    /// </summary>
+    /// <param name="info">The chapter data to process.</param>
+    /// <param name="indexes">The zero-based chapter indexes.</param>
+    /// <param name="framesPerSecond">The frame rate in frames per second.</param>
+    /// <returns>The operation result.</returns>
     public ChapterZonesResult CreateZones(ChapterInfo info, IReadOnlySet<int> indexes, decimal framesPerSecond)
     {
         if (framesPerSecond <= 0)

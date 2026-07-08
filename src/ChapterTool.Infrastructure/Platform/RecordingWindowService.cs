@@ -1,4 +1,4 @@
-using ChapterTool.Core.Services;
+using ChapterTool.Infrastructure.Services;
 
 namespace ChapterTool.Infrastructure.Platform;
 

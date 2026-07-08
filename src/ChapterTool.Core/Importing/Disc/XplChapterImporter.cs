@@ -5,17 +5,32 @@ using ChapterTool.Core.Models;
 
 namespace ChapterTool.Core.Importing.Disc;
 
+/// <summary>
+/// Imports HD DVD chapter data from XPL playlist files.
+/// </summary>
 public sealed class XplChapterImporter : IChapterImporter
 {
     private static readonly XNamespace Namespace = "http://www.dvdforum.org/2005/HDDVDVideo/Playlist";
 
+    /// <summary>
+    /// Gets the stable importer identifier.
+    /// </summary>
     public string Id => "hddvd-xpl";
 
+    /// <summary>
+    /// Gets the supported file extensions for this importer.
+    /// </summary>
     public IReadOnlySet<string> SupportedExtensions { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         ".xpl"
     };
 
+    /// <summary>
+    /// Imports chapters from the supplied request.
+    /// </summary>
+    /// <param name="request">The import request.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The operation result.</returns>
     public async ValueTask<ChapterImportResult> ImportAsync(ChapterImportRequest request, CancellationToken cancellationToken)
     {
         try

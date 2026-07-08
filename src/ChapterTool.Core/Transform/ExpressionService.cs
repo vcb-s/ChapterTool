@@ -3,6 +3,9 @@ using ChapterTool.Core.Diagnostics;
 
 namespace ChapterTool.Core.Transform;
 
+/// <summary>
+/// Evaluates infix and postfix mathematical expressions for chapter time transforms.
+/// </summary>
 public sealed class ExpressionService : IExpressionService
 {
     private static readonly Dictionary<string, decimal> Constants = new(StringComparer.Ordinal)
@@ -74,6 +77,13 @@ public sealed class ExpressionService : IExpressionService
         "?:"
     };
 
+    /// <summary>
+    /// Executes the EvaluateInfix operation.
+    /// </summary>
+    /// <param name="expression">The expression text.</param>
+    /// <param name="timeSeconds">The chapter time in seconds.</param>
+    /// <param name="framesPerSecond">The frame rate in frames per second.</param>
+    /// <returns>The operation result.</returns>
     public ExpressionEvaluationResult EvaluateInfix(string expression, decimal timeSeconds, decimal framesPerSecond)
     {
         try
@@ -94,6 +104,13 @@ public sealed class ExpressionService : IExpressionService
         }
     }
 
+    /// <summary>
+    /// Executes the EvaluatePostfix operation.
+    /// </summary>
+    /// <param name="tokens">The tokens value.</param>
+    /// <param name="timeSeconds">The chapter time in seconds.</param>
+    /// <param name="framesPerSecond">The frame rate in frames per second.</param>
+    /// <returns>The operation result.</returns>
     public ExpressionEvaluationResult EvaluatePostfix(IEnumerable<string> tokens, decimal timeSeconds, decimal framesPerSecond)
     {
         try
@@ -165,6 +182,13 @@ public sealed class ExpressionService : IExpressionService
 
     private sealed class ExpressionException : InvalidOperationException
     {
+        /// <summary>
+        /// Executes the ExpressionException operation.
+        /// </summary>
+        /// <param name="code">The diagnostic code.</param>
+        /// <param name="message">The diagnostic message.</param>
+        /// <param name="arguments">The arguments value.</param>
+        /// <param name="innerException">The innerException value.</param>
         public ExpressionException(string code, string message, IReadOnlyDictionary<string, object?>? arguments = null, Exception? innerException = null)
             : base(message, innerException)
         {
@@ -172,7 +196,13 @@ public sealed class ExpressionService : IExpressionService
             Arguments = arguments;
         }
 
+        /// <summary>
+        /// Gets the Code value.
+        /// </summary>
         public string Code { get; }
+        /// <summary>
+        /// Provides the object value.
+        /// </summary>
         public IReadOnlyDictionary<string, object?>? Arguments { get; }
     }
 

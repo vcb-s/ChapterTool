@@ -31,9 +31,21 @@ jobs:
       - name: Test
         run: dotnet test ChapterTool.Avalonia.slnx --configuration Release --no-build --blame-hang --blame-hang-timeout 10m --blame-hang-dump-type full
 
-  publish:
+      - name: Pack ChapterTool.Core
+        run: dotnet pack src/ChapterTool.Core/ChapterTool.Core.csproj --configuration Release --no-restore --output artifacts/nuget
+
+      - name: Upload NuGet artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChapterTool.Core.nupkg
+          path: |
+            artifacts/nuget/*.nupkg
+            artifacts/nuget/*.snupkg
+          if-no-files-found: error
+
+  publish-app:
     needs: build-test
-    name: Publish (${{ matrix.runtime }})
+    name: Publish App (${{ matrix.runtime }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false

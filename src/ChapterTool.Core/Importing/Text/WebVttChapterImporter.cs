@@ -3,21 +3,42 @@ using ChapterTool.Core.Models;
 
 namespace ChapterTool.Core.Importing.Text;
 
+/// <summary>
+/// Imports WebVTT cue starts as chapter markers.
+/// </summary>
 public sealed class WebVttChapterImporter : IChapterImporter
 {
+    /// <summary>
+    /// Gets the stable importer identifier.
+    /// </summary>
     public string Id => "webvtt";
 
+    /// <summary>
+    /// Gets the supported file extensions for this importer.
+    /// </summary>
     public IReadOnlySet<string> SupportedExtensions { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         ".vtt"
     };
 
+    /// <summary>
+    /// Imports chapters from the supplied request.
+    /// </summary>
+    /// <param name="request">The import request.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The operation result.</returns>
     public async ValueTask<ChapterImportResult> ImportAsync(ChapterImportRequest request, CancellationToken cancellationToken)
     {
         var text = await TextImportUtilities.ReadTextAsync(request, cancellationToken);
         return ImportText(text, request.Path);
     }
 
+    /// <summary>
+    /// Imports chapters from text content.
+    /// </summary>
+    /// <param name="text">The text to parse.</param>
+    /// <param name="path">The source path.</param>
+    /// <returns>The operation result.</returns>
     public static ChapterImportResult ImportText(string text, string path = "")
     {
         text = text.Replace("\r", string.Empty, StringComparison.Ordinal);

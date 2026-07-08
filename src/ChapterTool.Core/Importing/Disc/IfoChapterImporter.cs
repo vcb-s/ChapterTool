@@ -4,15 +4,30 @@ using ChapterTool.Core.Models;
 
 namespace ChapterTool.Core.Importing.Disc;
 
+/// <summary>
+/// Imports DVD chapter data from IFO files.
+/// </summary>
 public sealed partial class IfoChapterImporter : IChapterImporter
 {
+    /// <summary>
+    /// Gets the stable importer identifier.
+    /// </summary>
     public string Id => "dvd-ifo";
 
+    /// <summary>
+    /// Gets the supported file extensions for this importer.
+    /// </summary>
     public IReadOnlySet<string> SupportedExtensions { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         ".ifo"
     };
 
+    /// <summary>
+    /// Imports chapters from the supplied request.
+    /// </summary>
+    /// <param name="request">The import request.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The operation result.</returns>
     public async ValueTask<ChapterImportResult> ImportAsync(ChapterImportRequest request, CancellationToken cancellationToken)
     {
         Stream? ownedStream = null;
@@ -45,6 +60,11 @@ public sealed partial class IfoChapterImporter : IChapterImporter
         }
     }
 
+    /// <summary>
+    /// Executes the GetStreams operation.
+    /// </summary>
+    /// <param name="path">The source path.</param>
+    /// <returns>The operation result.</returns>
     public static IReadOnlyList<ChapterInfo> GetStreams(string path)
     {
         using var stream = File.OpenRead(path);
@@ -67,8 +87,22 @@ public sealed partial class IfoChapterImporter : IChapterImporter
         return streams;
     }
 
+    /// <summary>
+    /// Executes the BcdToInt operation.
+    /// </summary>
+    /// <param name="value">The value.</param>
+    /// <returns>The operation result.</returns>
     public static int BcdToInt(byte value) => (0xFF & (value >> 4)) * 10 + (value & 0x0F);
 
+    /// <summary>
+    /// Executes the ConvertDvdPlaybackTime operation.
+    /// </summary>
+    /// <param name="hour">The hour value.</param>
+    /// <param name="minute">The minute value.</param>
+    /// <param name="second">The second value.</param>
+    /// <param name="frameByte">The frameByte value.</param>
+    /// <param name="isNtsc">The isNtsc value.</param>
+    /// <returns>The operation result.</returns>
     public static TimeSpan ConvertDvdPlaybackTime(byte hour, byte minute, byte second, byte frameByte, out bool isNtsc)
     {
         var fpsMask = frameByte >> 6;

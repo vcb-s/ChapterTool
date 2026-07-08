@@ -4,20 +4,37 @@ using ChapterTool.Core.Transform;
 
 namespace ChapterTool.Core.Exporting;
 
+/// <summary>
+/// Projects chapter output data before export by applying expressions, ordering, and naming options.
+/// </summary>
 public sealed class ChapterOutputProjectionService
 {
     private readonly ILuaExpressionScriptService luaExpressionService;
 
+    /// <summary>
+    /// Projects chapter output data before export by applying expressions, ordering, and naming options.
+    /// </summary>
+    /// <param name="luaExpressionService">The Lua expression service.</param>
     public ChapterOutputProjectionService(ILuaExpressionScriptService? luaExpressionService = null)
     {
         this.luaExpressionService = luaExpressionService ?? new LuaExpressionScriptService();
     }
 
+    /// <summary>
+    /// Projects chapter output data before export by applying expressions, ordering, and naming options.
+    /// </summary>
+    /// <param name="_">The _ value.</param>
     public ChapterOutputProjectionService(IExpressionService _)
         : this(new LuaExpressionScriptService())
     {
     }
 
+    /// <summary>
+    /// Executes the Project operation.
+    /// </summary>
+    /// <param name="info">The chapter data to process.</param>
+    /// <param name="options">The export options.</param>
+    /// <returns>The operation result.</returns>
     public ChapterOutputProjectionResult Project(ChapterInfo info, ChapterExportOptions options)
     {
         var diagnostics = new List<ChapterDiagnostic>();
@@ -92,11 +109,22 @@ public sealed class ChapterOutputProjectionService
     private static string StandardChapterName(int index) => $"Chapter {index:D2}";
 }
 
+/// <summary>
+/// Represents projected chapter output and diagnostics.
+/// </summary>
+/// <param name="Info">The Info value.</param>
+/// <param name="OutputChapters">The OutputChapters value.</param>
+/// <param name="Diagnostics">The Diagnostics value.</param>
 public sealed record ChapterOutputProjectionResult(
     ChapterInfo Info,
     IReadOnlyList<Chapter> OutputChapters,
     IReadOnlyList<ChapterDiagnostic> Diagnostics)
 {
+    /// <summary>
+    /// Represents projected chapter output and diagnostics.
+    /// </summary>
+    /// <param name="info">The chapter data to process.</param>
+    /// <param name="diagnostics">The diagnostics for the operation.</param>
     public ChapterOutputProjectionResult(ChapterInfo info, IReadOnlyList<ChapterDiagnostic> diagnostics)
         : this(info, info.Chapters.Where(static chapter => !chapter.IsSeparator).ToList(), diagnostics)
     {

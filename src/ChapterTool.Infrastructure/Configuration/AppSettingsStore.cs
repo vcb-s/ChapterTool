@@ -1,5 +1,5 @@
 using System.Text.Json;
-using ChapterTool.Core.Services;
+using ChapterTool.Infrastructure.Services;
 
 namespace ChapterTool.Infrastructure.Configuration;
 

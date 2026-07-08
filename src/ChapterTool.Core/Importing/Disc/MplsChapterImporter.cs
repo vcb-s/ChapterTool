@@ -3,6 +3,9 @@ using ChapterTool.Core.Models;
 
 namespace ChapterTool.Core.Importing.Disc;
 
+/// <summary>
+/// Imports Blu-ray chapter data from MPLS playlist files.
+/// </summary>
 public sealed class MplsChapterImporter : IChapterImporter
 {
     private static readonly double[] FrameRates =
@@ -17,13 +20,25 @@ public sealed class MplsChapterImporter : IChapterImporter
         60000d / 1001d
     ];
 
+    /// <summary>
+    /// Gets the stable importer identifier.
+    /// </summary>
     public string Id => "mpls";
 
+    /// <summary>
+    /// Gets the supported file extensions for this importer.
+    /// </summary>
     public IReadOnlySet<string> SupportedExtensions { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         ".mpls"
     };
 
+    /// <summary>
+    /// Imports chapters from the supplied request.
+    /// </summary>
+    /// <param name="request">The import request.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The operation result.</returns>
     public async ValueTask<ChapterImportResult> ImportAsync(ChapterImportRequest request, CancellationToken cancellationToken)
     {
         await using var stream = request.Content ?? File.OpenRead(request.Path);
@@ -39,6 +54,11 @@ public sealed class MplsChapterImporter : IChapterImporter
         }
     }
 
+    /// <summary>
+    /// Executes the PtsToTime operation.
+    /// </summary>
+    /// <param name="pts">The pts value.</param>
+    /// <returns>The operation result.</returns>
     public static TimeSpan PtsToTime(uint pts)
     {
         var total = pts / 45000M;
@@ -47,6 +67,16 @@ public sealed class MplsChapterImporter : IChapterImporter
         return new TimeSpan(0, 0, 0, (int)seconds, (int)milliseconds);
     }
 
+    /// <summary>
+    /// Executes the ReadPlaylistInfo operation.
+    /// </summary>
+    /// <param name="path">The source path.</param>
+    /// <param name="title">The display title.</param>
+    /// <param name="sourceName">The source display name.</param>
+    /// <param name="sourceIndex">The source index.</param>
+    /// <param name="sourceType">The source type.</param>
+    /// <param name="duration">The duration.</param>
+    /// <returns>The operation result.</returns>
     public static ChapterInfo ReadPlaylistInfo(
         string path,
         string title = "",

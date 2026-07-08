@@ -4,6 +4,11 @@ namespace ChapterTool.Core.Importing.Cue;
 
 internal static class CueTextDecoder
 {
+    /// <summary>
+    /// Executes the Decode operation.
+    /// </summary>
+    /// <param name="bytes">The bytes value.</param>
+    /// <returns>The operation result.</returns>
     public static string Decode(byte[] bytes)
     {
         if (bytes is [0xEF, 0xBB, 0xBF, ..])

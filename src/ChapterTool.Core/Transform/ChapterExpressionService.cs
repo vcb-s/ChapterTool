@@ -4,20 +4,38 @@ using System.Globalization;
 
 namespace ChapterTool.Core.Transform;
 
+/// <summary>
+/// Applies expression-based time transforms to chapter data.
+/// </summary>
 public sealed class ChapterExpressionService
 {
     private readonly ILuaExpressionScriptService luaExpressionService;
 
+    /// <summary>
+    /// Applies expression-based time transforms to chapter data.
+    /// </summary>
+    /// <param name="luaExpressionService">The Lua expression service.</param>
     public ChapterExpressionService(ILuaExpressionScriptService? luaExpressionService = null)
     {
         this.luaExpressionService = luaExpressionService ?? new LuaExpressionScriptService();
     }
 
+    /// <summary>
+    /// Applies expression-based time transforms to chapter data.
+    /// </summary>
+    /// <param name="_">The _ value.</param>
     public ChapterExpressionService(IExpressionService _)
         : this(new LuaExpressionScriptService())
     {
     }
 
+    /// <summary>
+    /// Executes the Apply operation.
+    /// </summary>
+    /// <param name="info">The chapter data to process.</param>
+    /// <param name="applyExpression">Whether to apply the expression.</param>
+    /// <param name="expression">The expression text.</param>
+    /// <returns>The operation result.</returns>
     public ChapterExpressionResult Apply(ChapterInfo info, bool applyExpression, string expression)
     {
         if (!applyExpression)
@@ -97,6 +115,11 @@ public sealed class ChapterExpressionService
     private sealed record FrameDisplay(string Text, FrameAccuracy Accuracy);
 }
 
+/// <summary>
+/// Represents the result of applying an expression transform.
+/// </summary>
+/// <param name="Info">The Info value.</param>
+/// <param name="Diagnostics">The Diagnostics value.</param>
 public sealed record ChapterExpressionResult(
     ChapterInfo Info,
     IReadOnlyList<ChapterDiagnostic> Diagnostics);

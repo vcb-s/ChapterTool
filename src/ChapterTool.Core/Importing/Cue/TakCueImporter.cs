@@ -3,17 +3,33 @@ using ChapterTool.Core.Diagnostics;
 
 namespace ChapterTool.Core.Importing.Cue;
 
+/// <summary>
+/// Imports embedded CUE sheet chapter data from TAK files.
+/// </summary>
+/// <param name="parser">The CUE sheet parser.</param>
 public sealed class TakCueImporter(CueSheetParser? parser = null) : IChapterImporter
 {
     private readonly CueSheetParser parser = parser ?? new CueSheetParser();
 
+    /// <summary>
+    /// Gets the stable importer identifier.
+    /// </summary>
     public string Id => "tak-cue";
 
+    /// <summary>
+    /// Gets the supported file extensions for this importer.
+    /// </summary>
     public IReadOnlySet<string> SupportedExtensions { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         ".tak"
     };
 
+    /// <summary>
+    /// Imports chapters from the supplied request.
+    /// </summary>
+    /// <param name="request">The import request.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The operation result.</returns>
     public async ValueTask<ChapterImportResult> ImportAsync(ChapterImportRequest request, CancellationToken cancellationToken)
     {
         byte[] bytes;
@@ -42,6 +58,11 @@ public sealed class TakCueImporter(CueSheetParser? parser = null) : IChapterImpo
         return CueSheetParser.Parse(cue, request.Path);
     }
 
+    /// <summary>
+    /// Executes the ExtractCue operation.
+    /// </summary>
+    /// <param name="data">The data value.</param>
+    /// <returns>The operation result.</returns>
     public static string? ExtractCue(ReadOnlySpan<byte> data)
     {
         var marker = "cuesheet"u8;

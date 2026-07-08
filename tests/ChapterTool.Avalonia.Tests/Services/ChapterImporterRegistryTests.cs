@@ -3,7 +3,7 @@ using ChapterTool.Core.Diagnostics;
 using ChapterTool.Core.Importing;
 using ChapterTool.Core.Importing.Media;
 using ChapterTool.Core.Models;
-using ChapterTool.Core.Services;
+using ChapterTool.Infrastructure.Services;
 using ChapterTool.Core.Transform;
 
 namespace ChapterTool.Avalonia.Tests.Services;

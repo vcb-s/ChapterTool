@@ -6,10 +6,16 @@ using Lua.Standard;
 
 namespace ChapterTool.Core.Transform;
 
+/// <summary>
+/// Evaluates Lua scripts against chapter expression contexts.
+/// </summary>
 public sealed partial class LuaExpressionScriptService : ILuaExpressionScriptService
 {
     private static readonly Regex ReturnOrTransformPattern = ReturnOrTransformRegex();
 
+    /// <summary>
+    /// Gets the built-in Lua expression presets.
+    /// </summary>
     public IReadOnlyList<LuaExpressionScriptPreset> Presets { get; } =
     [
         new(
@@ -34,6 +40,12 @@ public sealed partial class LuaExpressionScriptService : ILuaExpressionScriptSer
             "return t - (0.5 / fps)")
     ];
 
+    /// <summary>
+    /// Executes the Evaluate operation.
+    /// </summary>
+    /// <param name="scriptText">The Lua script text.</param>
+    /// <param name="context">The expression context.</param>
+    /// <returns>The operation result.</returns>
     public LuaExpressionEvaluationResult Evaluate(string scriptText, LuaExpressionContext context)
     {
         var fallback = context.TimeSeconds;

@@ -4,17 +4,33 @@ using ChapterTool.Core.Diagnostics;
 
 namespace ChapterTool.Core.Importing.Cue;
 
+/// <summary>
+/// Imports embedded CUE sheet chapter data from FLAC files.
+/// </summary>
+/// <param name="parser">The CUE sheet parser.</param>
 public sealed class FlacCueImporter(CueSheetParser? parser = null) : IChapterImporter
 {
     private readonly CueSheetParser parser = parser ?? new CueSheetParser();
 
+    /// <summary>
+    /// Gets the stable importer identifier.
+    /// </summary>
     public string Id => "flac-cue";
 
+    /// <summary>
+    /// Gets the supported file extensions for this importer.
+    /// </summary>
     public IReadOnlySet<string> SupportedExtensions { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         ".flac"
     };
 
+    /// <summary>
+    /// Imports chapters from the supplied request.
+    /// </summary>
+    /// <param name="request">The import request.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The operation result.</returns>
     public async ValueTask<ChapterImportResult> ImportAsync(ChapterImportRequest request, CancellationToken cancellationToken)
     {
         await using var stream = request.Content ?? File.OpenRead(request.Path);

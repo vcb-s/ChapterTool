@@ -2,18 +2,34 @@ using System.Globalization;
 
 namespace ChapterTool.Core.Exporting;
 
+/// <summary>
+/// Represents a Matroska XML chapter language option.
+/// </summary>
+/// <param name="Code">The Code value.</param>
+/// <param name="DisplayName">The DisplayName value.</param>
 public sealed record XmlChapterLanguage(string Code, string DisplayName);
 
+/// <summary>
+/// Provides Matroska XML chapter language validation and normalization.
+/// </summary>
 public static class XmlChapterLanguageCatalog
 {
     private static readonly string[] QuickCodes = ["und", "zh", "ja", "en", "jpn"];
 
+    /// <summary>
+    /// Gets known Matroska XML chapter languages.
+    /// </summary>
     public static IReadOnlyList<XmlChapterLanguage> Languages { get; } = BuildLanguages();
 
     private static readonly HashSet<string> LanguageCodes = Languages
         .Select(static language => language.Code)
         .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Returns whether ValidCode applies.
+    /// </summary>
+    /// <param name="code">The diagnostic code.</param>
+    /// <returns>true when the condition is met; otherwise, false.</returns>
     public static bool IsValidCode(string? code)
     {
         if (string.IsNullOrWhiteSpace(code))
@@ -24,6 +40,11 @@ public static class XmlChapterLanguageCatalog
         return LanguageCodes.Contains(code.Trim());
     }
 
+    /// <summary>
+    /// Executes the NormalizeOrDefault operation.
+    /// </summary>
+    /// <param name="code">The diagnostic code.</param>
+    /// <returns>The operation result.</returns>
     public static string NormalizeOrDefault(string? code)
     {
         if (string.IsNullOrWhiteSpace(code))

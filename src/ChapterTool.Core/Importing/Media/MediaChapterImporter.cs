@@ -4,6 +4,11 @@ using ChapterTool.Core.Models;
 
 namespace ChapterTool.Core.Importing.Media;
 
+/// <summary>
+/// Imports media chapter metadata through an injected media chapter reader.
+/// </summary>
+/// <param name="reader">The media chapter reader.</param>
+/// <param name="supportedExtensions">The supportedExtensions value.</param>
 public sealed class MediaChapterImporter(
     IMediaChapterReader reader,
     IEnumerable<string>? supportedExtensions = null) : IChapterImporter
@@ -35,12 +40,24 @@ public sealed class MediaChapterImporter(
         ".ffmeta"
     };
 
+    /// <summary>
+    /// Gets the stable importer identifier.
+    /// </summary>
     public string Id => "ffprobe-media";
 
+    /// <summary>
+    /// Gets the supported file extensions for this importer.
+    /// </summary>
     public IReadOnlySet<string> SupportedExtensions { get; } = supportedExtensions is null
         ? DefaultSupportedExtensions
         : new HashSet<string>(supportedExtensions, StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Imports chapters from the supplied request.
+    /// </summary>
+    /// <param name="request">The import request.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The operation result.</returns>
     public async ValueTask<ChapterImportResult> ImportAsync(ChapterImportRequest request, CancellationToken cancellationToken)
     {
         var read = await reader.ReadAsync(request.Path, cancellationToken);

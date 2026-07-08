@@ -3,6 +3,10 @@ using ChapterTool.Core.Diagnostics;
 
 namespace ChapterTool.Core.Transform;
 
+/// <summary>
+/// Provides tokenization, diagnostics, and completions for expression authoring.
+/// </summary>
+/// <param name="luaExpressionService">The Lua expression service.</param>
 public sealed class ExpressionAuthoringService(ILuaExpressionScriptService? luaExpressionService = null) : IExpressionAuthoringService
 {
     private static readonly HashSet<string> Keywords = new(StringComparer.Ordinal)
@@ -17,8 +21,19 @@ public sealed class ExpressionAuthoringService(ILuaExpressionScriptService? luaE
 
     private readonly ILuaExpressionScriptService luaExpressionService = luaExpressionService ?? new LuaExpressionScriptService();
 
+    /// <summary>
+    /// Gets symbols available to expression authoring.
+    /// </summary>
     public IReadOnlyList<ExpressionSymbol> Symbols { get; } = BuildSymbols(luaExpressionService ?? new LuaExpressionScriptService());
 
+    /// <summary>
+    /// Executes the Analyze operation.
+    /// </summary>
+    /// <param name="expression">The expression text.</param>
+    /// <param name="caretIndex">The caret index in the expression.</param>
+    /// <param name="timeSeconds">The chapter time in seconds.</param>
+    /// <param name="framesPerSecond">The frame rate in frames per second.</param>
+    /// <returns>The operation result.</returns>
     public ExpressionAnalysisResult Analyze(string expression, int caretIndex, decimal timeSeconds = 0, decimal framesPerSecond = 24)
     {
         expression ??= string.Empty;

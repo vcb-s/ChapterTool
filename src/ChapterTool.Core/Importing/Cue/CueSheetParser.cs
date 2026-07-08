@@ -5,8 +5,17 @@ using ChapterTool.Core.Models;
 
 namespace ChapterTool.Core.Importing.Cue;
 
+/// <summary>
+/// Parses CUE sheet text into ChapterTool chapter data.
+/// </summary>
 public sealed partial class CueSheetParser
 {
+    /// <summary>
+    /// Executes the Parse operation.
+    /// </summary>
+    /// <param name="text">The text to parse.</param>
+    /// <param name="path">The source path.</param>
+    /// <returns>The operation result.</returns>
     public static ChapterImportResult Parse(string text, string path = "")
     {
         if (string.IsNullOrWhiteSpace(text))

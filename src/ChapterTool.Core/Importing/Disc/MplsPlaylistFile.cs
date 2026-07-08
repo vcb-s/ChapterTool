@@ -11,6 +11,11 @@ internal sealed record MplsPlaylistFile(
     MplsPlayListMark PlayListMark,
     MplsExtensionData? ExtensionData)
 {
+    /// <summary>
+    /// Executes the Read operation.
+    /// </summary>
+    /// <param name="stream">The source stream.</param>
+    /// <returns>The operation result.</returns>
     public static MplsPlaylistFile Read(Stream stream)
     {
         var typeIndicator = stream.ReadAscii(4);
@@ -64,16 +69,36 @@ internal sealed record MplsAppInfoPlayList(
     MplsUOMaskTable UOMaskTable,
     ushort FlagField)
 {
+    /// <summary>
+    /// Gets the RandomAccessFlag value.
+    /// </summary>
     public bool RandomAccessFlag => ((FlagField >> 15) & 1) == 1;
 
+    /// <summary>
+    /// Gets the AudioMixFlag value.
+    /// </summary>
     public bool AudioMixFlag => ((FlagField >> 14) & 1) == 1;
 
+    /// <summary>
+    /// Gets the LosslessBypassFlag value.
+    /// </summary>
     public bool LosslessBypassFlag => ((FlagField >> 13) & 1) == 1;
 
+    /// <summary>
+    /// Gets the MVCBaseViewRFlag value.
+    /// </summary>
     public bool MVCBaseViewRFlag => ((FlagField >> 12) & 1) == 1;
 
+    /// <summary>
+    /// Gets the SDRConversionNotificationFlag value.
+    /// </summary>
     public bool SDRConversionNotificationFlag => ((FlagField >> 11) & 1) == 1;
 
+    /// <summary>
+    /// Executes the Read operation.
+    /// </summary>
+    /// <param name="stream">The source stream.</param>
+    /// <returns>The operation result.</returns>
     public static MplsAppInfoPlayList Read(Stream stream)
     {
         var length = stream.ReadUInt32BigEndian();
@@ -95,6 +120,11 @@ internal sealed record MplsPlayList(
     IReadOnlyList<MplsPlayItem> PlayItems,
     IReadOnlyList<MplsSubPath> SubPaths)
 {
+    /// <summary>
+    /// Executes the Read operation.
+    /// </summary>
+    /// <param name="stream">The source stream.</param>
+    /// <returns>The operation result.</returns>
     public static MplsPlayList Read(Stream stream)
     {
         var length = stream.ReadUInt32BigEndian();
@@ -121,14 +151,25 @@ internal sealed record MplsPlayList(
 
 internal sealed record MplsClipName(string ClipInformationFileName, string ClipCodecIdentifier)
 {
+    /// <summary>
+    /// Executes the Read operation.
+    /// </summary>
+    /// <param name="stream">The source stream.</param>
+    /// <returns>The operation result.</returns>
     public static MplsClipName Read(Stream stream) =>
         new(stream.ReadAscii(5), stream.ReadAscii(4));
 
+    /// <inheritdoc />
     public override string ToString() => $"{ClipInformationFileName}.{ClipCodecIdentifier}";
 }
 
 internal sealed record MplsClipNameWithRef(MplsClipName ClipName, byte RefToSTCID)
 {
+    /// <summary>
+    /// Executes the Read operation.
+    /// </summary>
+    /// <param name="stream">The source stream.</param>
+    /// <returns>The operation result.</returns>
     public static MplsClipNameWithRef Read(Stream stream) =>
         new(MplsClipName.Read(stream), stream.ReadByteChecked());
 }
@@ -147,16 +188,33 @@ internal sealed record MplsPlayItem(
     MplsMultiAngle? MultiAngle,
     MplsSTNTable STNTable)
 {
+    /// <summary>
+    /// Gets the IsMultiAngle value.
+    /// </summary>
     public bool IsMultiAngle => ((FlagField >> 4) & 1) == 1;
 
+    /// <summary>
+    /// Gets the ConnectionCondition value.
+    /// </summary>
     public byte ConnectionCondition => (byte)(FlagField & 0x0f);
 
+    /// <summary>
+    /// Gets the PlayItemRandomAccessFlag value.
+    /// </summary>
     public bool PlayItemRandomAccessFlag => PlayItemFlagField >> 7 == 1;
 
+    /// <summary>
+    /// Gets the FullName value.
+    /// </summary>
     public string FullName => IsMultiAngle
         ? string.Join('&', new[] { ClipName.ClipInformationFileName }.Concat(MultiAngle?.Angles.Select(angle => angle.ClipName.ClipInformationFileName) ?? []))
         : ClipName.ClipInformationFileName;
 
+    /// <summary>
+    /// Executes the Read operation.
+    /// </summary>
+    /// <param name="stream">The source stream.</param>
+    /// <returns>The operation result.</returns>
     public static MplsPlayItem Read(Stream stream)
     {
         var length = stream.ReadUInt16BigEndian();
@@ -192,37 +250,132 @@ internal sealed record MplsPlayItem(
 
 internal sealed record MplsUOMaskTable(byte[] FlagField)
 {
+    /// <summary>
+    /// Gets the MenuCall value.
+    /// </summary>
     public bool MenuCall => Bit(0);
+    /// <summary>
+    /// Gets the TitleSearch value.
+    /// </summary>
     public bool TitleSearch => Bit(1);
+    /// <summary>
+    /// Gets the ChapterSearch value.
+    /// </summary>
     public bool ChapterSearch => Bit(2);
+    /// <summary>
+    /// Gets the TimeSearch value.
+    /// </summary>
     public bool TimeSearch => Bit(3);
+    /// <summary>
+    /// Gets the SkipToNextPoint value.
+    /// </summary>
     public bool SkipToNextPoint => Bit(4);
+    /// <summary>
+    /// Gets the SkipToPrevPoint value.
+    /// </summary>
     public bool SkipToPrevPoint => Bit(5);
+    /// <summary>
+    /// Gets the Stop value.
+    /// </summary>
     public bool Stop => Bit(7);
+    /// <summary>
+    /// Gets the PauseOn value.
+    /// </summary>
     public bool PauseOn => Bit(8);
+    /// <summary>
+    /// Gets the StillOff value.
+    /// </summary>
     public bool StillOff => Bit(10);
+    /// <summary>
+    /// Gets the ForwardPlay value.
+    /// </summary>
     public bool ForwardPlay => Bit(11);
+    /// <summary>
+    /// Gets the BackwardPlay value.
+    /// </summary>
     public bool BackwardPlay => Bit(12);
+    /// <summary>
+    /// Gets the Resume value.
+    /// </summary>
     public bool Resume => Bit(13);
+    /// <summary>
+    /// Gets the MoveUpSelectedButton value.
+    /// </summary>
     public bool MoveUpSelectedButton => Bit(14);
+    /// <summary>
+    /// Gets the MoveDownSelectedButton value.
+    /// </summary>
     public bool MoveDownSelectedButton => Bit(15);
+    /// <summary>
+    /// Gets the MoveLeftSelectedButton value.
+    /// </summary>
     public bool MoveLeftSelectedButton => Bit(16);
+    /// <summary>
+    /// Gets the MoveRightSelectedButton value.
+    /// </summary>
     public bool MoveRightSelectedButton => Bit(17);
+    /// <summary>
+    /// Gets the SelectButton value.
+    /// </summary>
     public bool SelectButton => Bit(18);
+    /// <summary>
+    /// Gets the ActivateButton value.
+    /// </summary>
     public bool ActivateButton => Bit(19);
+    /// <summary>
+    /// Gets the SelectAndActivateButton value.
+    /// </summary>
     public bool SelectAndActivateButton => Bit(20);
+    /// <summary>
+    /// Gets the PrimaryAudioStreamNumberChange value.
+    /// </summary>
     public bool PrimaryAudioStreamNumberChange => Bit(21);
+    /// <summary>
+    /// Gets the AngleNumberChange value.
+    /// </summary>
     public bool AngleNumberChange => Bit(23);
+    /// <summary>
+    /// Gets the PopupOn value.
+    /// </summary>
     public bool PopupOn => Bit(24);
+    /// <summary>
+    /// Gets the PopupOff value.
+    /// </summary>
     public bool PopupOff => Bit(25);
+    /// <summary>
+    /// Gets the PrimaryPGEnableDisable value.
+    /// </summary>
     public bool PrimaryPGEnableDisable => Bit(26);
+    /// <summary>
+    /// Gets the PrimaryPGStreamNumberChange value.
+    /// </summary>
     public bool PrimaryPGStreamNumberChange => Bit(27);
+    /// <summary>
+    /// Gets the SecondaryVideoEnableDisable value.
+    /// </summary>
     public bool SecondaryVideoEnableDisable => Bit(28);
+    /// <summary>
+    /// Gets the SecondaryVideoStreamNumberChange value.
+    /// </summary>
     public bool SecondaryVideoStreamNumberChange => Bit(29);
+    /// <summary>
+    /// Gets the SecondaryAudioEnableDisable value.
+    /// </summary>
     public bool SecondaryAudioEnableDisable => Bit(30);
+    /// <summary>
+    /// Gets the SecondaryAudioStreamNumberChange value.
+    /// </summary>
     public bool SecondaryAudioStreamNumberChange => Bit(31);
+    /// <summary>
+    /// Gets the SecondaryPGStreamNumberChange value.
+    /// </summary>
     public bool SecondaryPGStreamNumberChange => Bit(33);
 
+    /// <summary>
+    /// Executes the Read operation.
+    /// </summary>
+    /// <param name="stream">The source stream.</param>
+    /// <returns>The operation result.</returns>
     public static MplsUOMaskTable Read(Stream stream) =>
         new(stream.ReadExactBytes(8));
 
@@ -235,10 +388,21 @@ internal sealed record MplsMultiAngle(
     byte FlagField,
     IReadOnlyList<MplsClipNameWithRef> Angles)
 {
+    /// <summary>
+    /// Gets the IsDifferentAudios value.
+    /// </summary>
     public bool IsDifferentAudios => ((FlagField >> 1) & 1) == 1;
 
+    /// <summary>
+    /// Gets the IsSeamlessAngleChange value.
+    /// </summary>
     public bool IsSeamlessAngleChange => (FlagField & 1) == 1;
 
+    /// <summary>
+    /// Executes the Read operation.
+    /// </summary>
+    /// <param name="stream">The source stream.</param>
+    /// <returns>The operation result.</returns>
     public static MplsMultiAngle Read(Stream stream)
     {
         var numberOfAngles = stream.ReadByteChecked();
@@ -260,8 +424,16 @@ internal sealed record MplsSubPath(
     byte NumberOfSubPlayItems,
     IReadOnlyList<MplsSubPlayItem> SubPlayItems)
 {
+    /// <summary>
+    /// Gets the IsRepeatSubPath value.
+    /// </summary>
     public bool IsRepeatSubPath => (FlagField & 1) == 1;
 
+    /// <summary>
+    /// Executes the Read operation.
+    /// </summary>
+    /// <param name="stream">The source stream.</param>
+    /// <returns>The operation result.</returns>
     public static MplsSubPath Read(Stream stream)
     {
         var length = stream.ReadUInt32BigEndian();
@@ -294,10 +466,21 @@ internal sealed record MplsSubPlayItem(
     byte NumberOfMultiClipEntries,
     IReadOnlyList<MplsClipNameWithRef> MultiClipEntries)
 {
+    /// <summary>
+    /// Gets the ConnectionCondition value.
+    /// </summary>
     public byte ConnectionCondition => (byte)((FlagField >> 1) & 0x0f);
 
+    /// <summary>
+    /// Gets the IsMultiClipEntries value.
+    /// </summary>
     public bool IsMultiClipEntries => (FlagField & 1) == 1;
 
+    /// <summary>
+    /// Executes the Read operation.
+    /// </summary>
+    /// <param name="stream">The source stream.</param>
+    /// <returns>The operation result.</returns>
     public static MplsSubPlayItem Read(Stream stream)
     {
         var length = stream.ReadUInt16BigEndian();
@@ -356,8 +539,16 @@ internal sealed record MplsSTNTable(
     IReadOnlyList<MplsBasicStreamEntry> PIPPGStreamEntries,
     IReadOnlyList<MplsBasicStreamEntry> DVStreamEntries)
 {
+    /// <summary>
+    /// Gets the SubPathStreamEntries value.
+    /// </summary>
     public IReadOnlyList<MplsBasicStreamEntry> SubPathStreamEntries => PIPPGStreamEntries.Concat(DVStreamEntries).ToList();
 
+    /// <summary>
+    /// Executes the Read operation.
+    /// </summary>
+    /// <param name="stream">The source stream.</param>
+    /// <returns>The operation result.</returns>
     public static MplsSTNTable Read(Stream stream)
     {
         var length = stream.ReadUInt16BigEndian();
@@ -417,6 +608,11 @@ internal sealed record MplsSTNTable(
 
 internal sealed record MplsBasicStreamEntry(MplsStreamEntry StreamEntry, MplsStreamAttributes StreamAttributes)
 {
+    /// <summary>
+    /// Executes the Read operation.
+    /// </summary>
+    /// <param name="stream">The source stream.</param>
+    /// <returns>The operation result.</returns>
     public static MplsBasicStreamEntry Read(Stream stream) =>
         new(MplsStreamEntry.Read(stream), MplsStreamAttributes.Read(stream));
 }
@@ -428,6 +624,11 @@ internal sealed record MplsStreamEntry(
     byte? RefToSubClipID,
     ushort RefToStreamPID)
 {
+    /// <summary>
+    /// Executes the Read operation.
+    /// </summary>
+    /// <param name="stream">The source stream.</param>
+    /// <returns>The operation result.</returns>
     public static MplsStreamEntry Read(Stream stream)
     {
         var length = stream.ReadByteChecked();
@@ -475,6 +676,11 @@ internal sealed record MplsStreamAttributes(
     byte? CharacterCode,
     string? LanguageCode)
 {
+    /// <summary>
+    /// Executes the Read operation.
+    /// </summary>
+    /// <param name="stream">The source stream.</param>
+    /// <returns>The operation result.</returns>
     public static MplsStreamAttributes Read(Stream stream)
     {
         var length = stream.ReadByteChecked();
@@ -572,6 +778,11 @@ internal sealed record MplsPlayListMark(
     ushort NumberOfPlayListMarks,
     IReadOnlyList<MplsMark> Marks)
 {
+    /// <summary>
+    /// Executes the Read operation.
+    /// </summary>
+    /// <param name="stream">The source stream.</param>
+    /// <returns>The operation result.</returns>
     public static MplsPlayListMark Read(Stream stream)
     {
         var length = stream.ReadUInt32BigEndian();
@@ -595,6 +806,11 @@ internal sealed record MplsMark(
     ushort EntryESPID,
     uint Duration)
 {
+    /// <summary>
+    /// Executes the Read operation.
+    /// </summary>
+    /// <param name="stream">The source stream.</param>
+    /// <returns>The operation result.</returns>
     public static MplsMark Read(Stream stream)
     {
         stream.SkipBytes(1);
@@ -614,6 +830,11 @@ internal sealed record MplsExtensionData(
     IReadOnlyList<MplsExtDataEntry> ExtDataEntries,
     byte[] DataBlock)
 {
+    /// <summary>
+    /// Executes the Read operation.
+    /// </summary>
+    /// <param name="stream">The source stream.</param>
+    /// <returns>The operation result.</returns>
     public static MplsExtensionData Read(Stream stream)
     {
         var length = stream.ReadUInt32BigEndian();
@@ -645,6 +866,11 @@ internal sealed record MplsExtDataEntry(
     uint ExtDataStartAddress,
     uint ExtDataLength)
 {
+    /// <summary>
+    /// Executes the Read operation.
+    /// </summary>
+    /// <param name="stream">The source stream.</param>
+    /// <returns>The operation result.</returns>
     public static MplsExtDataEntry Read(Stream stream) =>
         new(
             stream.ReadUInt16BigEndian(),
@@ -655,6 +881,11 @@ internal sealed record MplsExtDataEntry(
 
 internal static class MplsStreamReadExtensions
 {
+    /// <summary>
+    /// Executes the ReadByteChecked operation.
+    /// </summary>
+    /// <param name="stream">The source stream.</param>
+    /// <returns>The operation result.</returns>
     public static byte ReadByteChecked(this Stream stream)
     {
         var value = stream.ReadByte();

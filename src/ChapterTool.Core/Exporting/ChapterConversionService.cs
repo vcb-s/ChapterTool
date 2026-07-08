@@ -5,8 +5,18 @@ using ChapterTool.Core.Transform;
 
 namespace ChapterTool.Core.Exporting;
 
+/// <summary>
+/// Provides chapter conversion helpers for specialized text formats.
+/// </summary>
+/// <param name="timeFormatter">The chapter time formatter.</param>
 public sealed class ChapterConversionService(IChapterTimeFormatter timeFormatter)
 {
+    /// <summary>
+    /// Executes the ToCelltimes operation.
+    /// </summary>
+    /// <param name="info">The chapter data to process.</param>
+    /// <param name="framesPerSecond">The frame rate in frames per second.</param>
+    /// <returns>The operation result.</returns>
     public static ChapterConversionResult ToCelltimes(ChapterInfo info, decimal framesPerSecond)
     {
         ArgumentNullException.ThrowIfNull(info);
@@ -25,6 +35,13 @@ public sealed class ChapterConversionService(IChapterTimeFormatter timeFormatter
         return Success(string.Join(Environment.NewLine, lines), ".celltimes.txt");
     }
 
+    /// <summary>
+    /// Executes the ChapterTextToQpfile operation.
+    /// </summary>
+    /// <param name="chapterText">The chapterText value.</param>
+    /// <param name="framesPerSecond">The frame rate in frames per second.</param>
+    /// <param name="timecodeText">The timecodeText value.</param>
+    /// <returns>The operation result.</returns>
     public ChapterConversionResult ChapterTextToQpfile(string chapterText, decimal framesPerSecond, string? timecodeText = null)
     {
         if (string.IsNullOrWhiteSpace(chapterText))
@@ -114,6 +131,11 @@ public sealed class ChapterConversionService(IChapterTimeFormatter timeFormatter
             this.milliseconds = milliseconds;
         }
 
+        /// <summary>
+        /// Executes the Parse operation.
+        /// </summary>
+        /// <param name="text">The text to parse.</param>
+        /// <returns>The operation result.</returns>
         public static TimecodeMap? Parse(string text)
         {
             var values = text
@@ -128,6 +150,11 @@ public sealed class ChapterConversionService(IChapterTimeFormatter timeFormatter
             return values.Length == 0 ? null : new TimecodeMap(values);
         }
 
+        /// <summary>
+        /// Executes the FrameFor operation.
+        /// </summary>
+        /// <param name="time">The chapter time.</param>
+        /// <returns>The operation result.</returns>
         public long FrameFor(TimeSpan time)
         {
             var target = time.TotalMilliseconds - 0.5d;

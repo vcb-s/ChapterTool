@@ -11,12 +11,20 @@ using ChapterTool.Core.Transform;
 
 namespace ChapterTool.Core.Exporting;
 
+/// <summary>
+/// Exports ChapterTool chapter data to supported chapter formats.
+/// </summary>
 public sealed partial class ChapterExportService
 {
     private readonly IChapterTimeFormatter timeFormatter;
     private readonly ILuaExpressionScriptService luaExpressionService;
     private readonly ChapterConversionService chapterConversionService;
 
+    /// <summary>
+    /// Exports ChapterTool chapter data to supported chapter formats.
+    /// </summary>
+    /// <param name="timeFormatter">The chapter time formatter.</param>
+    /// <param name="luaExpressionService">The Lua expression service.</param>
     public ChapterExportService(IChapterTimeFormatter timeFormatter, ILuaExpressionScriptService? luaExpressionService = null)
     {
         this.timeFormatter = timeFormatter;
@@ -24,11 +32,22 @@ public sealed partial class ChapterExportService
         chapterConversionService = new ChapterConversionService(timeFormatter);
     }
 
+    /// <summary>
+    /// Exports ChapterTool chapter data to supported chapter formats.
+    /// </summary>
+    /// <param name="timeFormatter">The chapter time formatter.</param>
+    /// <param name="_">The _ value.</param>
     public ChapterExportService(IChapterTimeFormatter timeFormatter, IExpressionService _)
         : this(timeFormatter, new LuaExpressionScriptService())
     {
     }
 
+    /// <summary>
+    /// Executes the Export operation.
+    /// </summary>
+    /// <param name="info">The chapter data to process.</param>
+    /// <param name="options">The export options.</param>
+    /// <returns>The operation result.</returns>
     public ChapterExportResult Export(ChapterInfo info, ChapterExportOptions options)
     {
         var projection = options.ProjectOutput

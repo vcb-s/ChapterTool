@@ -1,4 +1,4 @@
-namespace ChapterTool.Core.Services;
+namespace ChapterTool.Infrastructure.Services;
 
 public interface IDialogService
 {

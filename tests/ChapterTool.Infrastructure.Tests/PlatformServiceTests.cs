@@ -1,4 +1,4 @@
-using ChapterTool.Core.Services;
+using ChapterTool.Infrastructure.Services;
 using ChapterTool.Infrastructure.Platform;
 using Microsoft.Extensions.Logging;
 

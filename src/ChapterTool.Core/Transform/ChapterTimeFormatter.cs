@@ -4,8 +4,16 @@ using ChapterTool.Core.Diagnostics;
 
 namespace ChapterTool.Core.Transform;
 
+/// <summary>
+/// Formats and parses ChapterTool time strings.
+/// </summary>
 public sealed partial class ChapterTimeFormatter : IChapterTimeFormatter
 {
+    /// <summary>
+    /// Gets the export format.
+    /// </summary>
+    /// <param name="time">The chapter time.</param>
+    /// <returns>The operation result.</returns>
     public string Format(TimeSpan time)
     {
         var millisecond = (int)Math.Round(
@@ -19,11 +27,21 @@ public sealed partial class ChapterTimeFormatter : IChapterTimeFormatter
         return $"{time.Hours:D2}:{time.Minutes:D2}:{seconds}";
     }
 
+    /// <summary>
+    /// Executes the ParseOrZero operation.
+    /// </summary>
+    /// <param name="text">The text to parse.</param>
+    /// <returns>The operation result.</returns>
     public TimeSpan ParseOrZero(string text)
     {
         return TryParse(text, out var value) ? value : TimeSpan.Zero;
     }
 
+    /// <summary>
+    /// Executes the Parse operation.
+    /// </summary>
+    /// <param name="text">The text to parse.</param>
+    /// <returns>The operation result.</returns>
     public TimeParseResult Parse(string text)
     {
         if (TryParse(text, out var value))
@@ -41,6 +59,11 @@ public sealed partial class ChapterTimeFormatter : IChapterTimeFormatter
             ]);
     }
 
+    /// <summary>
+    /// Executes the FormatCue operation.
+    /// </summary>
+    /// <param name="time">The chapter time.</param>
+    /// <returns>The operation result.</returns>
     public string FormatCue(TimeSpan time)
     {
         var frames = (int)Math.Round(time.Milliseconds * 75 / 1000F, MidpointRounding.ToEven);

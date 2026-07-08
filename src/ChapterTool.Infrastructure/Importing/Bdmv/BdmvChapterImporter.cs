@@ -4,7 +4,7 @@ using ChapterTool.Core.Importing.Disc;
 using ChapterTool.Core.Importing;
 using ChapterTool.Core.Importing.Text;
 using ChapterTool.Core.Models;
-using ChapterTool.Core.Services;
+using ChapterTool.Infrastructure.Services;
 using ChapterTool.Core.Transform;
 
 namespace ChapterTool.Infrastructure.Importing.Bdmv;

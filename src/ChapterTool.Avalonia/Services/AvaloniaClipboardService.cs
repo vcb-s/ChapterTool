@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input.Platform;
-using ChapterTool.Core.Services;
+using ChapterTool.Infrastructure.Services;
 
 namespace ChapterTool.Avalonia.Services;
 

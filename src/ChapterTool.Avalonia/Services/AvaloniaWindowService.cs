@@ -4,7 +4,7 @@ using Avalonia.Media;
 using ChapterTool.Avalonia.Localization;
 using ChapterTool.Avalonia.ViewModels;
 using ChapterTool.Avalonia.Views.Tools;
-using ChapterTool.Core.Services;
+using ChapterTool.Infrastructure.Services;
 using ChapterTool.Infrastructure.Configuration;
 
 namespace ChapterTool.Avalonia.Services;

@@ -7,26 +7,53 @@ using ChapterTool.Core.Transform;
 
 namespace ChapterTool.Core.Importing.Text;
 
+/// <summary>
+/// Imports Premiere marker list CSV data as chapters.
+/// </summary>
+/// <param name="timeFormatter">The chapter time formatter.</param>
 public sealed partial class PremiereMarkerListImporter(IChapterTimeFormatter timeFormatter) : IChapterImporter
 {
     private static readonly decimal[] CommonFrameRates = [23.976M, 24M, 25M, 29.97M, 30M, 50M, 59.94M, 60M];
 
+    /// <summary>
+    /// Gets the stable importer identifier.
+    /// </summary>
     public string Id => "premiere-marker-list";
 
+    /// <summary>
+    /// Gets the supported file extensions for this importer.
+    /// </summary>
     public IReadOnlySet<string> SupportedExtensions { get; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         ".csv",
         ".txt"
     };
 
+    /// <summary>
+    /// Imports chapters from the supplied request.
+    /// </summary>
+    /// <param name="request">The import request.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The operation result.</returns>
     public async ValueTask<ChapterImportResult> ImportAsync(ChapterImportRequest request, CancellationToken cancellationToken)
     {
         var text = await TextImportUtilities.ReadTextAsync(request, cancellationToken);
         return ImportText(text, request.Path);
     }
 
+    /// <summary>
+    /// Returns whether ImportText applies.
+    /// </summary>
+    /// <param name="text">The text to parse.</param>
+    /// <returns>true when the condition is met; otherwise, false.</returns>
     public bool CanImportText(string text) => TryParse(text, path: string.Empty, out _);
 
+    /// <summary>
+    /// Imports chapters from text content.
+    /// </summary>
+    /// <param name="text">The text to parse.</param>
+    /// <param name="path">The source path.</param>
+    /// <returns>The operation result.</returns>
     public ChapterImportResult ImportText(string text, string path = "")
     {
         if (TryParse(text, path, out var result))

@@ -5,7 +5,7 @@ using ChapterTool.Avalonia.ViewModels;
 using ChapterTool.Avalonia.Views;
 using ChapterTool.Core.Editing;
 using ChapterTool.Core.Exporting;
-using ChapterTool.Core.Services;
+using ChapterTool.Infrastructure.Services;
 using ChapterTool.Core.Transform;
 using ChapterTool.Infrastructure.Configuration;
 using ChapterTool.Infrastructure.Importing.Media;

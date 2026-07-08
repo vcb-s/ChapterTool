@@ -6,7 +6,7 @@ using Avalonia;
 using ChapterTool.Avalonia.Localization;
 using ChapterTool.Avalonia.Services;
 using ChapterTool.Core.Exporting;
-using ChapterTool.Core.Services;
+using ChapterTool.Infrastructure.Services;
 using ChapterTool.Infrastructure.Configuration;
 using ChapterTool.Infrastructure.Tools;
 

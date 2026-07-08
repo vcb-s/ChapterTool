@@ -3,8 +3,18 @@ using ChapterTool.Core.Models;
 
 namespace ChapterTool.Core.Transform;
 
+/// <summary>
+/// Changes chapter timing between frame rates.
+/// </summary>
 public sealed class ChapterFpsTransformService
 {
+    /// <summary>
+    /// Executes the ChangeFps operation.
+    /// </summary>
+    /// <param name="info">The chapter data to process.</param>
+    /// <param name="sourceFps">The source frame rate.</param>
+    /// <param name="targetFps">The target frame rate.</param>
+    /// <returns>The operation result.</returns>
     public static ChangeFpsResult ChangeFps(ChapterInfo info, decimal sourceFps, decimal targetFps)
     {
         if (sourceFps <= 0 || targetFps <= 0)

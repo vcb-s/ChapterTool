@@ -3,8 +3,16 @@ using ChapterTool.Core.Models;
 
 namespace ChapterTool.Core.Editing;
 
+/// <summary>
+/// Combines and appends chapter segments from multi-part sources.
+/// </summary>
 public sealed class ChapterSegmentService
 {
+    /// <summary>
+    /// Executes the Combine operation.
+    /// </summary>
+    /// <param name="group">The group value.</param>
+    /// <returns>The operation result.</returns>
     public static ChapterEditResult Combine(ChapterInfoGroup group)
     {
         if (group.Options.Count == 0)
@@ -41,6 +49,12 @@ public sealed class ChapterSegmentService
         return new ChapterEditResult(info, []);
     }
 
+    /// <summary>
+    /// Executes the Append operation.
+    /// </summary>
+    /// <param name="existing">The existing value.</param>
+    /// <param name="appended">The appended value.</param>
+    /// <returns>The operation result.</returns>
     public static ChapterEditResult Append(ChapterInfoGroup existing, ChapterInfoGroup appended)
     {
         if (existing.Options.Count == 0 || appended.Options.Count == 0)

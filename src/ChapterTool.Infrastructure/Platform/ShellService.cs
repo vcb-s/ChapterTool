@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using ChapterTool.Core.Services;
+using ChapterTool.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 

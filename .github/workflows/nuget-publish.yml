@@ -1,0 +1,69 @@
+name: Publish to NuGet
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+  workflow_dispatch:
+
+jobs:
+  publish-nuget:
+    runs-on: ubuntu-24.04
+    environment: nuget
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore tests/ChapterTool.Core.Tests/ChapterTool.Core.Tests.csproj
+
+      - name: Resolve package version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" =~ ^v(.+)$ ]]; then
+            echo "package-version=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+          else
+            echo "package-version=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build
+        run: dotnet build tests/ChapterTool.Core.Tests/ChapterTool.Core.Tests.csproj --configuration Release --no-restore
+
+      - name: Test Core
+        run: dotnet test tests/ChapterTool.Core.Tests/ChapterTool.Core.Tests.csproj --configuration Release --no-build
+
+      - name: Pack
+        shell: bash
+        run: |
+          args=(
+            src/ChapterTool.Core/ChapterTool.Core.csproj
+            --configuration Release
+            --no-restore
+            --output artifacts/nuget
+          )
+          if [[ -n "${{ steps.version.outputs.package-version }}" ]]; then
+            args+=(/p:PackageVersion=${{ steps.version.outputs.package-version }})
+          fi
+          dotnet pack "${args[@]}"
+
+      - name: NuGet login (OIDC)
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER }}
+
+      - name: Push to NuGet.org
+        run: dotnet nuget push artifacts/nuget/*.nupkg --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Push symbols to NuGet.org
+        run: dotnet nuget push artifacts/nuget/*.snupkg --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate

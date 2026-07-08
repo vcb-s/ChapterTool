@@ -1,6 +1,6 @@
 using ChapterTool.Core.Importing;
 using ChapterTool.Core.Importing.Media;
-using ChapterTool.Core.Services;
+using ChapterTool.Infrastructure.Services;
 using ChapterTool.Infrastructure.Importing.Media;
 using ChapterTool.Infrastructure.Processes;
 using ChapterTool.Infrastructure.Tools;

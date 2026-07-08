@@ -3,6 +3,9 @@ using ChapterTool.Core.Models;
 
 namespace ChapterTool.Core.Transform;
 
+/// <summary>
+/// Provides frame rate lookup, detection, and frame metadata operations.
+/// </summary>
 public sealed class FrameRateService : IFrameRateService
 {
     private static readonly FrameRateOption[] FrameRateOptions =
@@ -17,8 +20,16 @@ public sealed class FrameRateService : IFrameRateService
         new("Fps5994", "60000 / 1001", 60000m / 1001m, true, 7)
     ];
 
+    /// <summary>
+    /// Gets the available options.
+    /// </summary>
     public IReadOnlyList<FrameRateOption> Options => FrameRateOptions;
 
+    /// <summary>
+    /// Executes the FindByValue operation.
+    /// </summary>
+    /// <param name="framesPerSecond">The frame rate in frames per second.</param>
+    /// <returns>The operation result.</returns>
     public FrameRateOption FindByValue(decimal framesPerSecond)
     {
         return FrameRateOptions.FirstOrDefault(option =>
@@ -26,9 +37,21 @@ public sealed class FrameRateService : IFrameRateService
             ?? FrameRateOptions[0];
     }
 
+    /// <summary>
+    /// Executes the Detect operation.
+    /// </summary>
+    /// <param name="info">The chapter data to process.</param>
+    /// <param name="tolerance">The tolerance value.</param>
+    /// <returns>The operation result.</returns>
     public FrameRateOption Detect(ChapterInfo info, decimal tolerance) =>
         DetectDetailed(info, tolerance).Option;
 
+    /// <summary>
+    /// Executes the DetectDetailed operation.
+    /// </summary>
+    /// <param name="info">The chapter data to process.</param>
+    /// <param name="tolerance">The tolerance value.</param>
+    /// <returns>The operation result.</returns>
     public FrameRateDetectionResult DetectDetailed(ChapterInfo info, decimal tolerance)
     {
         var defaultOption = FrameRateOptions[1];
@@ -91,6 +114,14 @@ public sealed class FrameRateService : IFrameRateService
         return FrameRateConfidence.Low;
     }
 
+    /// <summary>
+    /// Executes the UpdateFrames operation.
+    /// </summary>
+    /// <param name="info">The chapter data to process.</param>
+    /// <param name="option">The option value.</param>
+    /// <param name="round">The round value.</param>
+    /// <param name="tolerance">The tolerance value.</param>
+    /// <returns>The operation result.</returns>
     public FrameInfoResult UpdateFrames(
         ChapterInfo info,
         FrameRateOption option,

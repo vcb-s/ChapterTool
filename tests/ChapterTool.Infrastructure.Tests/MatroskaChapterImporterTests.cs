@@ -1,5 +1,5 @@
 using ChapterTool.Core.Importing;
-using ChapterTool.Core.Services;
+using ChapterTool.Infrastructure.Services;
 using ChapterTool.Core.Transform;
 using ChapterTool.Infrastructure.Importing.Matroska;
 

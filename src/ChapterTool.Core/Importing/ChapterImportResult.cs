@@ -3,15 +3,32 @@ using ChapterTool.Core.Models;
 
 namespace ChapterTool.Core.Importing;
 
+/// <summary>
+/// Represents the result of a chapter import operation.
+/// </summary>
+/// <param name="Success">The Success value.</param>
+/// <param name="Groups">The Groups value.</param>
+/// <param name="Diagnostics">The Diagnostics value.</param>
+/// <param name="IsPartial">The IsPartial value.</param>
 public sealed record ChapterImportResult(
     bool Success,
     IReadOnlyList<ChapterInfoGroup> Groups,
     IReadOnlyList<ChapterDiagnostic> Diagnostics,
     bool IsPartial = false)
 {
+    /// <summary>
+    /// Executes the Succeeded operation.
+    /// </summary>
+    /// <param name="groups">The imported groups.</param>
+    /// <returns>The operation result.</returns>
     public static ChapterImportResult Succeeded(params ChapterInfoGroup[] groups) =>
         new(true, groups, []);
 
+    /// <summary>
+    /// Executes the Failed operation.
+    /// </summary>
+    /// <param name="diagnostics">The diagnostics for the operation.</param>
+    /// <returns>The operation result.</returns>
     public static ChapterImportResult Failed(params ChapterDiagnostic[] diagnostics) =>
         new(false, [], diagnostics);
 }
